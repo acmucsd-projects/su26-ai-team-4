@@ -1,0 +1,22 @@
+name: disaster-triage
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch
+      - torchvision
+      - torchaudio
+      - --extra-index-url https://download.pytorch.org/whl/cu128
+      - numpy
+      - pandas
+      - scikit-learn
+      - matplotlib
+      - pillow
+      - shapely
+      - gradio
+      - wandb

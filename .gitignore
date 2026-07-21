@@ -1,0 +1,16 @@
+data/*
+!data/.gitkeep
+!data/README.md
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.h5
+!checkpoints/.gitkeep
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+venv/
+env/
+*.egg-info/
+.DS_Store
+wandb/
