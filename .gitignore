@@ -14,3 +14,10 @@ env/
 *.egg-info/
 .DS_Store
 wandb/
+
+# Editor settings
+.vscode/
+
+# Generated baseline caches and experiment outputs
+base_train/*/cache/
+base_train/*/results/
