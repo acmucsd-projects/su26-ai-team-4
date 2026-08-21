@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 ## Data layout
 
-Using `build_manifest.py` on the unprocessed data set, there should be a folder with the layout:
+Using `build_manifest.py` on the unprocessed data set, there should be a manifest csv and a folder with the layout:
 ```bash
 processed/
 └── tier1
