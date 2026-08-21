@@ -42,7 +42,7 @@ python train.py \
     --backbone resnet18 --pretrained \
     --image-size 128 \
     --batch-size 64 \
-    --epochs 30 \
+    --epochs 6 \
     --lr 1e-4
 ```
 
@@ -55,7 +55,7 @@ Key flags:
 - `--limit-rows N` — subsample the manifest for a fast debug run.
 - `--patience N` — early-stop if val macro-F1 doesn't improve for N epochs.
 
-Outputs land in `checkpoints/`: `best_model.pt` (weights + config),
+Model accuracy plateaus at around 6 epochs, after which it begins to overfit. You can test this out by setting `--epochs 20 --patience 5`. Outputs land in `checkpoints/`: `best_model.pt` (weights + config),
 `best_classification_report.txt`, and `history.json` (per-epoch loss/F1).
 
 ## Evaluate
