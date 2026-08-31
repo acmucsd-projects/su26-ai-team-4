@@ -20,4 +20,6 @@ wandb/
 
 # Generated baseline caches and experiment outputs
 base_train/*/cache/
-base_train/*/results/
+base_train/ezekiel_resnet18_baseline/results/
+base_train/ezekiel_resnet18_baseline/results_prepost/
+base_train/ezekiel_resnet18_baseline/results_prepost_plaince/
