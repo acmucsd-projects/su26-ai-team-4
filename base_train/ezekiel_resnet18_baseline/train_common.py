@@ -82,7 +82,22 @@ def add_training_arguments(
                         help="Maximum number of validation buildings.")
     parser.add_argument("--num-workers", type=int, default=None,
                         help="DataLoader workers. A conservative default is chosen when omitted.")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.epochs < 1:
+        parser.error("--epochs must be at least 1.")
+    if args.batch_size < 1:
+        parser.error("--batch-size must be at least 1.")
+    if args.learning_rate <= 0:
+        parser.error("--learning-rate must be greater than 0.")
+    if args.weight_decay < 0:
+        parser.error("--weight-decay must be at least 0.")
+    if not 0 < args.val_fraction < 1:
+        parser.error("--val-fraction must be greater than 0 and less than 1.")
+    if args.max_val_buildings < 1:
+        parser.error("--max-val-buildings must be at least 1.")
+    if args.num_workers is not None and args.num_workers < 0:
+        parser.error("--num-workers must be at least 0.")
+    return args
 
 
 def seed_everything(seed: int) -> None:
@@ -144,6 +159,11 @@ def load_cache_manifest(path: Path, paired_input: bool) -> pd.DataFrame:
     missing = required - set(df.columns)
     if missing:
         raise SystemExit(f"cache_manifest.csv is missing required columns:\n    {sorted(missing)}")
+    if df.empty:
+        raise SystemExit(
+            "cache_manifest.csv contains zero usable four-class examples.\n\n"
+            "Regenerate the cache with prepare_xbd_cache.py --rebuild after checking the manifest."
+        )
 
     cache_root = path.parent
     image_columns = ["post"] + (["pre"] if paired_input else [])
