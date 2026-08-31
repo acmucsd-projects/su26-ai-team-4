@@ -380,6 +380,11 @@ def main():
         .reset_index(drop=True)
     )
 
+    if df.empty:
+        raise SystemExit(
+            "No four-class examples found in manifest_train.csv."
+        )
+
     df["target"] = (
         df["damage_label"]
         .map(LABEL_MAP)
