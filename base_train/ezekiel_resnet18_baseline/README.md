@@ -31,13 +31,19 @@ python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py
 python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py
 ```
 
-For an optional smoke test of the POST-only pipeline:
+After preparing the cache, run the smoke-test suite to verify the pipeline:
 
 ```bash
-python base_train/ezekiel_resnet18_baseline/train_post_resnet18.py --epochs 1 --batch-size 32
+python base_train/ezekiel_resnet18_baseline/smoke_test.py
 ```
 
-Successful creation of normal outputs such as `best.pt`, `result.json`, and `summary.txt` indicates that the baseline training pipeline is functioning.
+The runner creates a small temporary subset from the existing cache, runs all three real training entry points for one epoch, and checks their normal artifacts. It does not overwrite normal experiment results and is only for pipeline verification, not meaningful model metrics.
+
+To run one experiment instead:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/smoke_test.py --experiment post
+```
 
 Training settings can be changed with command-line arguments. For example:
 
