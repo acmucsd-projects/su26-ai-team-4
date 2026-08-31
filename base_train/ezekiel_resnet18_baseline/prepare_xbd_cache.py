@@ -71,7 +71,8 @@ OUTPUT
     <baseline>/cache/
         ├── pre/
         ├── post/
-        └── cache_manifest.csv
+        ├── cache_manifest.csv
+        └── cache_metadata.json
 
 The cache manifest uses paths relative to its own directory:
 
@@ -114,6 +115,11 @@ ready-to-use 224 x 224 PNGs directly.
 The cache includes both PRE and POST crops and is shared by the POST-only and
 paired PRE+POST experiments.
 
+Unchanged manifests can reuse the existing cache normally. If the source
+manifest changes, the script detects the mismatch and requires --rebuild.
+Legacy caches without fingerprint metadata also require one rebuild before
+they can be reused safely.
+
 THIS SCRIPT DOES NOT TRAIN A MODEL.
 
 OPTIONAL OVERRIDES
@@ -125,13 +131,15 @@ For a non-standard repository layout:
 
     python prepare_xbd_cache.py --cache-dir "D:\\path\\to\\cache"
 
-Use --rebuild to overwrite existing cache PNGs. If manifest_train.csv changes,
-regenerate the cache with --rebuild.
+Use --rebuild to overwrite existing cache PNGs and regenerate fingerprint
+metadata after manifest_train.csv changes. Legacy caches require one rebuild.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import time
 from pathlib import Path
 
@@ -150,6 +158,16 @@ LABEL_MAP = {
     name: index
     for index, name in enumerate(CLASS_NAMES)
 }
+
+CACHE_METADATA_NAME = "cache_metadata.json"
+CACHE_FORMAT_VERSION = 1
+FINGERPRINT_COLUMNS = (
+    "building_id",
+    "scene_id",
+    "damage_label",
+    "pre_crop_path",
+    "post_crop_path",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +236,8 @@ def parse_args():
         action="store_true",
         help=(
             "Overwrite cached PNG files that already exist. Use this to "
-            "regenerate the cache after manifest_train.csv changes."
+            "regenerate the cache after manifest_train.csv changes or for "
+            "legacy caches without fingerprint metadata."
         ),
     )
 
@@ -291,6 +310,80 @@ def resize_and_save(source: Path, destination: Path) -> None:
         )
 
 
+def manifest_fingerprint(df: pd.DataFrame, manifest_path: Path) -> str:
+    """Hash ordered cache-identity fields using an explicit stable encoding."""
+    digest = hashlib.sha256()
+    for row in df.loc[:, FINGERPRINT_COLUMNS].itertuples(index=False, name=None):
+        values = [None if pd.isna(value) else str(value) for value in row]
+        source_signatures = []
+        for raw_path in row[-2:]:
+            source_path = resolve_crop_path(raw_path, manifest_path)
+            source_stat = source_path.stat()
+            source_signatures.append(
+                [str(source_path), source_stat.st_size, source_stat.st_mtime_ns]
+            )
+        digest.update(
+            json.dumps([values, source_signatures], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        )
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def cache_contains_files(cache_dir: Path) -> bool:
+    """Return whether an existing cache has content that could be unsafe to reuse."""
+    if (cache_dir / "cache_manifest.csv").exists():
+        return True
+    return any(
+        image_path.is_file()
+        for image_type in ("pre", "post")
+        for image_path in (cache_dir / image_type).glob("*.png")
+    )
+
+
+def verify_cache_reuse(cache_dir: Path, fingerprint: str, rebuild: bool) -> None:
+    """Reject existing caches that cannot be proven to match the manifest."""
+    if rebuild or not cache_contains_files(cache_dir):
+        return
+
+    metadata_path = cache_dir / CACHE_METADATA_NAME
+    if not metadata_path.exists():
+        raise SystemExit(
+            "Existing cache has no fingerprint metadata and cannot be verified safely.\n"
+            "Re-run prepare_xbd_cache.py with --rebuild to regenerate it."
+        )
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(
+            "Existing cache fingerprint metadata could not be read safely.\n"
+            "Re-run prepare_xbd_cache.py with --rebuild to regenerate it."
+        ) from exc
+    if metadata.get("format_version") != CACHE_FORMAT_VERSION:
+        raise SystemExit(
+            "Existing cache fingerprint metadata has an unsupported format version.\n"
+            "Re-run prepare_xbd_cache.py with --rebuild to regenerate it."
+        )
+    if metadata.get("manifest_fingerprint") != fingerprint:
+        raise SystemExit(
+            "Existing cache was created from a different manifest.\n"
+            "Re-run prepare_xbd_cache.py with --rebuild to regenerate it."
+        )
+
+
+def write_cache_metadata(cache_dir: Path, fingerprint: str) -> None:
+    """Atomically record the fingerprint only after cache generation succeeds."""
+    metadata_path = cache_dir / CACHE_METADATA_NAME
+    temporary_path = metadata_path.with_suffix(".json.tmp")
+    temporary_path.write_text(
+        json.dumps(
+            {"format_version": CACHE_FORMAT_VERSION, "manifest_fingerprint": fingerprint},
+            indent=2,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(metadata_path)
+
+
 # ---------------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------------
@@ -316,23 +409,6 @@ def main():
             f"Expected:\n    {manifest_path}\n\n"
             "Run src/build_manifest.py first, or pass --manifest explicitly."
         )
-
-    cache_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    pre_dir = cache_dir / "pre"
-    post_dir = cache_dir / "post"
-
-    pre_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-    post_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
 
     print("=" * 80)
     print("xBD 224 x 224 CACHE PREPARATION")
@@ -390,6 +466,22 @@ def main():
         .map(LABEL_MAP)
         .astype(int)
     )
+
+    fingerprint = manifest_fingerprint(df, manifest_path)
+    verify_cache_reuse(cache_dir, fingerprint, args.rebuild)
+
+    metadata_path = cache_dir / CACHE_METADATA_NAME
+    if args.rebuild and metadata_path.exists():
+        metadata_path.unlink()
+
+    cache_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    pre_dir = cache_dir / "pre"
+    post_dir = cache_dir / "post"
+    pre_dir.mkdir(parents=True, exist_ok=True)
+    post_dir.mkdir(parents=True, exist_ok=True)
 
     excluded_rows = (
         original_rows
@@ -530,6 +622,8 @@ def main():
     temporary_path.replace(
         cache_manifest_path
     )
+
+    write_cache_metadata(cache_dir, fingerprint)
 
     elapsed = (
         time.perf_counter()
