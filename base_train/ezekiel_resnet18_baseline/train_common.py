@@ -11,7 +11,6 @@ import argparse
 import contextlib
 import json
 import os
-import platform
 import random
 import time
 from dataclasses import dataclass
@@ -426,31 +425,82 @@ def _write_final_outputs(spec: ExperimentSpec, args: argparse.Namespace, results
     print("\n" + "=" * 80 + "\nTRAINING COMPLETE\n" + "=" * 80 + "\n\n" + summary + f"\n\nOutput:\n  {results_dir}")
 
 
-def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
-    """Run one seed/split experiment and write the standard artifacts."""
-    seed_everything(args.seed)
-    device = select_device()
-    device_name = configure_device(device)
-    cache_manifest_path = args.cache_manifest.expanduser().resolve()
-    results_dir = args.results_dir.expanduser().resolve()
-    results_dir.mkdir(parents=True, exist_ok=True)
-    num_workers = args.num_workers if args.num_workers is not None else default_num_workers()
+def print_run_configuration(
+    spec: ExperimentSpec,
+    args: argparse.Namespace,
+    device: torch.device,
+    device_name: str,
+    cache_manifest_path: Path,
+    results_dir: Path,
+    num_workers: int,
+) -> None:
+    """Print the run details before loading the cache manifest."""
     print("=" * 80 + f"\n{spec.title}\n" + "=" * 80)
-    print(f"Device:          {device_name} ({device})\nPyTorch:         {torch.__version__}\nCache manifest:  {cache_manifest_path}\n"
-          f"Results:         {results_dir}\nEpochs:          {args.epochs}\nBatch size:      {args.batch_size}\nWorkers:         {num_workers}\n"
-          f"Seed:            {args.seed}\nSplit seed:      {args.split_seed}")
-    df = load_cache_manifest(cache_manifest_path, spec.paired_input)
-    train_df, val_df = make_scene_split(df, results_dir, args.split_seed, args.val_fraction, args.max_val_buildings)
+    print(
+        f"Device:          {device_name} ({device})\n"
+        f"PyTorch:         {torch.__version__}\n"
+        f"Cache manifest:  {cache_manifest_path}\n"
+        f"Results:         {results_dir}\n"
+        f"Epochs:          {args.epochs}\n"
+        f"Batch size:      {args.batch_size}\n"
+        f"Workers:         {num_workers}\n"
+        f"Seed:            {args.seed}\n"
+        f"Split seed:      {args.split_seed}"
+    )
+
+
+def print_split_summary(train_df: pd.DataFrame, val_df: pd.DataFrame) -> None:
+    """Print the existing scene-disjoint split summary."""
     print(f"Training:        {len(train_df):,} buildings / {train_df['scene_id'].nunique():,} scenes\n"
           f"Validation:      {len(val_df):,} buildings / {val_df['scene_id'].nunique():,} scenes")
+
+
+def build_data_loaders(
+    spec: ExperimentSpec,
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    args: argparse.Namespace,
+    device: torch.device,
+    num_workers: int,
+) -> tuple[DataLoader, DataLoader]:
+    """Build the train and validation loaders with the established settings."""
     generator = torch.Generator().manual_seed(args.seed)
-    loader_kwargs: dict[str, Any] = {"batch_size": args.batch_size, "num_workers": num_workers,
-                                     "pin_memory": device.type == "cuda", "persistent_workers": num_workers > 0,
-                                     "worker_init_fn": worker_init_fn}
+    loader_kwargs: dict[str, Any] = {
+        "batch_size": args.batch_size,
+        "num_workers": num_workers,
+        "pin_memory": device.type == "cuda",
+        "persistent_workers": num_workers > 0,
+        "worker_init_fn": worker_init_fn,
+    }
     if num_workers > 0:
         loader_kwargs["prefetch_factor"] = 1
-    train_loader = DataLoader(spec.dataset_class(train_df, training=True), shuffle=True, generator=generator, **loader_kwargs)
-    val_loader = DataLoader(spec.dataset_class(val_df, training=False), shuffle=False, **loader_kwargs)
+    train_loader = DataLoader(
+        spec.dataset_class(train_df, training=True),
+        shuffle=True,
+        generator=generator,
+        **loader_kwargs,
+    )
+    val_loader = DataLoader(
+        spec.dataset_class(val_df, training=False),
+        shuffle=False,
+        **loader_kwargs,
+    )
+    return train_loader, val_loader
+
+
+def build_training_components(
+    spec: ExperimentSpec,
+    train_df: pd.DataFrame,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> tuple[
+    nn.Module,
+    nn.Module,
+    torch.Tensor | None,
+    torch.optim.Optimizer,
+    torch.amp.GradScaler | None,
+]:
+    """Create the model, loss, optimizer, and CUDA scaler for one experiment."""
     print("\nLoading ImageNet-pretrained ResNet-18...")
     model = spec.build_model().to(device)
     if device.type == "cuda":
@@ -464,6 +514,23 @@ def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
     scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
+    return model, criterion, class_weights, optimizer, scaler
+
+
+def run_training_loop(
+    spec: ExperimentSpec,
+    args: argparse.Namespace,
+    results_dir: Path,
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    scaler: torch.amp.GradScaler | None,
+    criterion: nn.Module,
+    class_weights: torch.Tensor | None,
+    device: torch.device,
+) -> tuple[list[dict], int, float]:
+    """Run epochs, retain the best Macro F1 checkpoint, and write history."""
     history: list[dict] = []
     best_macro_f1, best_epoch = -1.0, -1
     run_start = time.perf_counter()
@@ -484,6 +551,63 @@ def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
               f"{train_metrics['samples_per_sec']:.1f} samples/s\n  val   | loss ({spec.loss_name})={val_metrics['loss']:.4f} | "
               f"acc={val_metrics['accuracy']:.4f} | MacroF1={val_metrics['macro_f1']:.4f}\n  timing | "
               f"epoch={format_seconds(row['epoch_elapsed_sec'])} | ETA={format_seconds(eta)}")
+    return history, best_epoch, run_start
+
+
+def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
+    """Run one seed/split experiment and write the standard artifacts."""
+    seed_everything(args.seed)
+    device = select_device()
+    device_name = configure_device(device)
+    cache_manifest_path = args.cache_manifest.expanduser().resolve()
+    results_dir = args.results_dir.expanduser().resolve()
+    results_dir.mkdir(parents=True, exist_ok=True)
+    num_workers = args.num_workers if args.num_workers is not None else default_num_workers()
+    print_run_configuration(
+        spec,
+        args,
+        device,
+        device_name,
+        cache_manifest_path,
+        results_dir,
+        num_workers,
+    )
+
+    df = load_cache_manifest(cache_manifest_path, spec.paired_input)
+    train_df, val_df = make_scene_split(
+        df,
+        results_dir,
+        args.split_seed,
+        args.val_fraction,
+        args.max_val_buildings,
+    )
+    print_split_summary(train_df, val_df)
+    train_loader, val_loader = build_data_loaders(
+        spec,
+        train_df,
+        val_df,
+        args,
+        device,
+        num_workers,
+    )
+    model, criterion, class_weights, optimizer, scaler = build_training_components(
+        spec,
+        train_df,
+        args,
+        device,
+    )
+    history, best_epoch, run_start = run_training_loop(
+        spec,
+        args,
+        results_dir,
+        model,
+        train_loader,
+        val_loader,
+        optimizer,
+        scaler,
+        criterion,
+        class_weights,
+        device,
+    )
     _write_final_outputs(spec, args, results_dir, model, val_loader, criterion, device, spec.forward_batch,
                          history, best_epoch, train_df, val_df, device_name, run_start)
-
