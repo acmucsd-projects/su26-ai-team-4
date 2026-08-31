@@ -161,6 +161,8 @@ CPU training is supported as a fallback, but ResNet-18 training may be slow.
 
 CUDA-specific features such as mixed precision, TF32, cuDNN tuning, and CUDA memory reporting are enabled only when training on CUDA.
 
+**DataLoader workers:** The default is 4 workers. For best training speed, test different `--num-workers` values to find what works best on your machine. Higher worker counts can significantly improve throughput, but pushing the value too high may cause DataLoader instability or crashes. If that happens, reduce the worker count.
+
 The preprocessing and cache scripts are platform-independent.
 
 Training settings and available command-line options are documented through each experiment's `--help` output.

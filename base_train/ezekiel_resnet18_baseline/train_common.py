@@ -117,7 +117,7 @@ def worker_init_fn(worker_id: int) -> None:
 
 def default_num_workers() -> int:
     cpu_count = os.cpu_count() or 1
-    return min(2 if platform.system() == "Windows" else 4, cpu_count)
+    return min(4, cpu_count)
 
 
 def format_seconds(seconds: float) -> str:
