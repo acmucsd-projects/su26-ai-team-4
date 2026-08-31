@@ -60,7 +60,7 @@ The PRE crop uses the same crop coordinates as POST.
 
 That gives us:
     - POST behavior compatible with the established preprocessing
-    - a matching PRE image for future paired PRE+POST experiments
+    - a matching PRE image for paired PRE+POST experiments
 
 IMPORTANT
 ---------
@@ -84,9 +84,11 @@ The script searches upward for data/train automatically.
 
 Or explicitly specify the data directory:
 
-    python build_xbd_manifest_and_crops.py --data-dir "C:\\path\\to\\repo\\data"
+    python build_manifest.py --data-dir "C:\\path\\to\\repo\\data"
 
 Use --overwrite if you intentionally want to regenerate existing crop PNGs.
+WARNING: If you intentionally change the raw xBD source imagery or labels,
+regenerate the crops with --overwrite.
 """
 
 from __future__ import annotations
@@ -140,7 +142,10 @@ def parse_args():
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Overwrite PRE/POST crop PNGs that already exist.",
+        help=(
+            "Overwrite PRE/POST crop PNGs that already exist. Use this to "
+            "regenerate crops after intentionally changing raw source imagery or labels."
+        ),
     )
 
     parser.add_argument(
@@ -188,7 +193,7 @@ def find_data_dir(script_path: Path) -> Path:
     raise SystemExit(
         "Could not automatically find data/train.\n\n"
         "Either place this script somewhere inside the repository or run:\n"
-        '    python build_xbd_manifest_and_crops.py '
+        '    python build_manifest.py '
         '--data-dir "C:\\path\\to\\repo\\data"'
     )
 

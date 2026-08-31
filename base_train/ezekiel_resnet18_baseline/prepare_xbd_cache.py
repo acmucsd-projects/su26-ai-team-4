@@ -3,7 +3,7 @@
 prepare_xbd_cache.py
 ====================
 
-One-time cache preparation for the POST ResNet-18 baseline.
+One-time cache preparation shared by the xBD ResNet-18 experiments.
 
 This script is downstream of src/build_manifest.py.
 
@@ -23,9 +23,11 @@ repo/
 │   └── build_manifest.py
 │
 └── base_train/
-    └── ezekiel_post_resnet18_baseline/
+    └── ezekiel_resnet18_baseline/
         ├── prepare_xbd_cache.py      <-- THIS FILE
-        ├── train_xbd_post_resnet18.py
+        ├── train_post_resnet18.py
+        ├── train_prepost_resnet18.py
+        ├── train_prepost_resnet18_plaince.py
         └── cache/                    <-- CREATED HERE
 
 NORMAL USE
@@ -109,9 +111,8 @@ CPU/image-processing work.
 This script performs that deterministic resize once. Training can then load
 ready-to-use 224 x 224 PNGs directly.
 
-The cache includes both PRE and POST crops. The POST-only baseline uses only
-POST, while retaining PRE makes the prepared data reusable for paired
-experiments without rebuilding the cache.
+The cache includes both PRE and POST crops and is shared by the POST-only and
+paired PRE+POST experiments.
 
 THIS SCRIPT DOES NOT TRAIN A MODEL.
 
@@ -124,7 +125,8 @@ For a non-standard repository layout:
 
     python prepare_xbd_cache.py --cache-dir "D:\\path\\to\\cache"
 
-Use --rebuild to overwrite existing cache PNGs.
+Use --rebuild to overwrite existing cache PNGs. If manifest_train.csv changes,
+regenerate the cache with --rebuild.
 """
 
 from __future__ import annotations
@@ -214,7 +216,10 @@ def parse_args():
     parser.add_argument(
         "--rebuild",
         action="store_true",
-        help="Overwrite cached PNG files that already exist.",
+        help=(
+            "Overwrite cached PNG files that already exist. Use this to "
+            "regenerate the cache after manifest_train.csv changes."
+        ),
     )
 
     return parser.parse_args()
