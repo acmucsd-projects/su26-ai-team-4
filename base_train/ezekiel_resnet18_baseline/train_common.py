@@ -191,6 +191,11 @@ def make_scene_split(
     max_val_buildings: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Create a scene-disjoint split, then cap validation buildings as before."""
+    if df["scene_id"].nunique() < 2:
+        raise SystemExit(
+            "At least two distinct scenes are required for a scene-disjoint "
+            "train/validation split."
+        )
     splitter = GroupShuffleSplit(n_splits=1, test_size=val_fraction, random_state=split_seed)
     train_indices, val_indices = next(splitter.split(df, groups=df["scene_id"]))
     train_df = df.iloc[train_indices].copy().reset_index(drop=True)
