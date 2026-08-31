@@ -2,6 +2,8 @@
 
 This folder contains ResNet-18 experiments for xBD building-damage classification.
 
+For environment and dataset setup, follow the repository-level [README](../../README.md) and data instructions.
+
 ## Quick start
 
 From the repository root:
@@ -16,10 +18,37 @@ Then prepare the local 224 x 224 cache:
 python base_train/ezekiel_resnet18_baseline/prepare_xbd_cache.py
 ```
 
-Then run the current POST-only baseline:
+Then run one of the ResNet-18 experiments:
 
 ```bash
+# POST-only with weighted cross-entropy
 python base_train/ezekiel_resnet18_baseline/train_post_resnet18.py
+
+# PRE+POST with weighted cross-entropy
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py
+
+# PRE+POST with plain cross-entropy
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py
+```
+
+For an optional smoke test of the POST-only pipeline:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_post_resnet18.py --epochs 1 --batch-size 32
+```
+
+Successful creation of normal outputs such as `best.pt`, `result.json`, and `summary.txt` indicates that the baseline training pipeline is functioning.
+
+Training settings can be changed with command-line arguments. For example:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --epochs 2 --batch-size 32
+```
+
+Use `--help` to see the available options for any experiment:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --help
 ```
 
 ## Expected data layout
@@ -47,35 +76,92 @@ The cache script creates:
 base_train/ezekiel_resnet18_baseline/cache/
 ```
 
-The training script creates:
+The cache is shared by the ResNet-18 experiments in this folder.
 
-```text
-base_train/ezekiel_resnet18_baseline/results/
-```
+## Experiments
 
-## Current experiment
+### POST-only ResNet-18
 
 `train_post_resnet18.py`
 
 - POST-disaster crops only
 - ImageNet-pretrained ResNet-18
 - four damage classes
+- inverse-frequency weighted cross-entropy
 - scene-disjoint train/validation split
-- weighted cross-entropy
 - validation Macro F1 checkpoint selection
+
+Results are written to:
+
+```text
+base_train/ezekiel_resnet18_baseline/results/
+```
+
+### PRE+POST ResNet-18
+
+`train_prepost_resnet18.py`
+
+- paired PRE- and POST-disaster crops
+- one shared ImageNet-pretrained ResNet-18 backbone
+- PRE and POST images are passed through the same backbone
+- 512-dimensional PRE and POST features are concatenated
+- synchronized geometric augmentation for paired images
+- inverse-frequency weighted cross-entropy
+- scene-disjoint train/validation split
+- validation Macro F1 checkpoint selection
+
+Results are written to:
+
+```text
+base_train/ezekiel_resnet18_baseline/results_prepost/
+```
+
+### PRE+POST ResNet-18 with plain cross-entropy
+
+`train_prepost_resnet18_plaince.py`
+
+- same paired PRE+POST setup as the weighted PRE+POST experiment
+- one shared ImageNet-pretrained ResNet-18 backbone
+- synchronized geometric augmentation for paired images
+- plain cross-entropy with no class weighting
+- scene-disjoint train/validation split
+- validation Macro F1 checkpoint selection
+
+This experiment is intended to isolate the effect of class weighting relative to the weighted PRE+POST experiment.
+
+Results are written to:
+
+```text
+base_train/ezekiel_resnet18_baseline/results_prepost_plaince/
+```
 
 ## Hardware
 
-Training currently requires an NVIDIA CUDA GPU.
+Training automatically selects the best available PyTorch device in this order:
+
+1. NVIDIA CUDA GPU
+2. Apple MPS on supported Apple Silicon Macs
+3. CPU
+
+CUDA is the primary tested training environment.
+
+Apple MPS is supported in FP32 but has not yet been validated on our hardware. Depending on the Mac and available unified memory, a smaller `--batch-size` may be required.
+
+CPU training is supported as a fallback, but ResNet-18 training may be slow.
+
+CUDA-specific features such as mixed precision, TF32, cuDNN tuning, and CUDA memory reporting are enabled only when training on CUDA.
 
 The preprocessing and cache scripts are platform-independent.
 
-Training settings and available command-line options are documented in the individual experiment scripts.
-```
+Training settings and available command-line options are documented through each experiment's `--help` output.
 
 ## Outputs
 
-Typical files in `results/`:
+Each experiment writes the same standard set of training and evaluation artifacts to its corresponding results directory.
+
+Running another seed into the same default results directory replaces previous output files; use `--results-dir` to preserve multiple runs.
+
+Typical files include:
 
 ```text
 best.pt
@@ -88,8 +174,14 @@ split_manifest.csv
 split_summary.csv
 ```
 
+`best.pt` is selected using validation Macro F1. After training, the best checkpoint is reloaded before the final validation metrics and predictions are written.
+
+The split manifest and summary record the train/validation split used for the run.
+
 ## Notes
 
-Generated data, cache files, checkpoints, and results should remain ignored by Git.
+Generated data, cache files, checkpoints, and experiment results should remain ignored by Git.
 
-Future ResNet-18 variants can be added to this folder, such as PRE-only or paired PRE+POST experiments.
+Each script invocation runs one experiment with one training seed and one split seed. Seeds can be changed using the command-line options when additional runs are needed.
+
+The shared training, evaluation, splitting, device handling, and output logic is implemented in `train_common.py`. Each experiment entry point keeps its experiment-specific dataset, model, loss, and batch-forwarding behavior explicit.
