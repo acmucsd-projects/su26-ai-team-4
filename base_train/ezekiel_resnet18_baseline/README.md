@@ -31,6 +31,8 @@ python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py
 python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py
 ```
 
+These experiments use ImageNet-pretrained ResNet-18 weights via `ResNet18_Weights.DEFAULT`; the first run may require Internet access if torchvision has not already cached them locally.
+
 After preparing the cache, run the smoke-test suite to verify the pipeline:
 
 ```bash
@@ -67,6 +69,8 @@ data/
     ├── targets/
     └── metadata_stats/
 ```
+
+This baseline requires `data/train/images/` and `data/train/labels/`. The broader xBD layout may also include `data/train/targets/` and `data/train/metadata_stats/`, but this preprocessing workflow does not require them.
 
 `build_manifest.py` creates:
 

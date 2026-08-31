@@ -320,7 +320,7 @@ def manifest_fingerprint(df: pd.DataFrame, manifest_path: Path) -> str:
             source_path = resolve_crop_path(raw_path, manifest_path)
             source_stat = source_path.stat()
             source_signatures.append(
-                [str(source_path), source_stat.st_size, source_stat.st_mtime_ns]
+                [source_stat.st_size, source_stat.st_mtime_ns]
             )
         digest.update(
             json.dumps([values, source_signatures], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -365,7 +365,7 @@ def verify_cache_reuse(cache_dir: Path, fingerprint: str, rebuild: bool) -> None
         )
     if metadata.get("manifest_fingerprint") != fingerprint:
         raise SystemExit(
-            "Existing cache was created from a different manifest.\n"
+            "Existing cache does not match the current manifest or source crops.\n"
             "Re-run prepare_xbd_cache.py with --rebuild to regenerate it."
         )
 
