@@ -11,6 +11,7 @@ import argparse
 import contextlib
 import json
 import os
+import platform
 import random
 import time
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 import torch
+import torchvision
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_recall_fscore_support
 from sklearn.model_selection import GroupShuffleSplit
 from torch import nn
@@ -184,6 +186,53 @@ def load_cache_manifest(path: Path, paired_input: bool) -> pd.DataFrame:
             f"Example:\n    {missing_files[0]}\n\nRe-run prepare_xbd_cache.py to restore the cache."
         )
     return df
+
+
+def load_cache_provenance(cache_manifest_path: Path) -> dict[str, Any]:
+    """Read existing cache identity metadata when it is available and valid."""
+    provenance: dict[str, Any] = {"cache_manifest_path": str(cache_manifest_path)}
+    metadata_path = cache_manifest_path.parent / "cache_metadata.json"
+    try:
+        cache_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return provenance
+
+    if not isinstance(cache_metadata, dict):
+        return provenance
+    fingerprint = cache_metadata.get("manifest_fingerprint")
+    if isinstance(fingerprint, str):
+        provenance["cache_manifest_fingerprint"] = fingerprint
+    format_version = cache_metadata.get("format_version")
+    if isinstance(format_version, int):
+        provenance["cache_metadata_format_version"] = format_version
+    return provenance
+
+
+def build_run_metadata(
+    args: argparse.Namespace,
+    device: torch.device,
+    device_name: str,
+    num_workers: int,
+) -> dict[str, Any]:
+    """Collect JSON-safe runtime details without changing experiment behavior."""
+    return {
+        "image_size": args.image_size,
+        "num_workers": num_workers,
+        "batch_size": args.batch_size,
+        "epochs": args.epochs,
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "seed": args.seed,
+        "split_seed": args.split_seed,
+        "device": str(device),
+        "device_type": device.type,
+        "device_name": device_name,
+        "python_version": platform.python_version(),
+        "python_implementation": platform.python_implementation(),
+        "pytorch_version": str(torch.__version__),
+        "torchvision_version": str(torchvision.__version__),
+        "platform": platform.platform(),
+    }
 
 
 def make_scene_split(
@@ -356,14 +405,25 @@ def _history_row(epoch: int, train: dict[str, float], val: dict[str, float | int
     return row
 
 
-def _checkpoint_payload(spec: ExperimentSpec, model: nn.Module, epoch: int, val_metrics: dict,
-                        class_weights: torch.Tensor | None, args: argparse.Namespace, device: torch.device) -> dict:
+def _checkpoint_payload(
+    spec: ExperimentSpec,
+    model: nn.Module,
+    epoch: int,
+    val_metrics: dict,
+    class_weights: torch.Tensor | None,
+    args: argparse.Namespace,
+    device: torch.device,
+    run_metadata: dict[str, Any],
+    cache_provenance: dict[str, Any],
+) -> dict:
     metadata = {"model": spec.model_name, "input_mode": spec.input_mode, "loss": spec.loss_name,
                 "class_weighting": spec.class_weighting, "architecture": spec.architecture,
                 "pretrained_weights": spec.pretrained_weights, "seed": args.seed,
-                "split_seed": args.split_seed, "device": str(device)}
+                "split_seed": args.split_seed, "device": str(device),
+                "run_metadata": run_metadata, "cache_provenance": cache_provenance}
     config = {**metadata, "epochs": args.epochs, "batch_size": args.batch_size,
               "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
+              "image_size": args.image_size, "num_workers": run_metadata["num_workers"],
               "val_fraction": args.val_fraction, "max_val_buildings": args.max_val_buildings}
     payload = {"model_name": spec.model_name, "epoch": epoch, "model_state_dict": model.state_dict(),
                "class_names": CLASS_NAMES, "val_metrics": val_metrics, "config": config, "metadata": metadata}
@@ -372,10 +432,24 @@ def _checkpoint_payload(spec: ExperimentSpec, model: nn.Module, epoch: int, val_
     return payload
 
 
-def _write_final_outputs(spec: ExperimentSpec, args: argparse.Namespace, results_dir: Path, model: nn.Module,
-                         val_loader: DataLoader, criterion: nn.Module, device: torch.device, forward_batch: Callable,
-                         history: list[dict], best_epoch: int, train_df: pd.DataFrame, val_df: pd.DataFrame,
-                         device_name: str, run_start: float) -> None:
+def _write_final_outputs(
+    spec: ExperimentSpec,
+    args: argparse.Namespace,
+    results_dir: Path,
+    model: nn.Module,
+    val_loader: DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+    forward_batch: Callable,
+    history: list[dict],
+    best_epoch: int,
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    device_name: str,
+    run_start: float,
+    run_metadata: dict[str, Any],
+    cache_provenance: dict[str, Any],
+) -> None:
     checkpoint = torch.load(results_dir / "best.pt", map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
     final_metrics, predictions, y_true, y_pred = evaluate(
@@ -401,6 +475,8 @@ def _write_final_outputs(spec: ExperimentSpec, args: argparse.Namespace, results
         "peak_vram_gb": peak_vram_gb, "gpu": device_name, "pytorch_version": torch.__version__,
         "seed": args.seed, "split_seed": args.split_seed, "epochs": args.epochs, "batch_size": args.batch_size,
         "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
+        "image_size": args.image_size, "num_workers": run_metadata["num_workers"],
+        "run_metadata": run_metadata, "cache_provenance": cache_provenance,
     }
     for name in SHORT_CLASS_NAMES:
         for metric in ("precision", "recall", "f1"):
@@ -447,6 +523,7 @@ def print_run_configuration(
         f"Results:         {results_dir}\n"
         f"Epochs:          {args.epochs}\n"
         f"Batch size:      {args.batch_size}\n"
+        f"Image size:      {args.image_size} x {args.image_size}\n"
         f"Workers:         {num_workers}\n"
         f"Seed:            {args.seed}\n"
         f"Split seed:      {args.split_seed}"
@@ -533,6 +610,8 @@ def run_training_loop(
     criterion: nn.Module,
     class_weights: torch.Tensor | None,
     device: torch.device,
+    run_metadata: dict[str, Any],
+    cache_provenance: dict[str, Any],
 ) -> tuple[list[dict], int, float]:
     """Run epochs, retain the best Macro F1 checkpoint, and write history."""
     history: list[dict] = []
@@ -547,7 +626,20 @@ def run_training_loop(
         history.append(row)
         if val_metrics["macro_f1"] > best_macro_f1:
             best_macro_f1, best_epoch = float(val_metrics["macro_f1"]), epoch
-            torch.save(_checkpoint_payload(spec, model, epoch, val_metrics, class_weights, args, device), results_dir / "best.pt")
+            torch.save(
+                _checkpoint_payload(
+                    spec,
+                    model,
+                    epoch,
+                    val_metrics,
+                    class_weights,
+                    args,
+                    device,
+                    run_metadata,
+                    cache_provenance,
+                ),
+                results_dir / "best.pt",
+            )
         pd.DataFrame(history).to_csv(results_dir / "history.csv", index=False)
         eta = (args.epochs - epoch) * float(np.mean([entry["epoch_elapsed_sec"] for entry in history]))
         marker = " <-- BEST" if epoch == best_epoch else ""
@@ -567,6 +659,8 @@ def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
     results_dir = args.results_dir.expanduser().resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
     num_workers = args.num_workers if args.num_workers is not None else default_num_workers()
+    run_metadata = build_run_metadata(args, device, device_name, num_workers)
+    cache_provenance = load_cache_provenance(cache_manifest_path)
     print_run_configuration(
         spec,
         args,
@@ -612,6 +706,24 @@ def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
         criterion,
         class_weights,
         device,
+        run_metadata,
+        cache_provenance,
     )
-    _write_final_outputs(spec, args, results_dir, model, val_loader, criterion, device, spec.forward_batch,
-                         history, best_epoch, train_df, val_df, device_name, run_start)
+    _write_final_outputs(
+        spec,
+        args,
+        results_dir,
+        model,
+        val_loader,
+        criterion,
+        device,
+        spec.forward_batch,
+        history,
+        best_epoch,
+        train_df,
+        val_df,
+        device_name,
+        run_start,
+        run_metadata,
+        cache_provenance,
+    )
