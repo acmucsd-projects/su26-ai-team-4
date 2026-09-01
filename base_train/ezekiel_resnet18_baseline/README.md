@@ -53,6 +53,28 @@ Training settings can be changed with command-line arguments. For example:
 python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --epochs 2 --batch-size 32
 ```
 
+All three experiments support `--image-size` for square inputs while reusing the 224×224 cache. For example:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --image-size 128
+```
+
+### Practical resolution guidance
+
+224x224 remains the canonical default for baseline reproducibility. Use 128x128 for normal development, iteration, and fast experiments; use 224x224 for heavier validation or final comparisons when training time is less important. In these baseline experiments, 128x128 trained substantially faster and used much less VRAM while its validation Macro F1 was close to the 224x224 run. Treat that as practical guidance rather than a universal accuracy guarantee: results vary across runs and hardware.
+
+For a fast paired plain-CE development run:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py \
+  --image-size 128 \
+  --num-workers 8 \
+  --batch-size 128 \
+  --epochs 8
+```
+
+In our workstation testing, 8 workers was a useful operating point for this 128x128 command; the code default remains 4 for portability and stability.
+
 Use `--help` to see the available options for any experiment:
 
 ```bash
@@ -161,7 +183,15 @@ CPU training is supported as a fallback, but ResNet-18 training may be slow.
 
 CUDA-specific features such as mixed precision, TF32, cuDNN tuning, and CUDA memory reporting are enabled only when training on CUDA.
 
-**DataLoader workers:** The default is 4 workers. For best training speed, test different `--num-workers` values to find what works best on your machine. Higher worker counts can significantly improve throughput, but pushing the value too high may cause DataLoader instability or crashes. If that happens, reduce the worker count.
+**DataLoader workers:** The default remains 4 workers (capped by available CPU count) for portability and stability. Tune `--num-workers` for your hardware and selected image size: 128x128 runs can benefit more from additional workers because the GPU finishes batches faster and the CPU/data pipeline can become the bottleneck, while 224x224 runs may need fewer workers because GPU compute per batch is larger. Increase workers until throughput plateaus; beyond that, returns diminish and RAM use, scheduling overhead, or DataLoader instability can increase. If instability occurs, reduce the worker count.
+
+**Machine-specific example, not a universal expectation:** one RTX 5090 workstation at 128x128 and batch size 128 measured:
+
+```text
+4 workers:  ~1,000 samples/s
+8 workers:  ~1,800 samples/s
+12 workers: ~1,830 samples/s
+```
 
 The preprocessing and cache scripts are platform-independent.
 

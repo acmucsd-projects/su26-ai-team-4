@@ -109,8 +109,9 @@ The manifest builder preserves variable-size building crops. Resizing those
 same images during every training epoch would repeatedly perform identical
 CPU/image-processing work.
 
-This script performs that deterministic resize once. Training can then load
-ready-to-use 224 x 224 PNGs directly.
+This script performs that deterministic resize once. The shared trainers use
+these canonical 224 x 224 PNGs directly at the default resolution, or resize
+them in memory when `--image-size` selects another square resolution.
 
 The cache includes both PRE and POST crops and is shared by the POST-only and
 paired PRE+POST experiments.

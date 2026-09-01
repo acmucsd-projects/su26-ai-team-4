@@ -82,7 +82,7 @@ def add_training_arguments(
     parser.add_argument("--max-val-buildings", type=int, default=15000,
                         help="Maximum number of validation buildings.")
     parser.add_argument("--num-workers", type=int, default=None,
-                        help="DataLoader workers. A conservative default is chosen when omitted.")
+                        help="DataLoader workers; defaults to up to 4 based on CPU count.")
     args = parser.parse_args()
     if args.epochs < 1:
         parser.error("--epochs must be at least 1.")
