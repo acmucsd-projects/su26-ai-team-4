@@ -68,6 +68,8 @@ def add_training_arguments(
     parser.add_argument("--epochs", type=int, default=8, help="Number of training epochs.")
     parser.add_argument("--batch-size", type=int, default=128,
                         help="Training and validation batch size.")
+    parser.add_argument("--image-size", type=int, default=224,
+                        help="Square input size; 224 is the canonical baseline.")
     parser.add_argument("--learning-rate", type=float, default=1e-4,
                         help="AdamW learning rate.")
     parser.add_argument("--weight-decay", type=float, default=1e-4,
@@ -86,6 +88,8 @@ def add_training_arguments(
         parser.error("--epochs must be at least 1.")
     if args.batch_size < 1:
         parser.error("--batch-size must be at least 1.")
+    if args.image_size < 1:
+        parser.error("--image-size must be at least 1.")
     if args.learning_rate <= 0:
         parser.error("--learning-rate must be greater than 0.")
     if args.weight_decay < 0:
@@ -475,13 +479,13 @@ def build_data_loaders(
     if num_workers > 0:
         loader_kwargs["prefetch_factor"] = 1
     train_loader = DataLoader(
-        spec.dataset_class(train_df, training=True),
+        spec.dataset_class(train_df, training=True, image_size=args.image_size),
         shuffle=True,
         generator=generator,
         **loader_kwargs,
     )
     val_loader = DataLoader(
-        spec.dataset_class(val_df, training=False),
+        spec.dataset_class(val_df, training=False, image_size=args.image_size),
         shuffle=False,
         **loader_kwargs,
     )

@@ -20,12 +20,13 @@ BASELINE_DIR = Path(__file__).resolve().parent
 
 
 class PostDataset(Dataset):
-    """Cached POST crops with the original independent geometric augmentation."""
-    def __init__(self, df, training: bool):
+    """Cached POST crops with 224 as the direct-cache path and optional in-memory resizing."""
+    def __init__(self, df, training: bool, image_size: int):
         self.paths = df["post_path"].tolist()
         self.targets = df["target"].astype(int).to_numpy()
         self.building_ids = df["building_id"].astype(str).tolist()
         self.training = training
+        self.image_size = image_size
 
     def __len__(self):
         return len(self.targets)
@@ -33,6 +34,13 @@ class PostDataset(Dataset):
     def __getitem__(self, index):
         with Image.open(self.paths[index]) as image:
             image = image.convert("RGB").copy()
+        if self.image_size != 224:
+            image = TF.resize(
+                image,
+                [self.image_size, self.image_size],
+                interpolation=transforms.InterpolationMode.BILINEAR,
+                antialias=True,
+            )
         if self.training:
             if random.random() < 0.5:
                 image = TF.hflip(image)

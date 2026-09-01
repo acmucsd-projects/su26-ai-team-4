@@ -22,11 +22,12 @@ BASELINE_DIR = Path(__file__).resolve().parent
 
 
 class PrePostDataset(Dataset):
-    """Cached pairs; every geometric transform is deliberately synchronized."""
-    def __init__(self, df, training: bool):
+    """Cached pairs with synchronized transforms and optional in-memory resizing."""
+    def __init__(self, df, training: bool, image_size: int):
         self.pre_paths, self.post_paths = df["pre_path"].tolist(), df["post_path"].tolist()
         self.targets = df["target"].astype(int).to_numpy()
         self.building_ids, self.training = df["building_id"].astype(str).tolist(), training
+        self.image_size = image_size
 
     def __len__(self):
         return len(self.targets)
@@ -36,6 +37,20 @@ class PrePostDataset(Dataset):
             pre_image = image.convert("RGB").copy()
         with Image.open(self.post_paths[index]) as image:
             post_image = image.convert("RGB").copy()
+        if self.image_size != 224:
+            size = [self.image_size, self.image_size]
+            pre_image = TF.resize(
+                pre_image,
+                size,
+                interpolation=transforms.InterpolationMode.BILINEAR,
+                antialias=True,
+            )
+            post_image = TF.resize(
+                post_image,
+                size,
+                interpolation=transforms.InterpolationMode.BILINEAR,
+                antialias=True,
+            )
         if self.training:
             use_hflip, use_vflip, angle = random.random() < 0.5, random.random() < 0.5, random.uniform(-10.0, 10.0)
             if use_hflip:
