@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import subprocess
 import sys
 import tempfile
@@ -11,6 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
+
+from inference import EXPECTED_CLASS_NAMES, load_model, predict
 
 
 BASELINE_DIR = Path(__file__).resolve().parent
@@ -165,6 +168,29 @@ def run_experiment(name: str, manifest_path: Path, results_dir: Path) -> tuple[b
     return not problems, problems
 
 
+def validate_plaince_inference(results_dir: Path, sample: pd.Series) -> list[str]:
+    """Exercise the public inference API with a pair from the smoke-test subset."""
+    try:
+        loaded_model = load_model(results_dir / "best.pt")
+        prediction = predict(loaded_model, sample["pre_png"], sample["post_png"])
+    except (FileNotFoundError, KeyError, OSError, RuntimeError, ValueError) as exc:
+        return [f"inference validation failed: {exc}"]
+
+    problems = []
+    expected_class_names = list(EXPECTED_CLASS_NAMES)
+    if loaded_model.class_names != expected_class_names:
+        problems.append(f"unexpected checkpoint class names: {loaded_model.class_names!r}")
+    if prediction.get("predicted_class") not in expected_class_names:
+        problems.append(f"invalid predicted class: {prediction.get('predicted_class')!r}")
+
+    probabilities = prediction.get("probabilities")
+    if not isinstance(probabilities, dict) or list(probabilities) != expected_class_names:
+        problems.append("inference did not return four probabilities in the expected class order")
+    elif not math.isclose(sum(probabilities.values()), 1.0, rel_tol=1e-5, abs_tol=1e-5):
+        problems.append("inference probabilities do not sum to 1")
+    return problems
+
+
 def main() -> int:
     args = parse_args()
     selected = tuple(EXPERIMENTS) if args.experiment == "all" else (args.experiment,)
@@ -185,7 +211,12 @@ def main() -> int:
         manifest_path = temporary_root / "cache_manifest.csv"
         subset.to_csv(manifest_path, index=False)
         for name in selected:
-            outcomes[name] = run_experiment(name, manifest_path, temporary_root / name)
+            results_dir = temporary_root / name
+            passed, problems = run_experiment(name, manifest_path, results_dir)
+            if passed and name == "prepost_plaince":
+                problems.extend(validate_plaince_inference(results_dir, subset.iloc[0]))
+                passed = not problems
+            outcomes[name] = passed, problems
 
     print(f"\n{'=' * 80}\nSMOKE TEST SUMMARY\n{'=' * 80}")
     for name in selected:

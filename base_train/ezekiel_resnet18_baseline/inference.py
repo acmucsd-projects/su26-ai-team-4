@@ -13,11 +13,12 @@ import torch
 from torchvision import transforms
 from torchvision.transforms import functional as TF
 
-from train_common import IMAGENET_MEAN, IMAGENET_STD, select_device
+from train_common import CLASS_NAMES, IMAGENET_MEAN, IMAGENET_STD, select_device
 from train_prepost_resnet18_plaince import PrePostResNet18
 
 
 EXPECTED_MODEL_NAME = "prepost_resnet18_plaince"
+EXPECTED_CLASS_NAMES = tuple(CLASS_NAMES)
 
 
 @dataclass(frozen=True)
@@ -50,8 +51,11 @@ def load_model(checkpoint_path: str | Path, device: torch.device | str | None = 
         )
 
     class_names = checkpoint.get("class_names")
-    if not isinstance(class_names, list) or len(class_names) != 4:
-        raise ValueError("Checkpoint is missing the expected four class names.")
+    if class_names != list(EXPECTED_CLASS_NAMES):
+        raise ValueError(
+            "Checkpoint class_names are incompatible. Expected exactly "
+            f"{list(EXPECTED_CLASS_NAMES)!r}, got {class_names!r}."
+        )
     image_size = checkpoint.get("config", {}).get("image_size")
     if not isinstance(image_size, int) or image_size < 1:
         raise ValueError("Checkpoint is missing a valid image_size in config.")
