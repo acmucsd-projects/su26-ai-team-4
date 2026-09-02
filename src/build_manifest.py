@@ -86,7 +86,7 @@ Or explicitly specify the data directory:
 
     python build_manifest.py --data-dir "C:\\path\\to\\repo\\data"
 
-Use --overwrite if you intentionally want to regenerate existing crop PNGs.
+Use --overwrite if you intentionally want to regenerate the manifest and crops.
 WARNING: If you intentionally change the raw xBD source imagery or labels,
 regenerate the crops with --overwrite.
 """
@@ -95,7 +95,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import shutil
+import tempfile
 import time
 from pathlib import Path
 
@@ -143,8 +146,8 @@ def parse_args():
         "--overwrite",
         action="store_true",
         help=(
-            "Overwrite PRE/POST crop PNGs that already exist. Use this to "
-            "regenerate crops after intentionally changing raw source imagery or labels."
+            "Regenerate manifest_train.csv and PRE/POST crop PNGs, removing old "
+            "generated crop outputs first."
         ),
     )
 
@@ -221,6 +224,68 @@ def scene_id_from_filename(path: Path) -> str:
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def contains_generated_crops(crop_dir: Path) -> bool:
+    """Return whether a script-owned crop directory contains generated PNGs."""
+    return crop_dir.is_dir() and any(crop_dir.rglob("*.png"))
+
+
+def prepare_output_dirs(
+    manifest_path: Path,
+    pre_dir: Path,
+    post_dir: Path,
+    overwrite: bool,
+) -> None:
+    """Refuse stale output reuse or explicitly clear only script-owned crop dirs."""
+    existing_outputs = []
+    if manifest_path.exists():
+        existing_outputs.append(manifest_path)
+    if contains_generated_crops(pre_dir):
+        existing_outputs.append(pre_dir)
+    if contains_generated_crops(post_dir):
+        existing_outputs.append(post_dir)
+
+    if existing_outputs and not overwrite:
+        paths = "\n".join(f"  - {path}" for path in existing_outputs)
+        raise SystemExit(
+            "Existing generated manifest/crop output(s) found:\n"
+            f"{paths}\n\n"
+            "Remove the old generated outputs, or rerun with --overwrite."
+        )
+
+    if overwrite:
+        # A partially rebuilt crop tree must never remain paired with an older
+        # manifest that describes the previous preprocessing run.
+        if manifest_path.exists():
+            manifest_path.unlink()
+        for crop_dir in (pre_dir, post_dir):
+            if crop_dir.exists():
+                if not crop_dir.is_dir():
+                    raise SystemExit(
+                        f"Expected generated crop directory, found a non-directory path:\n{crop_dir}"
+                    )
+                shutil.rmtree(crop_dir)
+
+    pre_dir.mkdir(parents=True, exist_ok=True)
+    post_dir.mkdir(parents=True, exist_ok=True)
+
+
+def write_manifest_atomically(manifest: pd.DataFrame, manifest_path: Path) -> None:
+    """Write the manifest beside its final path, then atomically replace it."""
+    file_descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{manifest_path.stem}.",
+        suffix=".tmp",
+        dir=manifest_path.parent,
+    )
+    os.close(file_descriptor)
+    temp_path = Path(temp_name)
+    try:
+        manifest.to_csv(temp_path, index=False)
+        temp_path.replace(manifest_path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -417,16 +482,6 @@ def main():
     pre_dir = processed_dir / "pre"
     post_dir = processed_dir / "post"
 
-    pre_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    post_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
     manifest_path = (
         data_dir
         / "manifest_train.csv"
@@ -444,6 +499,13 @@ def main():
             "No *_post_disaster.json files were found in:\n"
             f"{labels_dir}"
         )
+
+    prepare_output_dirs(
+        manifest_path,
+        pre_dir,
+        post_dir,
+        args.overwrite,
+    )
 
     print("=" * 80)
     print("xBD MANIFEST + PRE/POST BUILDING CROP GENERATOR")
@@ -606,27 +668,25 @@ def main():
                 skipped_features += 1
                 continue
 
-            if args.overwrite or not post_output.exists():
-                post_crop = post_image.crop(
-                    post_box
-                )
+            post_crop = post_image.crop(
+                post_box
+            )
 
-                post_crop.save(
-                    post_output,
-                    format="PNG",
-                    compress_level=3,
-                )
+            post_crop.save(
+                post_output,
+                format="PNG",
+                compress_level=3,
+            )
 
-            if args.overwrite or not pre_output.exists():
-                pre_crop = pre_image.crop(
-                    pre_box
-                )
+            pre_crop = pre_image.crop(
+                pre_box
+            )
 
-                pre_crop.save(
-                    pre_output,
-                    format="PNG",
-                    compress_level=3,
-                )
+            pre_crop.save(
+                pre_output,
+                format="PNG",
+                compress_level=3,
+            )
 
             # Relative paths are written from data/ because manifest_train.csv
             # itself is stored directly inside data/.
@@ -725,10 +785,7 @@ def main():
         ],
     )
 
-    manifest.to_csv(
-        manifest_path,
-        index=False,
-    )
+    write_manifest_atomically(manifest, manifest_path)
 
     elapsed = (
         time.perf_counter()

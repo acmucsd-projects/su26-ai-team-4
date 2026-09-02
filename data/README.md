@@ -27,11 +27,13 @@ data/processed/tier1/pre/
 data/processed/tier1/post/
 ```
 
-Do not create the manifest or processed crops manually. If you intentionally change the raw source images or labels, regenerate them with:
+Do not create the manifest or processed crops manually. Normal reruns are refused when generated manifest/crop outputs already exist. If you intentionally change the raw source images or labels, regenerate them with:
 
 ```bash
 python src/build_manifest.py --overwrite
 ```
+
+`--overwrite` removes and rebuilds the generated PRE/POST crop directories for this manifest output; use it only for an intentional preprocessing rebuild.
 
 ## Build the ResNet cache
 
