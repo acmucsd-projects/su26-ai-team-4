@@ -650,6 +650,19 @@ def run_training_loop(
     return history, best_epoch, run_start
 
 
+def prepare_results_dir(results_dir: Path) -> None:
+    """Create an empty results directory without overwriting a prior run."""
+    if results_dir.exists():
+        if not results_dir.is_dir() or any(results_dir.iterdir()):
+            raise SystemExit(
+                f"Results directory is not empty:\n    {results_dir}\n\n"
+                "Use --results-dir to choose a different directory, or remove the existing "
+                "directory if you intentionally want to restart that run from scratch."
+            )
+        return
+    results_dir.mkdir(parents=True)
+
+
 def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
     """Run one seed/split experiment and write the standard artifacts."""
     seed_everything(args.seed)
@@ -657,7 +670,7 @@ def run_experiment(args: argparse.Namespace, spec: ExperimentSpec) -> None:
     device_name = configure_device(device)
     cache_manifest_path = args.cache_manifest.expanduser().resolve()
     results_dir = args.results_dir.expanduser().resolve()
-    results_dir.mkdir(parents=True, exist_ok=True)
+    prepare_results_dir(results_dir)
     num_workers = args.num_workers if args.num_workers is not None else default_num_workers()
     run_metadata = build_run_metadata(args, device, device_name, num_workers)
     cache_provenance = load_cache_provenance(cache_manifest_path)

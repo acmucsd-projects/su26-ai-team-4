@@ -94,7 +94,7 @@ DataLoader workers default to up to 4 for portability. Increase `--num-workers` 
 
 Each experiment writes standard training and evaluation artifacts to its results directory.
 
-**Important:** Default results directories are reused. Pass `--results-dir` to preserve multiple runs.
+**Important:** Training will not write into a non-empty results directory. Pass `--results-dir` to save a new run separately.
 
 Typical outputs include:
 
