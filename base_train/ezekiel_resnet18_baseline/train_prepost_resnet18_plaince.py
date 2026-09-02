@@ -66,9 +66,9 @@ class PrePostDataset(Dataset):
 
 class PrePostResNet18(nn.Module):
     """One ImageNet ResNet-18 backbone for both images; 512+512 features are concatenated."""
-    def __init__(self):
+    def __init__(self, weights: ResNet18_Weights | None = ResNet18_Weights.DEFAULT):
         super().__init__()
-        backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
+        backbone = resnet18(weights=weights)
         feature_dim = backbone.fc.in_features
         backbone.fc = nn.Identity()
         self.backbone = backbone

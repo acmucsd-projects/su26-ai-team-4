@@ -36,6 +36,14 @@ python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py --
 
 The models start from ImageNet-pretrained ResNet-18 weights. The first run may need Internet access if torchvision has not already cached those weights.
 
+## Inference
+
+```bash
+python base_train/ezekiel_resnet18_baseline/inference.py --checkpoint path/to/checkpoint.pt --pre path/to/pre.png --post path/to/post.png
+```
+
+See the [checkpoint documentation](../../checkpoints/README.md) for released checkpoints and inference details.
+
 ## Experiments
 
 The baselines classify four damage levels: `no-damage`, `minor-damage`, `major-damage`, and `destroyed`. `un-classified` examples are excluded from the training cache.
