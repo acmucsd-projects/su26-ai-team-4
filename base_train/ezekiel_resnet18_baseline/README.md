@@ -1,209 +1,102 @@
 # ResNet-18 Baselines
 
-This folder contains ResNet-18 experiments for xBD building-damage classification.
+ResNet-18 experiments for xBD building-damage classification.
 
-For environment and dataset setup, follow the repository-level [README](../../README.md) and data instructions.
+For environment and dataset setup, start with the repository [README](../../README.md) and [`data/README.md`](../../data/README.md).
 
-## Quick start
+## Quick Start
 
-From the repository root:
+Run these commands from the repository root.
+
+### 1. Build the manifest
 
 ```bash
 python src/build_manifest.py
 ```
 
-Then prepare the local 224 x 224 cache:
+### 2. Build the image cache
 
 ```bash
 python base_train/ezekiel_resnet18_baseline/prepare_xbd_cache.py
 ```
 
-Then run one of the ResNet-18 experiments:
-
-```bash
-# POST-only with weighted cross-entropy
-python base_train/ezekiel_resnet18_baseline/train_post_resnet18.py
-
-# PRE+POST with weighted cross-entropy
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py
-
-# PRE+POST with plain cross-entropy
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py
-```
-
-These experiments use ImageNet-pretrained ResNet-18 weights via `ResNet18_Weights.DEFAULT`; the first run may require Internet access if torchvision has not already cached them locally.
-
-After preparing the cache, run the smoke-test suite to verify the pipeline:
+### 3. Run the smoke test
 
 ```bash
 python base_train/ezekiel_resnet18_baseline/smoke_test.py
 ```
 
-The runner creates a small temporary subset from the existing cache, runs all three real training entry points for one epoch, and checks their normal artifacts. It does not overwrite normal experiment results and is only for pipeline verification, not meaningful model metrics.
+The smoke test runs the real training entry points for one epoch on a small temporary subset and checks that the expected outputs are created. It does not overwrite normal experiment results.
 
-To run one experiment instead:
-
-```bash
-python base_train/ezekiel_resnet18_baseline/smoke_test.py --experiment post
-```
-
-Training settings can be changed with command-line arguments. For example:
+### 4. Run the recommended first experiment
 
 ```bash
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --epochs 2 --batch-size 32
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py --image-size 128
 ```
 
-All three experiments support `--image-size` for square inputs while reusing the 224×224 cache. For example:
-
-```bash
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --image-size 128
-```
-
-### Practical resolution guidance
-
-224x224 remains the canonical default for baseline reproducibility. Use 128x128 for normal development, iteration, and fast experiments; use 224x224 for heavier validation or final comparisons when training time is less important. In these baseline experiments, 128x128 trained substantially faster and used much less VRAM while its validation Macro F1 was close to the 224x224 run. Treat that as practical guidance rather than a universal accuracy guarantee: results vary across runs and hardware.
-
-For a fast paired plain-CE development run:
-
-```bash
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py \
-  --image-size 128 \
-  --num-workers 8 \
-  --batch-size 128 \
-  --epochs 8
-```
-
-In our workstation testing, 8 workers was a useful operating point for this 128x128 command; the code default remains 4 for portability and stability.
-
-Use `--help` to see the available options for any experiment:
-
-```bash
-python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18.py --help
-```
-
-## Expected data layout
-
-```text
-data/
-└── train/
-    ├── images/
-    ├── labels/
-    ├── targets/
-    └── metadata_stats/
-```
-
-This baseline requires `data/train/images/` and `data/train/labels/`. The broader xBD layout may also include `data/train/targets/` and `data/train/metadata_stats/`, but this preprocessing workflow does not require them.
-
-`build_manifest.py` creates:
-
-```text
-data/manifest_train.csv
-data/processed/tier1/pre/
-data/processed/tier1/post/
-```
-
-The cache script creates:
-
-```text
-base_train/ezekiel_resnet18_baseline/cache/
-```
-
-The cache is shared by the ResNet-18 experiments in this folder.
+The models start from ImageNet-pretrained ResNet-18 weights. The first run may need Internet access if torchvision has not already cached those weights.
 
 ## Experiments
 
-### POST-only ResNet-18
+The baselines classify four damage levels: `no-damage`, `minor-damage`, `major-damage`, and `destroyed`. `un-classified` examples are excluded from the training cache.
 
-`train_post_resnet18.py`
+All three experiments use ImageNet-pretrained ResNet-18, a scene-disjoint train/validation split, and select `best.pt` using validation Macro F1.
 
-- POST-disaster crops only
-- ImageNet-pretrained ResNet-18
-- four damage classes
-- inverse-frequency weighted cross-entropy
-- scene-disjoint train/validation split
-- validation Macro F1 checkpoint selection
+Default result directories are relative to `base_train/ezekiel_resnet18_baseline/`.
 
-Results are written to:
+| Experiment | Input | Loss | Default results |
+| --- | --- | --- | --- |
+| `train_post_resnet18.py` | POST only | Weighted cross-entropy | `results/` |
+| `train_prepost_resnet18.py` | PRE + POST | Weighted cross-entropy | `results_prepost/` |
+| `train_prepost_resnet18_plaince.py` | PRE + POST | Plain cross-entropy | `results_prepost_plaince/` |
 
-```text
-base_train/ezekiel_resnet18_baseline/results/
+The PRE+POST models use one shared ResNet-18 backbone. PRE and POST features are concatenated before classification, and geometric augmentation is synchronized across each image pair.
+
+The plain-CE experiment keeps the paired architecture the same while removing class weighting so the effect of the loss can be compared directly.
+
+## Resolution
+
+**128×128 is recommended for normal development and iteration.** It trained substantially faster in baseline testing while producing similar validation Macro F1.
+
+Use **224×224** for canonical baseline reproduction and heavier comparison runs.
+
+Both resolutions reuse the same 224×224 cache through `--image-size`.
+
+## Training Options
+
+Use `--help` to see all available options:
+
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py --help
 ```
 
-### PRE+POST ResNet-18
+For example, to adjust batch size and DataLoader workers:
 
-`train_prepost_resnet18.py`
-
-- paired PRE- and POST-disaster crops
-- one shared ImageNet-pretrained ResNet-18 backbone
-- PRE and POST images are passed through the same backbone
-- 512-dimensional PRE and POST features are concatenated
-- synchronized geometric augmentation for paired images
-- inverse-frequency weighted cross-entropy
-- scene-disjoint train/validation split
-- validation Macro F1 checkpoint selection
-
-Results are written to:
-
-```text
-base_train/ezekiel_resnet18_baseline/results_prepost/
-```
-
-### PRE+POST ResNet-18 with plain cross-entropy
-
-`train_prepost_resnet18_plaince.py`
-
-- same paired PRE+POST setup as the weighted PRE+POST experiment
-- one shared ImageNet-pretrained ResNet-18 backbone
-- synchronized geometric augmentation for paired images
-- plain cross-entropy with no class weighting
-- scene-disjoint train/validation split
-- validation Macro F1 checkpoint selection
-
-This experiment is intended to isolate the effect of class weighting relative to the weighted PRE+POST experiment.
-
-Results are written to:
-
-```text
-base_train/ezekiel_resnet18_baseline/results_prepost_plaince/
+```bash
+python base_train/ezekiel_resnet18_baseline/train_prepost_resnet18_plaince.py --image-size 128 --batch-size 64 --num-workers 4
 ```
 
 ## Hardware
 
-Training automatically selects the best available PyTorch device in this order:
+Training automatically selects the first available device:
 
-1. NVIDIA CUDA GPU
-2. Apple MPS on supported Apple Silicon Macs
+1. NVIDIA CUDA
+2. Apple MPS
 3. CPU
 
 CUDA is the primary tested training environment.
 
-Apple MPS is supported in FP32 but has not yet been validated on our hardware. Depending on the Mac and available unified memory, a smaller `--batch-size` may be required.
+Apple MPS is supported in FP32 but has not been validated on the project's development hardware. CPU is supported as a fallback but may be slow for training.
 
-CPU training is supported as a fallback, but ResNet-18 training may be slow.
-
-CUDA-specific features such as mixed precision, TF32, cuDNN tuning, and CUDA memory reporting are enabled only when training on CUDA.
-
-**DataLoader workers:** The default remains 4 workers (capped by available CPU count) for portability and stability. Tune `--num-workers` for your hardware and selected image size: 128x128 runs can benefit more from additional workers because the GPU finishes batches faster and the CPU/data pipeline can become the bottleneck, while 224x224 runs may need fewer workers because GPU compute per batch is larger. Increase workers until throughput plateaus; beyond that, returns diminish and RAM use, scheduling overhead, or DataLoader instability can increase. If instability occurs, reduce the worker count.
-
-**Machine-specific example, not a universal expectation:** one RTX 5090 workstation at 128x128 and batch size 128 measured:
-
-```text
-4 workers:  ~1,000 samples/s
-8 workers:  ~1,800 samples/s
-12 workers: ~1,830 samples/s
-```
-
-The preprocessing and cache scripts are platform-independent.
-
-Training settings and available command-line options are documented through each experiment's `--help` output.
+DataLoader workers default to up to 4 for portability. Increase `--num-workers` if input loading becomes a bottleneck, or reduce it if you run into instability or high RAM usage.
 
 ## Outputs
 
-Each experiment writes the same standard set of training and evaluation artifacts to its corresponding results directory.
+Each experiment writes standard training and evaluation artifacts to its results directory.
 
-Running another seed into the same default results directory replaces previous output files; use `--results-dir` to preserve multiple runs.
+**Important:** Default results directories are reused. Pass `--results-dir` to preserve multiple runs.
 
-Typical files include:
+Typical outputs include:
 
 ```text
 best.pt
@@ -216,14 +109,6 @@ split_manifest.csv
 split_summary.csv
 ```
 
-`best.pt` is selected using validation Macro F1. After training, the best checkpoint is reloaded before the final validation metrics and predictions are written.
+`best.pt` is selected using validation Macro F1 and is reloaded before the final validation metrics and predictions are written.
 
-The split manifest and summary record the train/validation split used for the run.
-
-## Notes
-
-Generated data, cache files, checkpoints, and experiment results should remain ignored by Git.
-
-Each script invocation runs one experiment with one training seed and one split seed. Seeds can be changed using the command-line options when additional runs are needed.
-
-The shared training, evaluation, splitting, device handling, and output logic is implemented in `train_common.py`. Each experiment entry point keeps its experiment-specific dataset, model, loss, and batch-forwarding behavior explicit.
+`split_manifest.csv` and `split_summary.csv` record the scene-disjoint train/validation split used for the run.
