@@ -1,6 +1,6 @@
-### Amelia — Baseline & Reproduction
+# Baseline & Reproduction
 
-#### Baseline CNN
+## Baseline CNN
 
 See `manifest_analysis.ipynb` for dataset EDA and the scene-based train/val/test split, and `baseline.ipynb` for the from-scratch `ImprovedCNN` baseline.
 
@@ -10,7 +10,7 @@ See `manifest_analysis.ipynb` for dataset EDA and the scene-based train/val/test
 - Result: macro F1 0.453 on test (accuracy 0.676, weighted F1 0.712)
 - Per-class F1: no-damage 0.81, minor-damage 0.34, major-damage 0.27, destroyed 0.39
 
-#### ResNet18 Reproduction (Ezekiel's baseline)
+## ResNet18 Reproduction (Ezekiel's baseline)
 
 Reproduced Ezekiel's PRE+POST ResNet-18 baseline (`train_prepost_resnet18_plaince.py`) locally on Apple MPS, to test whether his results reproduce across different hardware.
 
