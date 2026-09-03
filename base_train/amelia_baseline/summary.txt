@@ -1,0 +1,31 @@
+xBD PAIRED PRE+POST RESNET-18 PLAIN-CE BASELINE
+================================================================================
+
+Device: Apple MPS (mps)
+Training buildings: 129,539
+Validation buildings: 15,000
+Training scenes: 1,792
+Validation scenes: 438
+Best epoch: 4/8
+Loss: plain cross entropy (no class weights)
+
+PERFORMANCE
+--------------------------------------------------------------------------------
+Train loss at best epoch:     0.2847
+Train accuracy at best epoch: 0.8927
+Validation loss (cross_entropy): 0.3594
+Validation accuracy:           0.8727
+Macro F1:                      0.7551
+
+PER-CLASS METRICS
+--------------------------------------------------------------------------------
+No damage   | P=0.9579 R=0.9168 F1=0.9369
+Minor       | P=0.4876 R=0.6384 F1=0.5529
+Major       | P=0.6843 R=0.6984 F1=0.6913
+Destroyed   | P=0.8037 R=0.8784 F1=0.8394
+
+RUNTIME
+--------------------------------------------------------------------------------
+Total training/evaluation time: 2h 48m 47s
+Training throughput at best epoch: 105.4 samples/s
+Peak CUDA VRAM: not applicable
