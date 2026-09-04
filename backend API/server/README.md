@@ -7,6 +7,10 @@ _**I've already uploaded the 128x128 API and the callable URL is here:**_ `https
 
 If you would like to upload and use a different model, the outlined guide is below
 
+## Files
+- `modal_app.py` - Setups the modal api app and upload trained model info onto a URL
+- `model.py` - model architecture
+- `resnet18_prepost_plaince_xbd_128_seed17.pt` — the checkpoint, (can replace with another checkpoint file)
 
 ## Set Up (one-time, on your own computer)
 ```bash
