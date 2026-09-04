@@ -14,7 +14,7 @@ If you would like to upload and use a different model, the outlined guide is bel
 ## Files
 - `modal_app.py` - Setups the modal api app and upload trained model info onto a URL
 - `model.py` - model architecture
-- `resnet18_prepost_plaince_xbd_128_seed17.pt` — the checkpoint, (can replace with another checkpoint file)
+- `resnet18_prepost_plaince_xbd_128_seed17.pt` OR `resnet18_prepost_plaince_xbd_224_seed17.pt` — the checkpoint, (can replace with another checkpoint file)
 
 ## Set Up (one-time, on your own computer)
 ```bash
