@@ -1,4 +1,4 @@
-# Building Damage Classifier API deployed to a Modal Server
+# Building Damage Classifier API deployed to as a Modal App
 
 This folder contains the API files for upload to a public, useable URL. This allows for the API to be called on devices that are not the host computer. In this case, I'm using Modal as my infrastructure of choice to host the API.
 
