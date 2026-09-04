@@ -2,7 +2,11 @@
 
 This folder contains the API files for upload to a public, useable URL. This allows for the API to be called on devices that are not the host computer. In this case, I'm using Modal as my infrastructure of choice to host the API.
 
-_**I've already uploaded the 128x128 API and the callable URL is here:**_ `https://edvu--building-damage-classifier-fastapi-app.modal.run`
+_**I've already uploaded the 128x128 and 224x224 models from the `checkpoints` folder and the callable URLs are here:
+```
+https://edvu--building-damage-classifier-128-fastapi-app.modal.run
+https://edvu--building-damage-classifier-224-fastapi-app.modal.run
+```
 - Include these commands to the end of the URL to run the API: `/health` to retrieve model info or `/predict` to run model inference
 
 If you would like to upload and use a different model, the outlined guide is below
