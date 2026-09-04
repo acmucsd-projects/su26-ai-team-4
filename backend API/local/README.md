@@ -1,4 +1,4 @@
-# Building Damage Classifier API
+# Building Damage Classifier API on Local Host Computer
 
 This API references the 128x128 model, `resnet18_prepost_plaince_xbd_128_seed17.pt`, by default. If you'd like to use a different model, make sure that the `MODEL_PATH` env var in `main.py` points to wherever the model .pt file resides. If the model you choose has an image size that is not 128x128, make sure to also change the `IMAGE_SIZE` and `MAX_UPLOAD_BYTES` vars in `main.py` to accurately reflect the new resolution. 
 
