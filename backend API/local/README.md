@@ -1,16 +1,6 @@
 # Building Damage Classifier API
 
-Serves `resnet18_prepost_plaince_xbd_128_seed17.pt` — a ResNet-18-based
-model that classifies building damage severity from a **pair** of images
-(pre-disaster and post-disaster) into 4 classes:
-
-`no-damage`, `minor-damage`, `major-damage`, `destroyed`
-
-Validation performance from the checkpoint's saved metrics: **88.5% accuracy**,
-**0.756 macro-F1**. Note it's noticeably weaker on `minor-damage` and
-`major-damage` (F1 ~0.56–0.69) than on `no-damage` and `destroyed`
-(F1 ~0.83–0.94) — worth surfacing to end users if precision on the middle
-classes matters for your use case.
+This API references the 128x128 model, `resnet18_prepost_plaince_xbd_128_seed17.pt`, by default. If you'd like to use a different model, make sure that the `MODEL_PATH` env var in `main.py` points to wherever the model .pt file resides. If the model you choose has an image size that is not 128x128, make sure to also change the `IMAGE_SIZE` and `MAX_UPLOAD_BYTES` vars in `main.py` to accurately reflect the new resolution. 
 
 ## Files
 - `model.py` — model architecture (verified to load the checkpoint with
@@ -18,10 +8,10 @@ classes matters for your use case.
 - `main.py` — FastAPI app with `/health` and `/predict` endpoints
 - `requirements.txt` — Python dependencies
 - `frontend_example.html` — minimal vanilla JS demo page
-- `resnet18_prepost_plaince_xbd_128_seed17.pt` — the checkpoint (place here,
+- `resnet18_prepost_plaince_xbd_128_seed17.pt` — default checkpoint (place here,
   or set `MODEL_PATH` env var)
 
-## Run locally
+## To run locally on your computer
 
 ```bash
 pip install -r requirements.txt
@@ -51,6 +41,7 @@ Response:
 ```
 
 ## Deploying
+Note that this is outlined for Windows OS
 1. **Containerize** (recommended) — Dockerfile sketch:
    ```dockerfile
    FROM python:3.11-slim
@@ -68,11 +59,3 @@ Response:
    traffic; use a GPU instance if you expect high volume.
 4. Host on Render, Railway, Fly.io, AWS (ECS/EC2), GCP Cloud Run, etc.
    Put Nginx or a managed gateway in front for TLS and rate limiting.
-
-## Important input details
-- Both images should be roughly-aligned crops of the **same building**
-  (pre- and post-disaster), matching how the model was trained on xBD-style
-  chip pairs.
-- Images are resized to 128x128 and normalized with standard ImageNet
-  stats — this happens automatically server-side; the frontend just needs
-  to send the raw image files.
