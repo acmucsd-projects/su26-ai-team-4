@@ -38,5 +38,5 @@ curl -X POST https://<account_name>--building-damage-classifier-fastapi-app.moda
 This should return another JSON describing the model's prediction of the images
 
 
-## Using API on a Website
-You can use the same `frontend_example.html` file in `backend/local` folder and adjusting the `API_URL` to the web function on you recieved from either
+## Using API on a Websitebackend API
+You can use the same `frontend_example.html` file in `backend-API/local` folder and adjusting the `API_URL` to the web function on you recieved from either
