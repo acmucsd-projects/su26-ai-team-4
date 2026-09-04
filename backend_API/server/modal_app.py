@@ -9,21 +9,21 @@ Deploy:
     modal deploy modal_app.py
 
 This prints a permanent public URL like:
-    https://<your-workspace>--building-damage-classifier-fastapi-app.modal.run
+    https://<your-workspace>--building-damage-classifier-128-fastapi-app.modal.run
 
 Test locally against Modal's infra without deploying (spins up a temp URL):
     modal serve modal_app.py
 
 Files expected next to this script:
     model.py                                     (architecture definition)
-    resnet18_prepost_plaince_xbd_128_seed17_modal.pt   (checkpoint)
+    resnet18_prepost_plaince_xbd_128_seed17.pt   (checkpoint)
 """
 
 import modal
 
-app = modal.App("building-damage-classifier")
+app = modal.App("building-damage-classifier-128")
 
-MODEL_FILENAME = "ACM/backend_modal/resnet18_prepost_plaince_xbd_128_seed17_modal.pt"
+MODEL_FILENAME = "ACM/backend_modal/resnet18_prepost_plaince_xbd_128_seed17.pt"
 MODEL_REMOTE_PATH = f"/root/model/{MODEL_FILENAME}"
 
 # --- Container image: system deps, Python deps, then our own code/weights ---
