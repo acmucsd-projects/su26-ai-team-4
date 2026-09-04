@@ -1,0 +1,81 @@
+<meta charset="UTF-8">
+
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .field { flex: 1; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  input[type=file] { width: 100%; }
+  button { padding: 10px 20px; font-size: 15px; cursor: pointer; }
+  #result { margin-top: 24px; white-space: pre-wrap; background: #f4f4f4; padding: 16px; border-radius: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .bar-label { width: 110px; font-size: 13px; }
+  .bar-track { flex: 1; background: #e0e0e0; border-radius: 4px; overflow: hidden; height: 14px; }
+  .bar-fill { height: 100%; background: #3b82f6; }
+</style>
+
+<h1>Building Damage Classifier</h1>
+<p>Upload a pre-disaster and post-disaster image of the same building.</p>
+
+<div class="row">
+  <div class="field">
+    <label for="preImage">Pre-disaster image</label>
+    <input type="file" id="preImage" accept="image/*">
+  </div>
+  <div class="field">
+    <label for="postImage">Post-disaster image</label>
+    <input type="file" id="postImage" accept="image/*">
+  </div>
+</div>
+
+<button id="submitBtn">Predict damage</button>
+
+<div id="result"></div>
+
+<script>
+  if (!window.__damageWidgetLoaded) {
+    window.__damageWidgetLoaded = true;
+
+    const API_URL = "https://edvu--building-damage-classifier-fastapi-app.modal.run/predict";
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const preFile = document.getElementById("preImage").files[0];
+      const postFile = document.getElementById("postImage").files[0];
+      const resultEl = document.getElementById("result");
+
+      if (!preFile || !postFile) {
+        resultEl.textContent = "Please select both a pre- and post-disaster image.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("pre_image", preFile);
+      formData.append("post_image", postFile);
+
+      resultEl.textContent = "Running inference...";
+
+      try {
+        const response = await fetch(API_URL, { method: "POST", body: formData });
+        if (!response.ok) {
+          const err = await response.json();
+          resultEl.textContent = "Error: " + JSON.stringify(err.detail);
+          return;
+        }
+        const data = await response.json();
+
+        let html = `<strong>Predicted: ${data.predicted_class}</strong> (${(data.confidence * 100).toFixed(1)}%)<br><br>`;
+        for (const [cls, prob] of Object.entries(data.probabilities)) {
+          html += `
+            <div class="bar-row">
+              <div class="bar-label">${cls}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${prob * 100}%"></div></div>
+              <div>${(prob * 100).toFixed(1)}%</div>
+            </div>`;
+        }
+        resultEl.innerHTML = html;
+      } catch (e) {
+        resultEl.textContent = "Request failed: " + e.message;
+      }
+    });
+  }
+</script>
