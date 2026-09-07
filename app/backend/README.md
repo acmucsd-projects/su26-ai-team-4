@@ -29,3 +29,26 @@ The checkpoint is loaded once at application startup. If it is unavailable or in
 
 - GET /health returns the loaded model's device, classes, and saved validation summary.
 - POST /predict accepts pre_image and post_image; each upload is limited to 10 MiB.
+
+## Modal deployment
+
+Install and authenticate the Modal CLI once:
+
+~~~bash
+pip install modal
+modal setup
+~~~
+
+Download the released 128x128 checkpoint locally, set MODEL_PATH to that file, then deploy from the repository root. The wrapper copies that checkpoint into the Modal image and sets the same MODEL_PATH configuration for the canonical app inside the container.
+
+~~~powershell
+$env:MODEL_PATH = "C:\\path\\to\\resnet18_prepost_plaince_xbd_128_seed17.pt"
+modal deploy app/backend/modal_app.py
+~~~
+
+Modal prints the web-function URL. Test it with:
+
+~~~bash
+curl https://<workspace>--building-damage-classifier-128-fastapi-app.modal.run/health
+curl -X POST https://<workspace>--building-damage-classifier-128-fastapi-app.modal.run/predict -F "pre_image=@path/to/pre.png" -F "post_image=@path/to/post.png"
+~~~
