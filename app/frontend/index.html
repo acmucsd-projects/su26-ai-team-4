@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Demo interface for paired satellite building-damage classification.">
+  <title>Damage Triage | Building Classifier</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      <p class="eyebrow">xBD building damage classifier</p>
+      <h1>See what changed.</h1>
+      <p class="hero-copy">Compare aligned PRE and POST satellite crops of the same building to estimate damage severity.</p>
+    </section>
+    <section class="notice" aria-label="Input guidance">
+      <span class="notice-icon" aria-hidden="true">i</span>
+      <p><strong>Use a matched pair:</strong> upload PRE and POST satellite building crops for the same building. Full-scene building detection is outside this demo.</p>
+    </section>
+    <section class="workspace" aria-label="Damage analysis workspace">
+      <div class="panel input-panel">
+        <div class="section-heading">
+          <div><p class="section-kicker">1. Choose imagery</p><h2>Test a building pair</h2></div>
+          <button id="clear-selection" class="text-button" type="button">Clear</button>
+        </div>
+        <div class="example-section">
+          <p class="field-label">Try a built-in xBD example</p>
+          <div class="example-grid" role="group" aria-label="Built-in examples">
+            <button class="example-button" type="button" data-example="no-damage"><span class="example-dot no-damage"></span>No damage</button>
+            <button class="example-button" type="button" data-example="minor-damage"><span class="example-dot minor-damage"></span>Minor damage</button>
+            <button class="example-button" type="button" data-example="major-damage"><span class="example-dot major-damage"></span>Major damage</button>
+            <button class="example-button" type="button" data-example="destroyed"><span class="example-dot destroyed"></span>Destroyed</button>
+          </div>
+        </div>
+        <div class="divider"><span>or upload your own pair</span></div>
+        <div class="upload-grid">
+          <label class="upload-card" for="pre-image"><span class="upload-label">PRE-disaster</span><span class="upload-detail">Choose an image crop</span><input id="pre-image" type="file" accept="image/*"></label>
+          <label class="upload-card" for="post-image"><span class="upload-label">POST-disaster</span><span class="upload-detail">Choose an image crop</span><input id="post-image" type="file" accept="image/*"></label>
+        </div>
+        <button id="predict-button" class="predict-button" type="button"><span>Predict damage</span><span aria-hidden="true">→</span></button>
+        <p id="status-message" class="status-message" aria-live="polite"></p>
+      </div>
+      <div class="panel preview-panel">
+        <div class="section-heading">
+          <div><p class="section-kicker">2. Review pair</p><h2>Image preview</h2></div>
+          <span id="selection-label" class="selection-label">No pair selected</span>
+        </div>
+        <div class="preview-grid">
+          <figure class="image-preview"><figcaption>PRE</figcaption><div class="image-frame"><img id="pre-preview" alt="Selected PRE-disaster building crop" hidden><span id="pre-placeholder">PRE image</span></div></figure>
+          <figure class="image-preview"><figcaption>POST</figcaption><div class="image-frame"><img id="post-preview" alt="Selected POST-disaster building crop" hidden><span id="post-placeholder">POST image</span></div></figure>
+        </div>
+        <section id="result-card" class="result-card" hidden aria-live="polite">
+          <p class="section-kicker">Model result</p>
+          <div class="result-summary"><div><p id="result-class" class="result-class">—</p><p id="result-confidence" class="result-confidence">—</p></div><span class="result-badge">Prediction</span></div>
+          <div id="probability-bars" class="probability-bars"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
