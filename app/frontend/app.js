@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://mindpretzel1--building-damage-classifier-128-fastapi-app.modal.run";
+const API_BASE_URL = "";
 const PREDICT_URL = API_BASE_URL + "/predict";
 const CLASS_ORDER = ["no-damage", "minor-damage", "major-damage", "destroyed"];
 

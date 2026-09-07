@@ -10,6 +10,8 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
@@ -18,6 +20,7 @@ from .inference import LoadedClassifier, load_classifier, predict_images
 
 DEFAULT_CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_CHECKPOINT_PATH = Path(__file__).resolve().parents[2] / "checkpoints" / DEFAULT_CHECKPOINT_NAME
+DEFAULT_FRONTEND_PATH = Path(__file__).resolve().parents[1] / "frontend"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
@@ -31,6 +34,12 @@ def configured_model_path() -> Path:
     """Resolve MODEL_PATH, defaulting to the documented local checkpoints directory."""
 
     return Path(os.environ.get("MODEL_PATH", DEFAULT_CHECKPOINT_PATH))
+
+
+def configured_frontend_path() -> Path:
+    """Resolve the static demo frontend directory."""
+
+    return Path(os.environ.get("FRONTEND_PATH", DEFAULT_FRONTEND_PATH))
 
 
 def decode_image(raw_bytes: bytes, field_name: str) -> Image.Image:
@@ -47,6 +56,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     """Create an app that loads its checkpoint once during process startup."""
 
     selected_model_path = model_path or configured_model_path()
+    frontend_path = configured_frontend_path()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -60,6 +70,10 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/", include_in_schema=False)
+    async def frontend() -> FileResponse:
+        return FileResponse(frontend_path / "index.html")
 
     @app.get("/health")
     async def health() -> dict[str, object]:
@@ -93,6 +107,9 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             decode_image(image_bytes["post_image"], "post_image"),
         )
         return PredictResponse(**prediction)
+
+    # Mount last so the explicit API routes above keep precedence.
+    app.mount("/", StaticFiles(directory=frontend_path), name="frontend")
 
     return app
 
