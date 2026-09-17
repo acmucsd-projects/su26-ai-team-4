@@ -17,3 +17,12 @@ python result_interpretation.py \
 ```
 
 Add `--json` to get the full structured output instead of the plain-text summary.
+
+## Example output
+
+```
+Predicted damage level: no-damage
+Confidence: High (92%)
+Flagged for manual review: no
+Note: Model predicts no-damage with high confidence (92%).
+```
