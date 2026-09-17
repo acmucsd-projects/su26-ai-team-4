@@ -26,3 +26,4 @@ base_train/ezekiel_resnet18_baseline/results_prepost_plaince/
 
 # Archived local training experiments and generated artifacts
 /base_train/old_experiments/
+base_train/ezekiel_resnet18_baseline/*.pt
