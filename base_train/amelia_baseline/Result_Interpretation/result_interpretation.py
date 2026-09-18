@@ -32,10 +32,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# This file lives in base_train/amelia_baseline/ but depends on
-# inference.py, which lives in base_train/ezekiel_resnet18_baseline/.
-# Add that folder to the path so the import works regardless of where
-# this script is run from.
+# Add inference.py's folder to the path
 sys.path.append(str(Path(__file__).parent.parent / "ezekiel_resnet18_baseline"))
 
 
