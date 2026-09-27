@@ -13,6 +13,14 @@
   const scenePrevious = document.querySelector("#scene-previous");
   const sceneCurrent = document.querySelector("#scene-current");
   const sceneNext = document.querySelector("#scene-next");
+  const sceneSummary = document.querySelector("#scene-summary");
+  const sceneSummaryTotal = document.querySelector("#scene-summary-total");
+  const sceneSummaryCounts = Object.fromEntries(DAMAGE_CLASSES.map((className) => [
+    className,
+    document.querySelector("#scene-summary-" + className),
+  ]));
+  const sceneSummarySevere = document.querySelector("#scene-summary-severe");
+  const sceneSummarySevereDetail = document.querySelector("#scene-summary-severe-detail");
   const imageryModeButtons = document.querySelectorAll("[data-imagery-mode]");
   let selectedPolygon = null;
   let availableScenes = [];
@@ -63,6 +71,42 @@
 
   function isPredictionMode() {
     return imageryMode === "post-predictions";
+  }
+
+  function summarizePredictions(buildings) {
+    if (!Array.isArray(buildings) || buildings.length === 0) throw new Error("The scene contains no packaged buildings.");
+    const counts = Object.fromEntries(DAMAGE_CLASSES.map((className) => [className, 0]));
+    buildings.forEach((building) => {
+      const predictedClass = building?.prediction?.predicted_class;
+      if (!DAMAGE_CLASSES.includes(predictedClass)) throw new Error("A building prediction is invalid.");
+      counts[predictedClass] += 1;
+    });
+    return {
+      total: buildings.length,
+      counts,
+      severe: counts["major-damage"] + counts.destroyed,
+    };
+  }
+
+  function updateSceneSummary(buildings) {
+    const summary = summarizePredictions(buildings);
+    sceneSummaryTotal.textContent = summary.total + " buildings analyzed";
+    DAMAGE_CLASSES.forEach((className) => {
+      sceneSummaryCounts[className].textContent = String(summary.counts[className]);
+    });
+    sceneSummarySevere.textContent = String(summary.severe);
+    sceneSummarySevereDetail.textContent = summary.counts["major-damage"] + " Major + " + summary.counts.destroyed + " Destroyed";
+    sceneSummary.hidden = false;
+  }
+
+  function clearSceneSummary() {
+    sceneSummary.hidden = true;
+    sceneSummaryTotal.textContent = "";
+    DAMAGE_CLASSES.forEach((className) => {
+      sceneSummaryCounts[className].textContent = "";
+    });
+    sceneSummarySevere.textContent = "";
+    sceneSummarySevereDetail.textContent = "";
   }
 
   function imageUrlForCurrentMode() {
@@ -203,6 +247,7 @@
     sceneOverlay.hidden = true;
     scenePostImage.removeAttribute("src");
     sceneCanvas.hidden = true;
+    clearSceneSummary();
     document.dispatchEvent(new Event("scene-changed"));
   }
 
@@ -227,6 +272,7 @@
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + " buildings" : "";
       sceneBuildingCount.hidden = false;
       sceneOverlay.setAttribute("viewBox", "0 0 " + Number(scene.image.width) + " " + Number(scene.image.height));
+      updateSceneSummary(scene.buildings);
       renderBuildings(scene.buildings);
       await showCurrentSceneImage();
       sceneCanvas.hidden = false;
@@ -234,6 +280,7 @@
     } catch (error) {
       sceneCanvas.hidden = true;
       sceneBuildingCount.hidden = true;
+      clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
     } finally {
@@ -261,6 +308,7 @@
     } catch (error) {
       sceneCanvas.hidden = true;
       sceneBuildingCount.hidden = true;
+      clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
     }

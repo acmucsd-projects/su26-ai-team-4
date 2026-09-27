@@ -36,6 +36,22 @@ button { cursor: pointer; }
 .scene-nav-button { min-height: 34px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #40516e; font-size: 0.78rem; font-weight: 800; transition: border-color 150ms ease, color 150ms ease, background 150ms ease; }
 .scene-nav-button:hover:not(:disabled) { border-color: var(--blue); background: var(--blue-pale); color: var(--blue-dark); }
 .scene-nav-button:disabled { cursor: not-allowed; opacity: 0.45; }
+.scene-summary { display: grid; gap: 8px; margin-top: 14px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: #f9fbfe; }
+.scene-summary-total { margin: 0; color: var(--ink); font-size: 0.82rem; font-weight: 800; }
+.scene-summary-metrics { display: flex; flex-wrap: wrap; gap: 7px; }
+.scene-summary-metric { display: inline-flex; gap: 5px; align-items: baseline; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--muted); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.scene-summary-metric strong { color: var(--ink); font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.scene-summary-metric.no-damage { border-color: #a8dccd; background: #effaf6; color: #14755c; }
+.scene-summary-metric.minor-damage { border-color: #f0d79b; background: #fff8e6; color: #9b6800; }
+.scene-summary-metric.major-damage { border-color: #efb9a7; background: #fff1ec; color: #a43e1e; }
+.scene-summary-metric.destroyed { border-color: #e6b0ba; background: #fff0f2; color: #942536; }
+.scene-severe-summary { display: grid; gap: 3px; padding-top: 10px; border-top: 1px solid var(--line); }
+.scene-severe-label, .scene-severe-total, .scene-severe-detail, .scene-severe-helper { margin: 0; }
+.scene-severe-label { color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.scene-severe-total { color: var(--ink); font-size: 0.84rem; font-weight: 800; }
+.scene-severe-total strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.scene-severe-detail { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+.scene-severe-helper { color: var(--muted); font-size: 0.73rem; line-height: 1.35; }
 .scene-imagery-mode { display: inline-flex; max-width: 100%; margin-top: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
 .scene-mode-button { min-height: 32px; padding: 6px 10px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 0.74rem; font-weight: 800; }
 .scene-mode-button:last-child { border-right: 0; }
@@ -106,4 +122,4 @@ button { cursor: pointer; }
 .probability-fill { height: 100%; border-radius: inherit; background: #7fa5ff; transition: width 360ms ease; }
 .probability-value { color: #fff; font-variant-numeric: tabular-nums; text-align: right; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
-@media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-selector { gap: 6px; padding: 6px; } .scene-nav-button { padding: 7px; font-size: 0.72rem; } .scene-current { font-size: 0.76rem; } .scene-mode-button { padding: 6px 8px; font-size: 0.69rem; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }
+@media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-selector { gap: 6px; padding: 6px; } .scene-nav-button { padding: 7px; font-size: 0.72rem; } .scene-current { font-size: 0.76rem; } .scene-summary-metrics { gap: 6px; } .scene-summary-metric { padding: 4px 6px; font-size: 0.69rem; } .scene-mode-button { padding: 6px 8px; font-size: 0.69rem; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }

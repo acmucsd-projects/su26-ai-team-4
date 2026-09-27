@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=scene-dashboard-1">
-  <script src="scene-dashboard.js?v=scene-imagery-2" defer></script>
+  <link rel="stylesheet" href="styles.css?v=scene-summary-3">
+  <script src="scene-dashboard.js?v=scene-summary-2" defer></script>
   <script src="app.js?v=scene-selector-1" defer></script>
 </head>
 <body>
@@ -30,6 +30,20 @@
         <p id="scene-current" class="scene-current" aria-live="polite"></p>
         <button id="scene-next" class="scene-nav-button" type="button" aria-label="Next demo scene">Next &rarr;</button>
       </div>
+      <section id="scene-summary" class="scene-summary" aria-label="Model-predicted damage summary" hidden>
+        <p id="scene-summary-total" class="scene-summary-total"></p>
+        <div class="scene-summary-metrics">
+          <span class="scene-summary-metric no-damage"><strong id="scene-summary-no-damage"></strong>No damage</span>
+          <span class="scene-summary-metric minor-damage"><strong id="scene-summary-minor-damage"></strong>Minor</span>
+          <span class="scene-summary-metric major-damage"><strong id="scene-summary-major-damage"></strong>Major</span>
+          <span class="scene-summary-metric destroyed"><strong id="scene-summary-destroyed"></strong>Destroyed</span>
+        </div>
+        <div class="scene-severe-summary" aria-label="Severe damage summary">
+          <p class="scene-severe-label">Severe damage summary</p>
+          <p class="scene-severe-total"><strong id="scene-summary-severe"></strong> buildings</p>
+          <p id="scene-summary-severe-detail" class="scene-severe-detail"></p>
+        </div>
+      </section>
       <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
         <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
         <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>

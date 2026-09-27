@@ -81,6 +81,14 @@ function createDocument() {
     ["#scene-previous", new FakeElement()],
     ["#scene-current", new FakeElement()],
     ["#scene-next", new FakeElement()],
+    ["#scene-summary", new FakeElement()],
+    ["#scene-summary-total", new FakeElement()],
+    ["#scene-summary-no-damage", new FakeElement()],
+    ["#scene-summary-minor-damage", new FakeElement()],
+    ["#scene-summary-major-damage", new FakeElement()],
+    ["#scene-summary-destroyed", new FakeElement()],
+    ["#scene-summary-severe", new FakeElement()],
+    ["#scene-summary-severe-detail", new FakeElement()],
   ]);
   const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
     const button = new FakeElement();
@@ -177,6 +185,14 @@ async function main() {
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Michael — Scene 247");
   assert.equal(document.elements.get("#scene-previous").disabled, true);
   assert.equal(document.elements.get("#scene-next").disabled, false);
+  assert.equal(document.elements.get("#scene-summary").hidden, false);
+  assert.equal(document.elements.get("#scene-summary-total").textContent, "177 buildings analyzed");
+  assert.equal(document.elements.get("#scene-summary-no-damage").textContent, "45");
+  assert.equal(document.elements.get("#scene-summary-minor-damage").textContent, "44");
+  assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "44");
+  assert.equal(document.elements.get("#scene-summary-destroyed").textContent, "44");
+  assert.equal(document.elements.get("#scene-summary-severe").textContent, "88");
+  assert.equal(document.elements.get("#scene-summary-severe-detail").textContent, "44 Major + 44 Destroyed");
   const imageryButtons = document.querySelectorAll("[data-imagery-mode]");
   assert.equal(imageryButtons[2].getAttribute("aria-pressed"), "true");
   assert.equal(overlay.hidden, false);
@@ -196,6 +212,14 @@ async function main() {
   assert.equal(overlay.children[0].getAttribute("points"), "100,10 101,10 101,11");
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Harvey — Scene 177");
+
+  assert.equal(document.elements.get("#scene-summary-total").textContent, "76 buildings analyzed");
+  assert.equal(document.elements.get("#scene-summary-no-damage").textContent, "19");
+  assert.equal(document.elements.get("#scene-summary-minor-damage").textContent, "19");
+  assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "19");
+  assert.equal(document.elements.get("#scene-summary-destroyed").textContent, "19");
+  assert.equal(document.elements.get("#scene-summary-severe").textContent, "38");
+  assert.equal(document.elements.get("#scene-summary-severe-detail").textContent, "19 Major + 19 Destroyed");
 
   await imageryButtons[1].trigger("click");
   assert.equal(image.src, secondScene.image.post_url);
