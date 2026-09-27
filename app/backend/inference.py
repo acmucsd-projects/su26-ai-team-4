@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from PIL import Image
 import torch
@@ -133,3 +133,42 @@ def predict_images(
             for class_name, probability in zip(classifier.class_names, probabilities.tolist())
         },
     }
+
+
+@torch.inference_mode()
+def predict_image_pairs(
+    classifier: LoadedClassifier,
+    image_pairs: Sequence[tuple[Image.Image, Image.Image]],
+) -> list[dict[str, Any]]:
+    """Predict a batch of aligned PRE/POST building-crop pairs.
+
+    The single-pair ``predict_images`` API remains the request-path helper.
+    This companion is intended for offline application utilities that can
+    efficiently evaluate multiple already-decoded pairs in one model call.
+    """
+
+    if not image_pairs:
+        return []
+
+    pre_batch = torch.stack(
+        [preprocess_image(pre_image, classifier.image_size) for pre_image, _ in image_pairs]
+    ).to(classifier.device)
+    post_batch = torch.stack(
+        [preprocess_image(post_image, classifier.image_size) for _, post_image in image_pairs]
+    ).to(classifier.device)
+    probabilities_batch = torch.softmax(classifier.model(pre_batch, post_batch), dim=1).cpu()
+
+    predictions: list[dict[str, Any]] = []
+    for probabilities in probabilities_batch:
+        predicted_index = int(probabilities.argmax().item())
+        predictions.append(
+            {
+                "predicted_class": classifier.class_names[predicted_index],
+                "confidence": float(probabilities[predicted_index]),
+                "probabilities": {
+                    class_name: float(probability)
+                    for class_name, probability in zip(classifier.class_names, probabilities.tolist())
+                },
+            }
+        )
+    return predictions
