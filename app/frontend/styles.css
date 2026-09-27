@@ -28,6 +28,25 @@ button { cursor: pointer; }
 .notice { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 24px; padding: 15px 17px; border: 1px solid #cfdcf6; border-radius: 14px; background: #f9fbff; color: #40516e; font-size: 0.92rem; line-height: 1.5; }
 .notice p { margin: 0; }
 .notice-icon { display: grid; width: 20px; height: 20px; flex: 0 0 20px; place-items: center; border-radius: 50%; background: var(--blue); color: #fff; font-size: 0.75rem; font-weight: 800; }
+.scene-dashboard { margin-bottom: 24px; }
+.scene-heading { align-items: flex-start; }
+.scene-description { margin: 9px 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; text-transform: capitalize; }
+.scene-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 22px; color: #40516e; font-size: 0.8rem; font-weight: 700; }
+.scene-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.scene-legend .legend-title { color: var(--muted); font-size: 0.73rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+.scene-status-message { min-height: 1.2rem; margin: 14px 0 0; color: var(--muted); font-size: 0.84rem; line-height: 1.4; }
+.scene-status-message.error { color: #b02e3f; }
+.scene-canvas { position: relative; width: min(100%, 860px); aspect-ratio: 1; margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #e9eef5; }
+.scene-canvas img, .scene-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.scene-canvas img { display: block; object-fit: fill; }
+.scene-overlay { overflow: visible; }
+.scene-building { cursor: default; fill-opacity: 0.34; stroke-width: 1.7; vector-effect: non-scaling-stroke; transition: fill-opacity 130ms ease, stroke-width 130ms ease, filter 130ms ease; }
+.scene-building.no-damage { fill: var(--success); stroke: #14755c; }
+.scene-building.minor-damage { fill: var(--minor); stroke: #9e6810; }
+.scene-building.major-damage { fill: var(--major); stroke: #a9411f; }
+.scene-building.destroyed { fill: var(--destroyed); stroke: #8d2434; }
+.scene-building:hover, .scene-building:focus { fill-opacity: 0.62; stroke: #fff; stroke-width: 2.8; outline: none; filter: drop-shadow(0 0 2px rgba(23, 34, 57, 0.85)); }
 .workspace { display: grid; grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr); gap: 22px; }
 .panel { min-width: 0; padding: 27px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); box-shadow: 0 16px 45px rgba(29, 52, 93, 0.06); }
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
@@ -75,4 +94,4 @@ button { cursor: pointer; }
 .probability-fill { height: 100%; border-radius: inherit; background: #7fa5ff; transition: width 360ms ease; }
 .probability-value { color: #fff; font-variant-numeric: tabular-nums; text-align: right; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
-@media (max-width: 440px) { .panel { padding: 21px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }
+@media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }

@@ -6,6 +6,7 @@
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="scene-dashboard.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -15,9 +16,31 @@
       <h1>See what changed.</h1>
       <p class="hero-copy">Compare aligned PRE and POST satellite crops of the same building to estimate damage severity.</p>
     </section>
+    <section class="scene-dashboard panel" aria-labelledby="scene-dashboard-title">
+      <div class="section-heading scene-heading">
+        <div>
+          <p class="section-kicker">Scene explorer</p>
+          <h2 id="scene-dashboard-title">Model-predicted building damage</h2>
+          <p id="scene-description" class="scene-description">Loading an available demo scene…</p>
+        </div>
+        <span id="scene-building-count" class="selection-label" hidden></span>
+      </div>
+      <div class="scene-legend" aria-label="Predicted damage severity legend">
+        <span class="legend-title">Model prediction</span>
+        <span><i class="legend-dot no-damage" aria-hidden="true"></i>No damage</span>
+        <span><i class="legend-dot minor-damage" aria-hidden="true"></i>Minor damage</span>
+        <span><i class="legend-dot major-damage" aria-hidden="true"></i>Major damage</span>
+        <span><i class="legend-dot destroyed" aria-hidden="true"></i>Destroyed</span>
+      </div>
+      <p id="scene-status-message" class="scene-status-message" aria-live="polite"></p>
+      <div id="scene-canvas" class="scene-canvas" hidden>
+        <img id="scene-post-image" alt="POST-disaster satellite scene with model-predicted building damage overlay">
+        <svg id="scene-overlay" class="scene-overlay" viewBox="0 0 1024 1024" role="group" aria-label="Model-predicted building damage overlay"></svg>
+      </div>
+    </section>
     <section class="notice" aria-label="Input guidance">
       <span class="notice-icon" aria-hidden="true">i</span>
-      <p><strong>Use a matched pair:</strong> upload PRE and POST satellite building crops for the same building. Full-scene building detection is outside this demo.</p>
+      <p><strong>Use a matched pair:</strong> upload PRE and POST satellite building crops for the same building to run a direct classifier prediction.</p>
     </section>
     <section class="workspace" aria-label="Damage analysis workspace">
       <div class="panel input-panel">
