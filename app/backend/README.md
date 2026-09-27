@@ -42,6 +42,9 @@ By default, it packages `hurricane-michael_00000247` into `local_experiments/dem
 
 - GET /health returns the loaded model's device, classes, and saved validation summary.
 - POST /predict accepts pre_image and post_image; each upload is limited to 10 MiB.
+- GET /demo-scenes lists valid local demo packs under `DEMO_SCENE_ROOT`. The default is `local_experiments/demo_scene_pack/`; an absent directory simply returns an empty list.
+- GET /demo-scenes/{scene_id} returns the pack's scene manifest with its image and crop URLs expanded to `/demo-scenes/{scene_id}/...`.
+- GET /demo-scenes/{scene_id}/{asset_path} serves validated pack-relative scene and crop assets. This is local demo support only; Modal packaging is intentionally not part of this step.
 
 ## Modal deployment
 
