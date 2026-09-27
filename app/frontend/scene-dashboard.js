@@ -13,10 +13,14 @@
   const scenePrevious = document.querySelector("#scene-previous");
   const sceneCurrent = document.querySelector("#scene-current");
   const sceneNext = document.querySelector("#scene-next");
+  const imageryModeButtons = document.querySelectorAll("[data-imagery-mode]");
   let selectedPolygon = null;
   let availableScenes = [];
   let currentSceneIndex = -1;
+  let currentScene = null;
   let isSceneLoading = false;
+  let isImageLoading = false;
+  let imageryMode = "post-predictions";
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -49,16 +53,64 @@
     sceneNext.disabled = isSceneLoading || currentSceneIndex >= availableScenes.length - 1;
   }
 
+  function updateImageryControls() {
+    imageryModeButtons.forEach((button) => {
+      const isSelected = button.dataset.imageryMode === imageryMode;
+      button.setAttribute("aria-pressed", String(isSelected));
+      button.disabled = isSceneLoading || isImageLoading || !currentScene;
+    });
+  }
+
+  function isPredictionMode() {
+    return imageryMode === "post-predictions";
+  }
+
+  function imageUrlForCurrentMode() {
+    return imageryMode === "pre" ? currentScene.image.pre_url : currentScene.image.post_url;
+  }
+
   function loadImage(url) {
     return new Promise((resolve, reject) => {
       scenePostImage.onload = () => resolve();
-      scenePostImage.onerror = () => reject(new Error("The POST scene image could not be loaded."));
+      scenePostImage.onerror = () => reject(new Error("The selected scene image could not be loaded."));
       scenePostImage.src = url;
       if (scenePostImage.complete) {
         if (scenePostImage.naturalWidth > 0) resolve();
-        else reject(new Error("The POST scene image could not be loaded."));
+        else reject(new Error("The selected scene image could not be loaded."));
       }
     });
+  }
+
+  async function showCurrentSceneImage() {
+    const showingPredictions = isPredictionMode();
+    // Footprints remain available in every imagery mode. Their geometry and
+    // styling are selected explicitly in renderBuildings rather than relying
+    // on a hidden overlay whose previous damage classes could remain visible.
+    sceneOverlay.hidden = false;
+    scenePostImage.alt = imageryMode === "pre"
+      ? "PRE-disaster satellite scene"
+      : showingPredictions
+        ? "POST-disaster satellite scene with model-predicted building damage overlay"
+        : "POST-disaster satellite scene";
+    await loadImage(imageUrlForCurrentMode());
+  }
+
+  async function setImageryMode(mode) {
+    if (!currentScene || isSceneLoading || isImageLoading || mode === imageryMode) return;
+    imageryMode = mode;
+    isImageLoading = true;
+    updateImageryControls();
+    try {
+      renderBuildings(currentScene.buildings);
+      await showCurrentSceneImage();
+      sceneCanvas.hidden = false;
+      setSceneStatus(isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
+    } catch (error) {
+      setSceneStatus(error.message || "The selected scene image could not be loaded.", true);
+    } finally {
+      isImageLoading = false;
+      updateImageryControls();
+    }
   }
 
   function polygonPoints(points) {
@@ -102,19 +154,34 @@
     setSceneStatus("Selected " + building.id + ". Its precomputed result is shown below.");
   }
 
+  function polygonForCurrentMode(building) {
+    return imageryMode === "pre" ? building.pre_pixel_polygon : building.post_pixel_polygon;
+  }
+
+  function polygonClassForCurrentMode(predictedClass) {
+    return "scene-building " + (isPredictionMode() ? predictedClass : "neutral");
+  }
+
   function renderBuildings(buildings) {
     if (!Array.isArray(buildings) || buildings.length === 0) throw new Error("The scene contains no packaged buildings.");
+    const selectedBuildingId = selectedPolygon?.dataset.buildingId;
+    clearSelectedPolygon();
     sceneOverlay.replaceChildren();
     buildings.forEach((building) => {
       const predictedClass = building?.prediction?.predicted_class;
       if (!DAMAGE_CLASSES.includes(predictedClass)) throw new Error("A building prediction is invalid.");
       const polygon = document.createElementNS(SVG_NAMESPACE, "polygon");
-      polygon.setAttribute("points", polygonPoints(building.pixel_polygon));
-      polygon.setAttribute("class", "scene-building " + predictedClass);
+      polygon.setAttribute("points", polygonPoints(polygonForCurrentMode(building)));
+      polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass));
       polygon.setAttribute("tabindex", "0");
       polygon.setAttribute("role", "button");
       polygon.setAttribute("aria-pressed", "false");
-      polygon.setAttribute("aria-label", "Building " + building.id + ", predicted " + displayName(predictedClass));
+      polygon.setAttribute(
+        "aria-label",
+        isPredictionMode()
+          ? "Building " + building.id + ", predicted " + displayName(predictedClass)
+          : "Building " + building.id,
+      );
       polygon.dataset.buildingId = building.id;
       polygon.dataset.predictedClass = predictedClass;
       polygon.addEventListener("click", () => selectBuilding(building, polygon));
@@ -125,12 +192,15 @@
         }
       });
       sceneOverlay.append(polygon);
+      if (building.id === selectedBuildingId) setSelectedPolygon(polygon);
     });
   }
 
   function clearSceneForLoad() {
     clearSelectedPolygon();
+    currentScene = null;
     sceneOverlay.replaceChildren();
+    sceneOverlay.hidden = true;
     scenePostImage.removeAttribute("src");
     sceneCanvas.hidden = true;
     document.dispatchEvent(new Event("scene-changed"));
@@ -141,24 +211,26 @@
     if (!selectedScene || isSceneLoading) return;
     isSceneLoading = true;
     updateSceneControls();
+    updateImageryControls();
     clearSceneForLoad();
     try {
       const sceneResponse = await fetch(DEMO_SCENES_URL + "/" + encodeURIComponent(selectedScene.scene_id));
       const scene = await sceneResponse.json().catch(() => ({}));
       if (!sceneResponse.ok) throw new Error("The selected demo scene could not be loaded.");
-      if (scene?.scene_id !== selectedScene.scene_id || !scene?.image?.post_url || !Number.isFinite(Number(scene?.image?.width)) || !Number.isFinite(Number(scene?.image?.height))) {
+      if (scene?.scene_id !== selectedScene.scene_id || !scene?.image?.pre_url || !scene?.image?.post_url || !Number.isFinite(Number(scene?.image?.width)) || !Number.isFinite(Number(scene?.image?.height))) {
         throw new Error("The selected demo scene is incomplete.");
       }
 
       currentSceneIndex = index;
+      currentScene = scene;
       sceneDescription.textContent = sceneLabel(scene);
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + " buildings" : "";
       sceneBuildingCount.hidden = false;
       sceneOverlay.setAttribute("viewBox", "0 0 " + Number(scene.image.width) + " " + Number(scene.image.height));
-      await loadImage(scene.image.post_url);
       renderBuildings(scene.buildings);
+      await showCurrentSceneImage();
       sceneCanvas.hidden = false;
-      setSceneStatus("Showing model predictions for the POST-disaster scene.");
+      setSceneStatus(isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
     } catch (error) {
       sceneCanvas.hidden = true;
       sceneBuildingCount.hidden = true;
@@ -167,6 +239,7 @@
     } finally {
       isSceneLoading = false;
       updateSceneControls();
+      updateImageryControls();
     }
   }
 
@@ -195,5 +268,7 @@
 
   scenePrevious.addEventListener("click", () => loadSceneAt(currentSceneIndex - 1));
   sceneNext.addEventListener("click", () => loadSceneAt(currentSceneIndex + 1));
+  imageryModeButtons.forEach((button) => button.addEventListener("click", () => setImageryMode(button.dataset.imageryMode)));
+  updateImageryControls();
   loadSceneDashboard();
 })();

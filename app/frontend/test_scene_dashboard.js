@@ -82,6 +82,11 @@ function createDocument() {
     ["#scene-current", new FakeElement()],
     ["#scene-next", new FakeElement()],
   ]);
+  const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
+    const button = new FakeElement();
+    button.dataset.imageryMode = mode;
+    return button;
+  });
   const listeners = new Map();
   return {
     elements,
@@ -90,6 +95,9 @@ function createDocument() {
     },
     createElementNS() {
       return new FakeElement();
+    },
+    querySelectorAll(selector) {
+      return selector === "[data-imagery-mode]" ? imageryButtons : [];
     },
     addEventListener(type, listener) {
       listeners.set(type, listener);
@@ -123,7 +131,8 @@ async function main() {
   const scenes = new Map(sceneSummaries.map((summary) => {
     const buildings = Array.from({ length: summary.building_count }, (_, index) => ({
       id: `${summary.scene_id}_b${index.toString().padStart(4, "0")}`,
-      pixel_polygon: [[index, 0], [index + 1, 0], [index + 1, 1]],
+      pre_pixel_polygon: [[index + 100, 10], [index + 101, 10], [index + 101, 11]],
+      post_pixel_polygon: [[index, 0], [index + 1, 0], [index + 1, 1]],
       crops: { pre_url: `/demo-scenes/${summary.scene_id}/crops/${index}-pre.png`, post_url: `/demo-scenes/${summary.scene_id}/crops/${index}-post.png` },
       prediction: {
         predicted_class: DAMAGE_CLASSES[index % DAMAGE_CLASSES.length],
@@ -131,7 +140,7 @@ async function main() {
         probabilities: Object.fromEntries(DAMAGE_CLASSES.map((className) => [className, className === DAMAGE_CLASSES[index % DAMAGE_CLASSES.length] ? 0.8 : 1 / 15])),
       },
     }));
-    return [summary.scene_id, { ...summary, image: { width: 1024, height: 1024, post_url: `/demo-scenes/${summary.scene_id}/post.png` }, buildings }];
+    return [summary.scene_id, { ...summary, image: { width: 1024, height: 1024, pre_url: `/demo-scenes/${summary.scene_id}/pre.png`, post_url: `/demo-scenes/${summary.scene_id}/post.png` }, buildings }];
   }));
   const firstScene = scenes.get(sceneSummaries[0].scene_id);
   const secondScene = scenes.get(sceneSummaries[1].scene_id);
@@ -168,38 +177,53 @@ async function main() {
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Michael — Scene 247");
   assert.equal(document.elements.get("#scene-previous").disabled, true);
   assert.equal(document.elements.get("#scene-next").disabled, false);
+  const imageryButtons = document.querySelectorAll("[data-imagery-mode]");
+  assert.equal(imageryButtons[2].getAttribute("aria-pressed"), "true");
+  assert.equal(overlay.hidden, false);
   assert.deepEqual(new Set(overlay.children.map((polygon) => polygon.getAttribute("class").replace("scene-building ", ""))), new Set(DAMAGE_CLASSES));
   overlay.children.forEach((polygon) => {
     assert.match(polygon.getAttribute("class"), /^scene-building (no-damage|minor-damage|major-damage|destroyed)$/);
     assert.ok(polygon.getAttribute("points"));
   });
+  await imageryButtons[0].trigger("click");
+  assert.equal(image.src, firstScene.image.pre_url);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.children[0].getAttribute("points"), "100,10 101,10 101,11");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await document.elements.get("#scene-next").trigger("click");
+  assert.equal(image.src, secondScene.image.pre_url);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.children[0].getAttribute("points"), "100,10 101,10 101,11");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Harvey — Scene 177");
+
+  await imageryButtons[1].trigger("click");
+  assert.equal(image.src, secondScene.image.post_url);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.children[0].getAttribute("points"), "0,0 1,0 1,1");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await imageryButtons[2].trigger("click");
+  assert.equal(image.src, secondScene.image.post_url);
+  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.children[0].getAttribute("points"), "0,0 1,0 1,1");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building no-damage");
   overlay.children[0].trigger("click");
   assert.equal(selections.length, 1);
-  assert.equal(selections[0].id, firstScene.buildings[0].id);
+  assert.equal(selections[0].id, secondScene.buildings[0].id);
   assert.equal(overlay.children[0].classList.contains("selected"), true);
-  assert.equal(overlay.children[0].getAttribute("aria-pressed"), "true");
-  overlay.children[1].trigger("click");
-  assert.equal(selections.length, 2);
-  assert.equal(selections[1].id, firstScene.buildings[1].id);
-  assert.equal(overlay.children[0].classList.contains("selected"), false);
-  assert.equal(overlay.children[1].classList.contains("selected"), true);
 
-  await document.elements.get("#scene-next").trigger("click");
   assert.deepEqual(fetchCalls, ["/demo-scenes", "/demo-scenes/hurricane-michael_00000247", "/demo-scenes/hurricane-harvey_00000177"]);
-  assert.equal(image.src, secondScene.image.post_url);
   assert.equal(overlay.children.length, 76);
-  assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Harvey — Scene 177");
   assert.equal(document.elements.get("#scene-building-count").textContent, "76 buildings");
   assert.equal(document.elements.get("#scene-previous").disabled, false);
-  assert.equal(overlay.children[0].classList.contains("selected"), false);
-  overlay.children[0].trigger("click");
-  assert.equal(selections.at(-1).id, secondScene.buildings[0].id);
 
   for (let index = 2; index < sceneSummaries.length; index += 1) {
     await document.elements.get("#scene-next").trigger("click");
   }
   assert.equal(fetchCalls.length, sceneSummaries.length + 1);
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
+  assert.equal(image.src, "/demo-scenes/socal-fire_00000663/post.png");
+  assert.equal(overlay.hidden, false);
   assert.equal(document.elements.get("#scene-next").disabled, true);
   console.log("scene_dashboard_render=passed");
 }

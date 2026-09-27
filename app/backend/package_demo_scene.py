@@ -91,8 +91,38 @@ def load_scene_cache_rows(cache_manifest: Path, scene_id: str) -> list[dict[str,
     return rows
 
 
-def load_geometry_by_building_id(post_label_path: Path, scene_id: str) -> dict[str, dict[str, Any]]:
-    """Reproduce the existing crop builder's valid-POST-feature numbering."""
+def load_geometry_by_uid(label_path: Path, label_name: str) -> dict[str, list[list[float]]]:
+    """Read valid xBD pixel polygons keyed by their raw building UID."""
+
+    with label_path.open("r", encoding="utf-8") as handle:
+        label_json = json.load(handle)
+    features = label_json.get("features", {}).get("xy", [])
+    if not isinstance(features, list):
+        raise ValueError(f"{label_name} label file has no xBD xy feature list: {label_path}")
+
+    geometry_by_uid: dict[str, list[list[float]]] = {}
+    for feature in features:
+        if not isinstance(feature, dict):
+            continue
+        polygon = parse_wkt_points(feature.get("wkt", ""))
+        if not polygon:
+            continue
+        properties = feature.get("properties", {}) or {}
+        raw_uid = properties.get("uid")
+        if not isinstance(raw_uid, str) or not raw_uid:
+            raise ValueError(f"{label_name} feature has no UID: {label_path}")
+        if raw_uid in geometry_by_uid:
+            raise ValueError(f"{label_name} label file has duplicate UID: {raw_uid}")
+        geometry_by_uid[raw_uid] = [[float(x), float(y)] for x, y in polygon]
+    return geometry_by_uid
+
+
+def load_post_geometry_by_building_id(post_label_path: Path, scene_id: str) -> dict[str, dict[str, Any]]:
+    """Reproduce the existing crop builder's valid-POST-feature numbering.
+
+    The cache uses this POST ordering for ``building_id``. PRE geometry is
+    paired separately by the raw xBD UID, rather than relying on feature order.
+    """
 
     with post_label_path.open("r", encoding="utf-8") as handle:
         label_json = json.load(handle)
@@ -116,7 +146,7 @@ def load_geometry_by_building_id(post_label_path: Path, scene_id: str) -> dict[s
             raise ValueError(f"POST feature has no UID for {building_id}.")
         geometry[building_id] = {
             "uid": raw_uid,
-            "pixel_polygon": [[float(x), float(y)] for x, y in polygon],
+            "post_pixel_polygon": [[float(x), float(y)] for x, y in polygon],
             "raw_ground_truth": str(properties.get("subtype", "un-classified")),
         }
     return geometry
@@ -133,7 +163,12 @@ def validate_scene_pack(payload: dict[str, Any], output_dir: Path, expected_coun
         raise ValueError(f"Expected {expected_count} packaged buildings, found {len(buildings or [])}.")
 
     for building in buildings:
-        if not building.get("id") or not building.get("uid") or len(building.get("pixel_polygon", [])) < 3:
+        if (
+            not building.get("id")
+            or not building.get("uid")
+            or len(building.get("pre_pixel_polygon", [])) < 3
+            or len(building.get("post_pixel_polygon", [])) < 3
+        ):
             raise ValueError(f"Incomplete building geometry: {building.get('id')}")
         prediction = building.get("prediction", {})
         probabilities = prediction.get("probabilities", {})
@@ -175,13 +210,15 @@ def build_scene_pack(args: argparse.Namespace) -> dict[str, Any]:
     labels_dir = data_dir / "train" / "labels"
     pre_scene_path = images_dir / f"{scene_id}_pre_disaster.png"
     post_scene_path = images_dir / f"{scene_id}_post_disaster.png"
+    pre_label_path = labels_dir / f"{scene_id}_pre_disaster.json"
     post_label_path = labels_dir / f"{scene_id}_post_disaster.json"
-    for source in (pre_scene_path, post_scene_path, post_label_path):
+    for source in (pre_scene_path, post_scene_path, pre_label_path, post_label_path):
         if not source.is_file():
             raise FileNotFoundError(f"Required scene source was not found: {source}")
 
     cache_rows = load_scene_cache_rows(cache_manifest, scene_id)
-    geometry_by_id = load_geometry_by_building_id(post_label_path, scene_id)
+    geometry_by_id = load_post_geometry_by_building_id(post_label_path, scene_id)
+    pre_geometry_by_uid = load_geometry_by_uid(pre_label_path, "PRE")
     missing_geometry = [row["building_id"] for row in cache_rows if row["building_id"] not in geometry_by_id]
     if missing_geometry:
         raise ValueError(f"Cached buildings have no matching POST geometry: {missing_geometry[:3]}")
@@ -196,7 +233,18 @@ def build_scene_pack(args: argparse.Namespace) -> dict[str, Any]:
         geometry = geometry_by_id[row["building_id"]]
         if geometry["raw_ground_truth"] != row["damage_label"]:
             raise ValueError(f"Raw label does not match cache label for {row['building_id']}")
-        records.append({**row, **geometry, "pre_crop_path": pre_crop_path, "post_crop_path": post_crop_path})
+        pre_polygon = pre_geometry_by_uid.get(geometry["uid"])
+        if pre_polygon is None:
+            raise ValueError(f"Cached building has no matching PRE geometry: {row['building_id']}")
+        records.append(
+            {
+                **row,
+                **geometry,
+                "pre_pixel_polygon": pre_polygon,
+                "pre_crop_path": pre_crop_path,
+                "post_crop_path": post_crop_path,
+            }
+        )
 
     classifier = load_classifier(checkpoint_path)
     predictions_by_id: dict[str, dict[str, Any]] = {}
@@ -231,7 +279,8 @@ def build_scene_pack(args: argparse.Namespace) -> dict[str, Any]:
             {
                 "id": record["building_id"],
                 "uid": record["uid"],
-                "pixel_polygon": record["pixel_polygon"],
+                "pre_pixel_polygon": record["pre_pixel_polygon"],
+                "post_pixel_polygon": record["post_pixel_polygon"],
                 "prediction": predictions_by_id[record["building_id"]],
                 "crops": {"pre_url": pre_crop_url, "post_url": post_crop_url},
                 "demo_metadata": {"ground_truth": record["damage_label"]},
@@ -239,7 +288,7 @@ def build_scene_pack(args: argparse.Namespace) -> dict[str, Any]:
         )
 
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "scene_id": scene_id,
         "event_name": scene_id.rsplit("_", 1)[0],
         "image": {

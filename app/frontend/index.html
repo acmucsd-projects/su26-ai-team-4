@@ -6,7 +6,7 @@
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="scene-dashboard.js?v=scene-selector-1" defer></script>
+  <script src="scene-dashboard.js?v=scene-imagery-2" defer></script>
   <script src="app.js?v=scene-selector-1" defer></script>
 </head>
 <body>
@@ -29,6 +29,11 @@
         <button id="scene-previous" class="scene-nav-button" type="button" aria-label="Previous demo scene">&larr; Previous</button>
         <p id="scene-current" class="scene-current" aria-live="polite"></p>
         <button id="scene-next" class="scene-nav-button" type="button" aria-label="Next demo scene">Next &rarr;</button>
+      </div>
+      <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
+        <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
+        <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>
+        <button class="scene-mode-button" type="button" data-imagery-mode="post-predictions" aria-pressed="true">POST + Predictions</button>
       </div>
       <div class="scene-legend" aria-label="Predicted damage severity legend">
         <span class="legend-title">Model prediction</span>

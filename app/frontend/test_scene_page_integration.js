@@ -64,11 +64,20 @@ function createDocument() {
     button.dataset.example = name;
     return button;
   });
+  const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
+    const button = new FakeElement();
+    button.dataset.imageryMode = mode;
+    return button;
+  });
   const listeners = new Map();
   return {
     elements,
     querySelector(selector) { return elements.get(selector); },
-    querySelectorAll(selector) { return selector === ".example-button" ? examples : []; },
+    querySelectorAll(selector) {
+      if (selector === ".example-button") return examples;
+      if (selector === "[data-imagery-mode]") return imageryButtons;
+      return [];
+    },
     createElement() { return new FakeElement(); },
     createElementNS() { return new FakeElement(); },
     addEventListener(type, listener) {
@@ -93,23 +102,25 @@ class PageEvent {
 
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-selector-1"') < html.indexOf('src="app.js?v=scene-selector-1"'));
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-imagery-2"') < html.indexOf('src="app.js?v=scene-selector-1"'));
 
   const document = createDocument();
   const building = {
     id: "hurricane-michael_00000247_b0000",
-    pixel_polygon: [[0, 0], [10, 0], [10, 10]],
+    pre_pixel_polygon: [[100, 100], [110, 100], [110, 110]],
+    post_pixel_polygon: [[0, 0], [10, 0], [10, 10]],
     crops: { pre_url: "/demo-scenes/hurricane-michael_00000247/crops/0051675_pre.png", post_url: "/demo-scenes/hurricane-michael_00000247/crops/0051675_post.png" },
     prediction: { predicted_class: "major-damage", confidence: 0.8, probabilities: { "no-damage": 0.05, "minor-damage": 0.1, "major-damage": 0.8, destroyed: 0.05 } },
   };
-  const scene = { scene_id: "hurricane-michael_00000247", event_name: "hurricane-michael", image: { width: 1024, height: 1024, post_url: "/demo-scenes/hurricane-michael_00000247/post.png" }, buildings: [building] };
+  const scene = { scene_id: "hurricane-michael_00000247", event_name: "hurricane-michael", image: { width: 1024, height: 1024, pre_url: "/demo-scenes/hurricane-michael_00000247/pre.png", post_url: "/demo-scenes/hurricane-michael_00000247/post.png" }, buildings: [building] };
   const nextBuilding = {
     id: "hurricane-harvey_00000177_b0000",
-    pixel_polygon: [[20, 20], [30, 20], [30, 30]],
+    pre_pixel_polygon: [[120, 120], [130, 120], [130, 130]],
+    post_pixel_polygon: [[20, 20], [30, 20], [30, 30]],
     crops: { pre_url: "/demo-scenes/hurricane-harvey_00000177/crops/0001234_pre.png", post_url: "/demo-scenes/hurricane-harvey_00000177/crops/0001234_post.png" },
     prediction: { predicted_class: "no-damage", confidence: 0.9, probabilities: { "no-damage": 0.9, "minor-damage": 0.05, "major-damage": 0.03, destroyed: 0.02 } },
   };
-  const nextScene = { scene_id: "hurricane-harvey_00000177", event_name: "hurricane-harvey", image: { width: 1024, height: 1024, post_url: "/demo-scenes/hurricane-harvey_00000177/post.png" }, buildings: [nextBuilding] };
+  const nextScene = { scene_id: "hurricane-harvey_00000177", event_name: "hurricane-harvey", image: { width: 1024, height: 1024, pre_url: "/demo-scenes/hurricane-harvey_00000177/pre.png", post_url: "/demo-scenes/hurricane-harvey_00000177/post.png" }, buildings: [nextBuilding] };
   let predictRequests = 0;
   const fetch = async (url) => {
     if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id, event_name: scene.event_name }, { scene_id: nextScene.scene_id, event_name: nextScene.event_name }] }) };
@@ -126,7 +137,23 @@ async function main() {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "app.js"), "utf8"), context);
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  const polygon = document.elements.get("#scene-overlay").children[0];
+  const overlay = document.elements.get("#scene-overlay");
+  const image = document.elements.get("#scene-post-image");
+  const imageryButtons = document.querySelectorAll("[data-imagery-mode]");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
+  await imageryButtons[0].trigger("click");
+  assert.equal(image.src, scene.image.pre_url);
+  assert.equal(overlay.children[0].getAttribute("points"), "100,100 110,100 110,110");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await imageryButtons[1].trigger("click");
+  assert.equal(image.src, scene.image.post_url);
+  assert.equal(overlay.children[0].getAttribute("points"), "0,0 10,0 10,10");
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await imageryButtons[2].trigger("click");
+  assert.equal(image.src, scene.image.post_url);
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
+
+  const polygon = overlay.children[0];
   polygon.trigger("click");
   assert.equal(polygon.classList.contains("selected"), true);
   assert.equal(document.elements.get("#pre-preview").src, building.crops.pre_url);
@@ -136,6 +163,11 @@ async function main() {
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
   assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
+  await imageryButtons[0].trigger("click");
+  assert.equal(overlay.children[0].classList.contains("selected"), true);
+  assert.equal(overlay.children[0].classList.contains("neutral"), true);
+  await imageryButtons[2].trigger("click");
+  assert.equal(overlay.children[0].classList.contains("selected"), true);
   await document.elements.get("#scene-next").trigger("click");
   assert.equal(document.elements.get("#pre-preview").src, undefined);
   assert.equal(document.elements.get("#post-preview").src, undefined);
