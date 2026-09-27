@@ -6,8 +6,8 @@
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="scene-dashboard.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="scene-dashboard.js?v=scene-inspection-1" defer></script>
+  <script src="app.js?v=scene-inspection-1" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -76,7 +76,7 @@
         </div>
         <section id="result-card" class="result-card" hidden aria-live="polite">
           <p class="section-kicker">Model result</p>
-          <div class="result-summary"><div><p id="result-class" class="result-class">—</p><p id="result-confidence" class="result-confidence">—</p></div><span class="result-badge">Prediction</span></div>
+          <div class="result-summary"><div><p id="result-class" class="result-class">—</p><p id="result-confidence" class="result-confidence">—</p></div><span id="result-badge" class="result-badge">Prediction</span></div>
           <div id="probability-bars" class="probability-bars"></div>
         </section>
       </div>

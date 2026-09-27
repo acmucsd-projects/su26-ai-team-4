@@ -9,7 +9,17 @@ class FakeElement {
   constructor() {
     this.attributes = new Map();
     this.children = [];
-    this.classList = { toggle() {} };
+    this.listeners = new Map();
+    this.classList = {
+      add: (...classes) => classes.forEach((className) => this._classes.add(className)),
+      remove: (...classes) => classes.forEach((className) => this._classes.delete(className)),
+      toggle: (className, force) => {
+        if (force === true || (force === undefined && !this._classes.has(className))) this._classes.add(className);
+        else this._classes.delete(className);
+      },
+      contains: (className) => this._classes.has(className),
+    };
+    this._classes = new Set();
     this.dataset = {};
     this.hidden = false;
     this.complete = false;
@@ -19,6 +29,7 @@ class FakeElement {
 
   setAttribute(name, value) {
     this.attributes.set(name, String(value));
+    if (name === "class") this._classes = new Set(String(value).split(/\s+/).filter(Boolean));
   }
 
   getAttribute(name) {
@@ -31,6 +42,14 @@ class FakeElement {
 
   append(child) {
     this.children.push(child);
+  }
+
+  addEventListener(type, listener) {
+    this.listeners.set(type, listener);
+  }
+
+  trigger(type, event = {}) {
+    return this.listeners.get(type)?.({ preventDefault() {}, ...event });
   }
 
   set src(value) {
@@ -54,6 +73,7 @@ function createDocument() {
     ["#scene-post-image", new FakeElement()],
     ["#scene-overlay", new FakeElement()],
   ]);
+  const listeners = new Map();
   return {
     elements,
     querySelector(selector) {
@@ -62,15 +82,35 @@ function createDocument() {
     createElementNS() {
       return new FakeElement();
     },
+    addEventListener(type, listener) {
+      listeners.set(type, listener);
+    },
+    dispatchEvent(event) {
+      listeners.get(event.type)?.(event);
+      return !event.defaultPrevented;
+    },
   };
 }
 
 async function main() {
   const document = createDocument();
+  const selections = [];
+  document.addEventListener("scene-building-selected", (event) => {
+    event.detail.handled = true;
+    if (event.detail.building) {
+      const building = event.detail.building;
+      selections.push(building);
+    } else event.preventDefault();
+  });
   const buildings = Array.from({ length: 177 }, (_, index) => ({
     id: `demo_b${index.toString().padStart(4, "0")}`,
     pixel_polygon: [[index, 0], [index + 1, 0], [index + 1, 1]],
-    prediction: { predicted_class: DAMAGE_CLASSES[index % DAMAGE_CLASSES.length] },
+    crops: { pre_url: `/crops/${index}-pre.png`, post_url: `/crops/${index}-post.png` },
+    prediction: {
+      predicted_class: DAMAGE_CLASSES[index % DAMAGE_CLASSES.length],
+      confidence: 0.8,
+      probabilities: Object.fromEntries(DAMAGE_CLASSES.map((className) => [className, className === DAMAGE_CLASSES[index % DAMAGE_CLASSES.length] ? 0.8 : 1 / 15])),
+    },
   }));
   const scene = {
     scene_id: "hurricane-michael_00000247",
@@ -86,7 +126,16 @@ async function main() {
     throw new Error(`Unexpected fetch URL: ${url}`);
   };
   const source = fs.readFileSync(path.join(__dirname, "scene-dashboard.js"), "utf8");
-  vm.runInNewContext(source, { Array, Error, Number, Promise, document, fetch });
+  class CustomEvent {
+    constructor(type, options = {}) {
+      this.type = type;
+      this.detail = options.detail;
+      this.cancelable = options.cancelable;
+      this.defaultPrevented = false;
+    }
+    preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
+  }
+  vm.runInNewContext(source, { Array, CustomEvent, Error, Number, Promise, document, fetch });
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   const canvas = document.elements.get("#scene-canvas");
@@ -102,6 +151,16 @@ async function main() {
     assert.match(polygon.getAttribute("class"), /^scene-building (no-damage|minor-damage|major-damage|destroyed)$/);
     assert.ok(polygon.getAttribute("points"));
   });
+  overlay.children[0].trigger("click");
+  assert.equal(selections.length, 1);
+  assert.equal(selections[0].id, buildings[0].id);
+  assert.equal(overlay.children[0].classList.contains("selected"), true);
+  assert.equal(overlay.children[0].getAttribute("aria-pressed"), "true");
+  overlay.children[1].trigger("click");
+  assert.equal(selections.length, 2);
+  assert.equal(selections[1].id, buildings[1].id);
+  assert.equal(overlay.children[0].classList.contains("selected"), false);
+  assert.equal(overlay.children[1].classList.contains("selected"), true);
   console.log("scene_dashboard_render=passed");
 }
 

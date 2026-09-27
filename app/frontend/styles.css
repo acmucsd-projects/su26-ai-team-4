@@ -41,12 +41,12 @@ button { cursor: pointer; }
 .scene-canvas img, .scene-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
 .scene-canvas img { display: block; object-fit: fill; }
 .scene-overlay { overflow: visible; }
-.scene-building { cursor: default; fill-opacity: 0.34; stroke-width: 1.7; vector-effect: non-scaling-stroke; transition: fill-opacity 130ms ease, stroke-width 130ms ease, filter 130ms ease; }
+.scene-building { cursor: pointer; fill-opacity: 0.34; stroke-width: 1.7; vector-effect: non-scaling-stroke; transition: fill-opacity 130ms ease, stroke-width 130ms ease, filter 130ms ease; }
 .scene-building.no-damage { fill: var(--success); stroke: #14755c; }
 .scene-building.minor-damage { fill: var(--minor); stroke: #9e6810; }
 .scene-building.major-damage { fill: var(--major); stroke: #a9411f; }
 .scene-building.destroyed { fill: var(--destroyed); stroke: #8d2434; }
-.scene-building:hover, .scene-building:focus { fill-opacity: 0.62; stroke: #fff; stroke-width: 2.8; outline: none; filter: drop-shadow(0 0 2px rgba(23, 34, 57, 0.85)); }
+.scene-building:hover, .scene-building:focus, .scene-building.selected { fill-opacity: 0.62; stroke: #fff; stroke-width: 2.8; outline: none; filter: drop-shadow(0 0 2px rgba(23, 34, 57, 0.85)); }
 .workspace { display: grid; grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr); gap: 22px; }
 .panel { min-width: 0; padding: 27px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); box-shadow: 0 16px 45px rgba(29, 52, 93, 0.06); }
 .section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }

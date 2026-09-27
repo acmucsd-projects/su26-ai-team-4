@@ -9,6 +9,7 @@
   const sceneCanvas = document.querySelector("#scene-canvas");
   const scenePostImage = document.querySelector("#scene-post-image");
   const sceneOverlay = document.querySelector("#scene-overlay");
+  let selectedPolygon = null;
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -41,6 +42,37 @@
     }).join(" ");
   }
 
+  function setSelectedPolygon(polygon) {
+    if (selectedPolygon) {
+      selectedPolygon.classList.remove("selected");
+      selectedPolygon.setAttribute("aria-pressed", "false");
+    }
+    selectedPolygon = polygon;
+    selectedPolygon.classList.add("selected");
+    selectedPolygon.setAttribute("aria-pressed", "true");
+  }
+
+  function clearSelectedPolygon() {
+    if (!selectedPolygon) return;
+    selectedPolygon.classList.remove("selected");
+    selectedPolygon.setAttribute("aria-pressed", "false");
+    selectedPolygon = null;
+  }
+
+  document.addEventListener("scene-building-clear", clearSelectedPolygon);
+
+  function selectBuilding(building, polygon) {
+    setSelectedPolygon(polygon);
+    const selection = { building, handled: false };
+    const accepted = document.dispatchEvent(new CustomEvent("scene-building-selected", { detail: selection, cancelable: true }));
+    if (!selection.handled || !accepted) {
+      clearSelectedPolygon();
+      setSceneStatus("The selected building could not be opened for inspection.", true);
+      return;
+    }
+    setSceneStatus("Selected " + building.id + ". Its precomputed result is shown below.");
+  }
+
   function renderBuildings(buildings) {
     if (!Array.isArray(buildings) || buildings.length === 0) throw new Error("The scene contains no packaged buildings.");
     sceneOverlay.replaceChildren();
@@ -51,9 +83,18 @@
       polygon.setAttribute("points", polygonPoints(building.pixel_polygon));
       polygon.setAttribute("class", "scene-building " + predictedClass);
       polygon.setAttribute("tabindex", "0");
+      polygon.setAttribute("role", "button");
+      polygon.setAttribute("aria-pressed", "false");
       polygon.setAttribute("aria-label", "Building " + building.id + ", predicted " + displayName(predictedClass));
       polygon.dataset.buildingId = building.id;
       polygon.dataset.predictedClass = predictedClass;
+      polygon.addEventListener("click", () => selectBuilding(building, polygon));
+      polygon.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectBuilding(building, polygon);
+        }
+      });
       sceneOverlay.append(polygon);
     });
   }

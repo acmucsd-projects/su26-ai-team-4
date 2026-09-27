@@ -9,7 +9,7 @@ const EXAMPLES = {
   destroyed: { label: "Destroyed", pre: "examples/destroyed/pre.png", post: "examples/destroyed/post.png" },
 };
 
-const state = { pre: null, post: null, previewUrls: { pre: null, post: null } };
+const state = { pre: null, post: null, previewUrls: { pre: null, post: null }, source: null, scenePrediction: null };
 const preInput = document.querySelector("#pre-image");
 const postInput = document.querySelector("#post-image");
 const prePreview = document.querySelector("#pre-preview");
@@ -22,6 +22,7 @@ const predictButton = document.querySelector("#predict-button");
 const resultCard = document.querySelector("#result-card");
 const resultClass = document.querySelector("#result-class");
 const resultConfidence = document.querySelector("#result-confidence");
+const resultBadge = document.querySelector("#result-badge");
 const probabilityBars = document.querySelector("#probability-bars");
 
 function setStatus(message = "", isError = false) {
@@ -51,9 +52,26 @@ function showPreview(slot, source, isObjectUrl = false) {
   placeholder.hidden = true;
 }
 
+function clearSceneBuildingSelection() {
+  document.dispatchEvent(new Event("scene-building-clear"));
+}
+
+function leaveSceneSelectionForManualInput() {
+  if (state.source !== "scene") return;
+  state.pre = null;
+  state.post = null;
+  clearPreview("pre");
+  clearPreview("post");
+  resultCard.hidden = true;
+  clearSceneBuildingSelection();
+}
+
 function setManualFile(slot, file) {
   if (!file) return;
+  leaveSceneSelectionForManualInput();
   state[slot] = { file, name: file.name };
+  state.source = "custom";
+  state.scenePrediction = null;
   showPreview(slot, URL.createObjectURL(file), true);
   document.querySelectorAll(".example-button").forEach((button) => button.classList.remove("selected"));
   selectionLabel.textContent = "Custom upload";
@@ -63,8 +81,11 @@ function setManualFile(slot, file) {
 
 function selectExample(name) {
   const example = EXAMPLES[name];
+  clearSceneBuildingSelection();
   state.pre = { assetUrl: example.pre, name: name + "-pre.png" };
   state.post = { assetUrl: example.post, name: name + "-post.png" };
+  state.source = "example";
+  state.scenePrediction = null;
   preInput.value = "";
   postInput.value = "";
   showPreview("pre", example.pre);
@@ -85,9 +106,10 @@ async function uploadFor(input) {
   return new File([blob], input.name, { type: blob.type || "image/png" });
 }
 
-function showResult(prediction) {
+function showResult(prediction, sourceLabel = "Prediction") {
   resultClass.textContent = prediction.predicted_class.replace("-", " ");
   resultConfidence.textContent = (prediction.confidence * 100).toFixed(1) + "% confidence";
+  resultBadge.textContent = sourceLabel;
   probabilityBars.replaceChildren();
   CLASS_ORDER.forEach((className) => {
     const probability = Number(prediction.probabilities[className] || 0);
@@ -110,9 +132,35 @@ function showResult(prediction) {
   resultCard.hidden = false;
 }
 
+function inspectSceneBuilding(building) {
+  const preUrl = building?.crops?.pre_url;
+  const postUrl = building?.crops?.post_url;
+  const prediction = building?.prediction;
+  if (!preUrl || !postUrl || !prediction?.predicted_class || !prediction?.probabilities) return false;
+
+  state.pre = { assetUrl: preUrl, name: building.id + "-pre.png" };
+  state.post = { assetUrl: postUrl, name: building.id + "-post.png" };
+  state.source = "scene";
+  state.scenePrediction = prediction;
+  preInput.value = "";
+  postInput.value = "";
+  showPreview("pre", preUrl);
+  showPreview("post", postUrl);
+  document.querySelectorAll(".example-button").forEach((button) => button.classList.remove("selected"));
+  selectionLabel.textContent = "Scene selection";
+  showResult(prediction, "Scene selection");
+  setStatus("Viewing precomputed scene result for " + building.id + ".");
+  return true;
+}
+
 async function predictDamage() {
   if (!state.pre || !state.post) {
     setStatus("Choose a built-in example or upload both PRE and POST images.", true);
+    return;
+  }
+  if (state.source === "scene" && state.scenePrediction) {
+    showResult(state.scenePrediction, "Scene selection");
+    setStatus("Showing the precomputed prediction for the selected scene building.");
     return;
   }
   predictButton.disabled = true;
@@ -138,8 +186,11 @@ async function predictDamage() {
 }
 
 function clearSelection() {
+  clearSceneBuildingSelection();
   state.pre = null;
   state.post = null;
+  state.source = null;
+  state.scenePrediction = null;
   preInput.value = "";
   postInput.value = "";
   clearPreview("pre");
@@ -149,6 +200,13 @@ function clearSelection() {
   resultCard.hidden = true;
   setStatus("");
 }
+
+document.addEventListener("scene-building-selected", (event) => {
+  const selection = event.detail;
+  if (!selection || typeof selection !== "object") return;
+  selection.handled = true;
+  if (!inspectSceneBuilding(selection.building)) event.preventDefault();
+});
 
 preInput.addEventListener("change", () => setManualFile("pre", preInput.files[0]));
 postInput.addEventListener("change", () => setManualFile("post", postInput.files[0]));
