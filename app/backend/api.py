@@ -24,7 +24,7 @@ from .inference import LoadedClassifier, load_classifier, predict_images
 DEFAULT_CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_CHECKPOINT_PATH = Path(__file__).resolve().parents[2] / "checkpoints" / DEFAULT_CHECKPOINT_NAME
 DEFAULT_FRONTEND_PATH = Path(__file__).resolve().parents[1] / "frontend"
-DEFAULT_DEMO_SCENE_ROOT = Path(__file__).resolve().parents[2] / "local_experiments" / "demo_scene_pack"
+DEFAULT_DEMO_SCENE_ROOT = Path(__file__).resolve().parents[1] / "demo_scenes"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
@@ -47,7 +47,7 @@ def configured_frontend_path() -> Path:
 
 
 def configured_demo_scene_root() -> Path:
-    """Resolve the optional local root containing packaged dashboard demo scenes."""
+    """Resolve the optional packaged dashboard-scene root."""
 
     return Path(os.environ.get("DEMO_SCENE_ROOT", DEFAULT_DEMO_SCENE_ROOT))
 

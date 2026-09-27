@@ -17,6 +17,16 @@ from app.backend.api import create_app
 
 
 SCENE_ID = "hurricane-michael_00000247"
+CURATED_SCENE_IDS = {
+    "hurricane-michael_00000247",
+    "hurricane-harvey_00000177",
+    "hurricane-matthew_00000060",
+    "hurricane-florence_00000459",
+    "palu-tsunami_00000065",
+    "santa-rosa-wildfire_00000014",
+    "socal-fire_00000663",
+}
+DEPLOYMENT_DEMO_SCENE_ROOT = Path(__file__).resolve().parents[1] / "demo_scenes"
 
 
 def write_demo_scene(root: Path) -> None:
@@ -73,6 +83,19 @@ class DemoSceneApiTests(unittest.TestCase):
                 self.assertEqual(client.get("/health").status_code, 200)
                 self.assertEqual(client.get("/demo-scenes").json(), {"scenes": []})
                 self.assertEqual(client.get(f"/demo-scenes/{SCENE_ID}").status_code, 404)
+
+    def test_versioned_deployment_assets_are_served(self) -> None:
+        with self.client_for(DEPLOYMENT_DEMO_SCENE_ROOT) as client:
+            scenes = client.get("/demo-scenes").json()["scenes"]
+            self.assertEqual({scene["scene_id"] for scene in scenes}, CURATED_SCENE_IDS)
+
+            scene = client.get(f"/demo-scenes/{SCENE_ID}")
+            self.assertEqual(scene.status_code, 200)
+            manifest = scene.json()
+            self.assertEqual(manifest["schema_version"], 2)
+            self.assertEqual(client.get(manifest["image"]["pre_url"]).status_code, 200)
+            self.assertEqual(client.get(manifest["image"]["post_url"]).status_code, 200)
+            self.assertEqual(client.get(manifest["buildings"][0]["crops"]["pre_url"]).status_code, 200)
 
 
 if __name__ == "__main__":

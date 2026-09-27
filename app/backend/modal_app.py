@@ -43,6 +43,7 @@ if modal.is_local():
         base_image.add_local_file(CHECKPOINT_SOURCE_PATH, REMOTE_CHECKPOINT_PATH, copy=True)
         .add_local_python_source("app.backend", copy=True)
         .add_local_dir("app/frontend", "/app/frontend", copy=True)
+        .add_local_dir("app/demo_scenes", "/app/demo_scenes", copy=True)
     )
 else:
     # The checkpoint was packaged during local deployment. Set the canonical
@@ -61,6 +62,7 @@ def fastapi_app():
 
     os.environ["MODEL_PATH"] = REMOTE_CHECKPOINT_PATH
     os.environ["FRONTEND_PATH"] = "/app/frontend"
+    os.environ["DEMO_SCENE_ROOT"] = "/app/demo_scenes"
 
     from app.backend.api import create_app
 
