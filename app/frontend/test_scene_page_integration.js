@@ -102,7 +102,12 @@ class PageEvent {
 
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
+  assert.match(html, /href="styles\.css\?v=scene-dashboard-1"/);
   assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-imagery-2"') < html.indexOf('src="app.js?v=scene-selector-1"'));
+  assert.match(styles, /\.scene-canvas img, \.scene-overlay \{ position: absolute/);
+  assert.match(styles, /\.scene-building\.neutral/);
+  assert.match(styles, /\.scene-imagery-mode/);
 
   const document = createDocument();
   const building = {
