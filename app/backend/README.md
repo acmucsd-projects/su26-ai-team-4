@@ -73,6 +73,13 @@ $env:MODEL_PATH = "C:\\path\\to\\resnet18_prepost_plaince_xbd_128_seed17.pt"
 modal deploy app/backend/modal_app.py
 ~~~
 
+To deploy a separate staging app without changing the canonical deployment name, set `MODAL_APP_NAME` for that command:
+
+~~~powershell
+$env:MODAL_APP_NAME = "building-damage-classifier-dashboard-staging"
+modal deploy app/backend/modal_app.py
+~~~
+
 Modal prints the web-function URL. Test it with:
 
 ~~~bash

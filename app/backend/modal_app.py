@@ -13,7 +13,7 @@ from pathlib import Path
 import modal
 
 
-APP_NAME = "building-damage-classifier-128"
+APP_NAME = os.environ.get("MODAL_APP_NAME", "building-damage-classifier-128")
 CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_SOURCE_CHECKPOINT_PATH = Path("checkpoints") / CHECKPOINT_NAME
 REMOTE_CHECKPOINT_PATH = f"/models/{CHECKPOINT_NAME}"
