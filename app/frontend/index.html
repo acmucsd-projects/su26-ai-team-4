@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=scene-summary-3">
-  <script src="scene-dashboard.js?v=scene-summary-2" defer></script>
+  <link rel="stylesheet" href="styles.css?v=scene-filters-1">
+  <script src="scene-dashboard.js?v=scene-filters-1" defer></script>
   <script src="app.js?v=scene-selector-1" defer></script>
 </head>
 <body>
@@ -44,6 +44,15 @@
           <p id="scene-summary-severe-detail" class="scene-severe-detail"></p>
         </div>
       </section>
+      <div id="scene-filters" class="scene-filters" role="group" aria-label="Filter footprints by model prediction">
+        <span class="scene-filter-label">Show</span>
+        <button class="scene-filter-button" type="button" data-scene-filter="all" aria-pressed="true">All</button>
+        <button class="scene-filter-button" type="button" data-scene-filter="severe" aria-pressed="false">Severe</button>
+        <button class="scene-filter-button" type="button" data-scene-filter="no-damage" aria-pressed="false">No damage</button>
+        <button class="scene-filter-button" type="button" data-scene-filter="minor-damage" aria-pressed="false">Minor</button>
+        <button class="scene-filter-button" type="button" data-scene-filter="major-damage" aria-pressed="false">Major</button>
+        <button class="scene-filter-button" type="button" data-scene-filter="destroyed" aria-pressed="false">Destroyed</button>
+      </div>
       <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
         <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
         <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>

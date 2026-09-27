@@ -1,6 +1,7 @@
 (() => {
   const DEMO_SCENES_URL = "/demo-scenes";
   const DAMAGE_CLASSES = ["no-damage", "minor-damage", "major-damage", "destroyed"];
+  const PREDICTION_FILTERS = ["all", "severe", ...DAMAGE_CLASSES];
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
   const sceneDescription = document.querySelector("#scene-description");
@@ -21,6 +22,7 @@
   ]));
   const sceneSummarySevere = document.querySelector("#scene-summary-severe");
   const sceneSummarySevereDetail = document.querySelector("#scene-summary-severe-detail");
+  const predictionFilterButtons = document.querySelectorAll("[data-scene-filter]");
   const imageryModeButtons = document.querySelectorAll("[data-imagery-mode]");
   let selectedPolygon = null;
   let availableScenes = [];
@@ -29,6 +31,7 @@
   let isSceneLoading = false;
   let isImageLoading = false;
   let imageryMode = "post-predictions";
+  let predictionFilter = "all";
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -69,8 +72,33 @@
     });
   }
 
+  function updatePredictionFilterControls() {
+    predictionFilterButtons.forEach((button) => {
+      const isSelected = button.dataset.sceneFilter === predictionFilter;
+      button.setAttribute("aria-pressed", String(isSelected));
+      button.disabled = isSceneLoading || !currentScene;
+    });
+  }
+
   function isPredictionMode() {
     return imageryMode === "post-predictions";
+  }
+
+  function matchesPredictionFilter(predictedClass) {
+    return predictionFilter === "all"
+      || (predictionFilter === "severe" && (predictedClass === "major-damage" || predictedClass === "destroyed"))
+      || predictionFilter === predictedClass;
+  }
+
+  function setPredictionFilter(filter) {
+    if (!PREDICTION_FILTERS.includes(filter) || !currentScene || isSceneLoading || filter === predictionFilter) return;
+    const selectedPredictedClass = selectedPolygon?.dataset.predictedClass;
+    predictionFilter = filter;
+    if (selectedPredictedClass && !matchesPredictionFilter(selectedPredictedClass)) {
+      document.dispatchEvent(new Event("scene-building-filtered-out"));
+    }
+    updatePredictionFilterControls();
+    renderBuildings(currentScene.buildings);
   }
 
   function summarizePredictions(buildings) {
@@ -214,6 +242,7 @@
     buildings.forEach((building) => {
       const predictedClass = building?.prediction?.predicted_class;
       if (!DAMAGE_CLASSES.includes(predictedClass)) throw new Error("A building prediction is invalid.");
+      if (!matchesPredictionFilter(predictedClass)) return;
       const polygon = document.createElementNS(SVG_NAMESPACE, "polygon");
       polygon.setAttribute("points", polygonPoints(polygonForCurrentMode(building)));
       polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass));
@@ -257,6 +286,7 @@
     isSceneLoading = true;
     updateSceneControls();
     updateImageryControls();
+    updatePredictionFilterControls();
     clearSceneForLoad();
     try {
       const sceneResponse = await fetch(DEMO_SCENES_URL + "/" + encodeURIComponent(selectedScene.scene_id));
@@ -287,6 +317,7 @@
       isSceneLoading = false;
       updateSceneControls();
       updateImageryControls();
+      updatePredictionFilterControls();
     }
   }
 
@@ -316,7 +347,9 @@
 
   scenePrevious.addEventListener("click", () => loadSceneAt(currentSceneIndex - 1));
   sceneNext.addEventListener("click", () => loadSceneAt(currentSceneIndex + 1));
+  predictionFilterButtons.forEach((button) => button.addEventListener("click", () => setPredictionFilter(button.dataset.sceneFilter)));
   imageryModeButtons.forEach((button) => button.addEventListener("click", () => setImageryMode(button.dataset.imageryMode)));
   updateImageryControls();
+  updatePredictionFilterControls();
   loadSceneDashboard();
 })();

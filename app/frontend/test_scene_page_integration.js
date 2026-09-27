@@ -54,7 +54,7 @@ class FakeElement {
 function createDocument() {
   const ids = [
     "#scene-description", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
-    "#scene-selector", "#scene-previous", "#scene-current", "#scene-next",
+    "#scene-selector", "#scene-previous", "#scene-current", "#scene-next", "#scene-filters",
     "#scene-summary", "#scene-summary-total", "#scene-summary-no-damage", "#scene-summary-minor-damage", "#scene-summary-major-damage", "#scene-summary-destroyed", "#scene-summary-severe", "#scene-summary-severe-detail",
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
@@ -70,6 +70,11 @@ function createDocument() {
     button.dataset.imageryMode = mode;
     return button;
   });
+  const filterButtons = ["all", "severe", "no-damage", "minor-damage", "major-damage", "destroyed"].map((filter) => {
+    const button = new FakeElement();
+    button.dataset.sceneFilter = filter;
+    return button;
+  });
   const listeners = new Map();
   return {
     elements,
@@ -77,6 +82,7 @@ function createDocument() {
     querySelectorAll(selector) {
       if (selector === ".example-button") return examples;
       if (selector === "[data-imagery-mode]") return imageryButtons;
+      if (selector === "[data-scene-filter]") return filterButtons;
       return [];
     },
     createElement() { return new FakeElement(); },
@@ -104,13 +110,14 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=scene-summary-3"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-summary-2"') < html.indexOf('src="app.js?v=scene-selector-1"'));
+  assert.match(html, /href="styles\.css\?v=scene-filters-1"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=scene-selector-1"'));
   assert.match(styles, /\.scene-canvas img, \.scene-overlay \{ position: absolute/);
   assert.match(styles, /\.scene-building\.neutral/);
   assert.match(styles, /\.scene-imagery-mode/);
   assert.match(styles, /\.scene-summary/);
   assert.match(styles, /\.scene-severe-summary/);
+  assert.match(styles, /\.scene-filters/);
   assert.equal((html.match(/class="scene-summary-metric /g) || []).length, 4);
   assert.doesNotMatch(html, /scene-summary-metric severe/);
   assert.match(html, /Severe damage summary/);
@@ -152,7 +159,10 @@ async function main() {
   const overlay = document.elements.get("#scene-overlay");
   const image = document.elements.get("#scene-post-image");
   const imageryButtons = document.querySelectorAll("[data-imagery-mode]");
+  const filterButtons = document.querySelectorAll("[data-scene-filter]");
+  const filterButton = (filter) => filterButtons.find((button) => button.dataset.sceneFilter === filter);
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
+  assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
   assert.equal(document.elements.get("#scene-summary-total").textContent, "1 buildings analyzed");
   assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "1");
   assert.equal(document.elements.get("#scene-summary-severe").textContent, "1");
@@ -179,11 +189,25 @@ async function main() {
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
   assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
+  await filterButton("severe").trigger("click");
+  assert.equal(overlay.children.length, 1);
+  assert.equal(overlay.children[0].classList.contains("selected"), true);
   await imageryButtons[0].trigger("click");
   assert.equal(overlay.children[0].classList.contains("selected"), true);
   assert.equal(overlay.children[0].classList.contains("neutral"), true);
+  await imageryButtons[1].trigger("click");
+  assert.equal(overlay.children[0].classList.contains("neutral"), true);
   await imageryButtons[2].trigger("click");
   assert.equal(overlay.children[0].classList.contains("selected"), true);
+  await filterButton("no-damage").trigger("click");
+  assert.equal(overlay.children.length, 0);
+  assert.equal(document.elements.get("#pre-preview").src, undefined);
+  assert.equal(document.elements.get("#post-preview").src, undefined);
+  assert.equal(document.elements.get("#selection-label").textContent, "No pair selected");
+  assert.equal(document.elements.get("#result-card").hidden, true);
+  await filterButton("all").trigger("click");
+  assert.equal(overlay.children.length, 1);
+  overlay.children[0].trigger("click");
   await document.elements.get("#scene-next").trigger("click");
   assert.equal(document.elements.get("#scene-summary-total").textContent, "1 buildings analyzed");
   assert.equal(document.elements.get("#scene-summary-no-damage").textContent, "1");

@@ -95,6 +95,11 @@ function createDocument() {
     button.dataset.imageryMode = mode;
     return button;
   });
+  const filterButtons = ["all", "severe", ...DAMAGE_CLASSES].map((filter) => {
+    const button = new FakeElement();
+    button.dataset.sceneFilter = filter;
+    return button;
+  });
   const listeners = new Map();
   return {
     elements,
@@ -105,7 +110,9 @@ function createDocument() {
       return new FakeElement();
     },
     querySelectorAll(selector) {
-      return selector === "[data-imagery-mode]" ? imageryButtons : [];
+      if (selector === "[data-imagery-mode]") return imageryButtons;
+      if (selector === "[data-scene-filter]") return filterButtons;
+      return [];
     },
     addEventListener(type, listener) {
       listeners.set(type, listener);
@@ -120,6 +127,7 @@ function createDocument() {
 async function main() {
   const document = createDocument();
   const selections = [];
+  let filteredOutSelections = 0;
   document.addEventListener("scene-building-selected", (event) => {
     event.detail.handled = true;
     if (event.detail.building) {
@@ -127,6 +135,7 @@ async function main() {
       selections.push(building);
     } else event.preventDefault();
   });
+  document.addEventListener("scene-building-filtered-out", () => { filteredOutSelections += 1; });
   const sceneSummaries = [
     ["hurricane-michael_00000247", "hurricane-michael", 177],
     ["hurricane-harvey_00000177", "hurricane-harvey", 76],
@@ -201,6 +210,47 @@ async function main() {
     assert.match(polygon.getAttribute("class"), /^scene-building (no-damage|minor-damage|major-damage|destroyed)$/);
     assert.ok(polygon.getAttribute("points"));
   });
+  const filterButtons = document.querySelectorAll("[data-scene-filter]");
+  const filterButton = (filter) => filterButtons.find((button) => button.dataset.sceneFilter === filter);
+  assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
+  overlay.children[0].trigger("click");
+  assert.equal(overlay.children[0].classList.contains("selected"), true);
+  const fetchCountBeforeFiltering = fetchCalls.length;
+  await filterButton("severe").trigger("click");
+  assert.equal(overlay.children.length, 88);
+  assert.deepEqual(new Set(overlay.children.map((polygon) => polygon.dataset.predictedClass)), new Set(["major-damage", "destroyed"]));
+  assert.equal(filteredOutSelections, 1);
+  assert.equal(filterButton("severe").getAttribute("aria-pressed"), "true");
+  assert.equal(document.elements.get("#scene-summary-total").textContent, "177 buildings analyzed");
+  assert.equal(document.elements.get("#scene-summary-severe").textContent, "88");
+  assert.equal(fetchCalls.length, fetchCountBeforeFiltering);
+  for (const [filter, expectedCount] of [["no-damage", 45], ["minor-damage", 44], ["major-damage", 44], ["destroyed", 44]]) {
+    await filterButton(filter).trigger("click");
+    assert.equal(overlay.children.length, expectedCount);
+    assert.deepEqual(new Set(overlay.children.map((polygon) => polygon.dataset.predictedClass)), new Set([filter]));
+  }
+  await filterButton("all").trigger("click");
+  assert.equal(overlay.children.length, 177);
+  const majorPolygon = overlay.children.find((polygon) => polygon.dataset.predictedClass === "major-damage");
+  majorPolygon.trigger("click");
+  await filterButton("severe").trigger("click");
+  assert.equal(overlay.children.length, 88);
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("selected") && polygon.dataset.buildingId === majorPolygon.dataset.buildingId), true);
+  await imageryButtons[0].trigger("click");
+  assert.equal(image.src, firstScene.image.pre_url);
+  assert.equal(overlay.children.length, 88);
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await imageryButtons[1].trigger("click");
+  assert.equal(image.src, firstScene.image.post_url);
+  assert.equal(overlay.children.length, 88);
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  await imageryButtons[2].trigger("click");
+  assert.equal(image.src, firstScene.image.post_url);
+  assert.equal(overlay.children.length, 88);
+  assert.deepEqual(new Set(overlay.children.map((polygon) => polygon.dataset.predictedClass)), new Set(["major-damage", "destroyed"]));
+  assert.equal(fetchCalls.length, fetchCountBeforeFiltering);
+  await filterButton("all").trigger("click");
+  assert.equal(overlay.children.length, 177);
   await imageryButtons[0].trigger("click");
   assert.equal(image.src, firstScene.image.pre_url);
   assert.equal(overlay.hidden, false);
@@ -232,8 +282,8 @@ async function main() {
   assert.equal(overlay.children[0].getAttribute("points"), "0,0 1,0 1,1");
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building no-damage");
   overlay.children[0].trigger("click");
-  assert.equal(selections.length, 1);
-  assert.equal(selections[0].id, secondScene.buildings[0].id);
+  assert.equal(selections.length, 3);
+  assert.equal(selections[2].id, secondScene.buildings[0].id);
   assert.equal(overlay.children[0].classList.contains("selected"), true);
 
   assert.deepEqual(fetchCalls, ["/demo-scenes", "/demo-scenes/hurricane-michael_00000247", "/demo-scenes/hurricane-harvey_00000177"]);
