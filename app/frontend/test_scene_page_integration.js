@@ -54,6 +54,7 @@ class FakeElement {
 function createDocument() {
   const ids = [
     "#scene-description", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
+    "#scene-selector", "#scene-previous", "#scene-current", "#scene-next",
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
   ];
@@ -92,7 +93,7 @@ class PageEvent {
 
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-inspection-1"') < html.indexOf('src="app.js?v=scene-inspection-1"'));
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-selector-1"') < html.indexOf('src="app.js?v=scene-selector-1"'));
 
   const document = createDocument();
   const building = {
@@ -102,10 +103,18 @@ async function main() {
     prediction: { predicted_class: "major-damage", confidence: 0.8, probabilities: { "no-damage": 0.05, "minor-damage": 0.1, "major-damage": 0.8, destroyed: 0.05 } },
   };
   const scene = { scene_id: "hurricane-michael_00000247", event_name: "hurricane-michael", image: { width: 1024, height: 1024, post_url: "/demo-scenes/hurricane-michael_00000247/post.png" }, buildings: [building] };
+  const nextBuilding = {
+    id: "hurricane-harvey_00000177_b0000",
+    pixel_polygon: [[20, 20], [30, 20], [30, 30]],
+    crops: { pre_url: "/demo-scenes/hurricane-harvey_00000177/crops/0001234_pre.png", post_url: "/demo-scenes/hurricane-harvey_00000177/crops/0001234_post.png" },
+    prediction: { predicted_class: "no-damage", confidence: 0.9, probabilities: { "no-damage": 0.9, "minor-damage": 0.05, "major-damage": 0.03, destroyed: 0.02 } },
+  };
+  const nextScene = { scene_id: "hurricane-harvey_00000177", event_name: "hurricane-harvey", image: { width: 1024, height: 1024, post_url: "/demo-scenes/hurricane-harvey_00000177/post.png" }, buildings: [nextBuilding] };
   let predictRequests = 0;
   const fetch = async (url) => {
-    if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id }] }) };
+    if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id, event_name: scene.event_name }, { scene_id: nextScene.scene_id, event_name: nextScene.event_name }] }) };
     if (url === "/demo-scenes/hurricane-michael_00000247") return { ok: true, json: async () => scene };
+    if (url === "/demo-scenes/hurricane-harvey_00000177") return { ok: true, json: async () => nextScene };
     predictRequests += 1;
     throw new Error("Unexpected request: " + url);
   };
@@ -127,6 +136,16 @@ async function main() {
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
   assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
+  await document.elements.get("#scene-next").trigger("click");
+  assert.equal(document.elements.get("#pre-preview").src, undefined);
+  assert.equal(document.elements.get("#post-preview").src, undefined);
+  assert.equal(document.elements.get("#selection-label").textContent, "No pair selected");
+  assert.equal(document.elements.get("#result-card").hidden, true);
+  const nextPolygon = document.elements.get("#scene-overlay").children[0];
+  nextPolygon.trigger("click");
+  assert.equal(document.elements.get("#pre-preview").src, nextBuilding.crops.pre_url);
+  assert.equal(document.elements.get("#post-preview").src, nextBuilding.crops.post_url);
+  assert.equal(document.elements.get("#result-class").textContent, "no damage");
   assert.equal(predictRequests, 0);
   console.log("scene_page_integration=passed");
 }

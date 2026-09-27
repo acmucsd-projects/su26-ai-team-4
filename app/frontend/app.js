@@ -208,6 +208,10 @@ document.addEventListener("scene-building-selected", (event) => {
   if (!inspectSceneBuilding(selection.building)) event.preventDefault();
 });
 
+document.addEventListener("scene-changed", () => {
+  if (state.source === "scene") clearSelection();
+});
+
 preInput.addEventListener("change", () => setManualFile("pre", preInput.files[0]));
 postInput.addEventListener("change", () => setManualFile("post", postInput.files[0]));
 document.querySelectorAll(".example-button").forEach((button) => {

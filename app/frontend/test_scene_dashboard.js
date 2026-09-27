@@ -36,6 +36,11 @@ class FakeElement {
     return this.attributes.get(name);
   }
 
+  removeAttribute(name) {
+    this.attributes.delete(name);
+    if (name === "src") this._src = undefined;
+  }
+
   replaceChildren() {
     this.children = [];
   }
@@ -72,6 +77,10 @@ function createDocument() {
     ["#scene-canvas", new FakeElement()],
     ["#scene-post-image", new FakeElement()],
     ["#scene-overlay", new FakeElement()],
+    ["#scene-selector", new FakeElement()],
+    ["#scene-previous", new FakeElement()],
+    ["#scene-current", new FakeElement()],
+    ["#scene-next", new FakeElement()],
   ]);
   const listeners = new Map();
   return {
@@ -102,27 +111,36 @@ async function main() {
       selections.push(building);
     } else event.preventDefault();
   });
-  const buildings = Array.from({ length: 177 }, (_, index) => ({
-    id: `demo_b${index.toString().padStart(4, "0")}`,
-    pixel_polygon: [[index, 0], [index + 1, 0], [index + 1, 1]],
-    crops: { pre_url: `/crops/${index}-pre.png`, post_url: `/crops/${index}-post.png` },
-    prediction: {
-      predicted_class: DAMAGE_CLASSES[index % DAMAGE_CLASSES.length],
-      confidence: 0.8,
-      probabilities: Object.fromEntries(DAMAGE_CLASSES.map((className) => [className, className === DAMAGE_CLASSES[index % DAMAGE_CLASSES.length] ? 0.8 : 1 / 15])),
-    },
+  const sceneSummaries = [
+    ["hurricane-michael_00000247", "hurricane-michael", 177],
+    ["hurricane-harvey_00000177", "hurricane-harvey", 76],
+    ["hurricane-matthew_00000060", "hurricane-matthew", 75],
+    ["hurricane-florence_00000459", "hurricane-florence", 56],
+    ["palu-tsunami_00000065", "palu-tsunami", 129],
+    ["santa-rosa-wildfire_00000014", "santa-rosa-wildfire", 49],
+    ["socal-fire_00000663", "socal-fire", 48],
+  ].map(([scene_id, event_name, buildingCount]) => ({ scene_id, event_name, building_count: buildingCount }));
+  const scenes = new Map(sceneSummaries.map((summary) => {
+    const buildings = Array.from({ length: summary.building_count }, (_, index) => ({
+      id: `${summary.scene_id}_b${index.toString().padStart(4, "0")}`,
+      pixel_polygon: [[index, 0], [index + 1, 0], [index + 1, 1]],
+      crops: { pre_url: `/demo-scenes/${summary.scene_id}/crops/${index}-pre.png`, post_url: `/demo-scenes/${summary.scene_id}/crops/${index}-post.png` },
+      prediction: {
+        predicted_class: DAMAGE_CLASSES[index % DAMAGE_CLASSES.length],
+        confidence: 0.8,
+        probabilities: Object.fromEntries(DAMAGE_CLASSES.map((className) => [className, className === DAMAGE_CLASSES[index % DAMAGE_CLASSES.length] ? 0.8 : 1 / 15])),
+      },
+    }));
+    return [summary.scene_id, { ...summary, image: { width: 1024, height: 1024, post_url: `/demo-scenes/${summary.scene_id}/post.png` }, buildings }];
   }));
-  const scene = {
-    scene_id: "hurricane-michael_00000247",
-    event_name: "hurricane-michael",
-    image: { width: 1024, height: 1024, post_url: "/demo-scenes/hurricane-michael_00000247/post.png" },
-    buildings,
-  };
+  const firstScene = scenes.get(sceneSummaries[0].scene_id);
+  const secondScene = scenes.get(sceneSummaries[1].scene_id);
   const fetchCalls = [];
   const fetch = async (url) => {
     fetchCalls.push(url);
-    if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id }] }) };
-    if (url === "/demo-scenes/hurricane-michael_00000247") return { ok: true, json: async () => scene };
+    if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: sceneSummaries }) };
+    const sceneId = url.replace("/demo-scenes/", "");
+    if (scenes.has(sceneId)) return { ok: true, json: async () => scenes.get(sceneId) };
     throw new Error(`Unexpected fetch URL: ${url}`);
   };
   const source = fs.readFileSync(path.join(__dirname, "scene-dashboard.js"), "utf8");
@@ -135,7 +153,7 @@ async function main() {
     }
     preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
   }
-  vm.runInNewContext(source, { Array, CustomEvent, Error, Number, Promise, document, fetch });
+  vm.runInNewContext(source, { Array, CustomEvent, Error, Event: class { constructor(type) { this.type = type; } }, Number, Promise, document, fetch });
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   const canvas = document.elements.get("#scene-canvas");
@@ -143,9 +161,13 @@ async function main() {
   const overlay = document.elements.get("#scene-overlay");
   assert.deepEqual(fetchCalls, ["/demo-scenes", "/demo-scenes/hurricane-michael_00000247"]);
   assert.equal(canvas.hidden, false);
-  assert.equal(image.src, scene.image.post_url);
+  assert.equal(image.src, firstScene.image.post_url);
   assert.equal(overlay.getAttribute("viewBox"), "0 0 1024 1024");
   assert.equal(overlay.children.length, 177);
+  assert.equal(document.elements.get("#scene-selector").hidden, false);
+  assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Michael — Scene 247");
+  assert.equal(document.elements.get("#scene-previous").disabled, true);
+  assert.equal(document.elements.get("#scene-next").disabled, false);
   assert.deepEqual(new Set(overlay.children.map((polygon) => polygon.getAttribute("class").replace("scene-building ", ""))), new Set(DAMAGE_CLASSES));
   overlay.children.forEach((polygon) => {
     assert.match(polygon.getAttribute("class"), /^scene-building (no-damage|minor-damage|major-damage|destroyed)$/);
@@ -153,14 +175,32 @@ async function main() {
   });
   overlay.children[0].trigger("click");
   assert.equal(selections.length, 1);
-  assert.equal(selections[0].id, buildings[0].id);
+  assert.equal(selections[0].id, firstScene.buildings[0].id);
   assert.equal(overlay.children[0].classList.contains("selected"), true);
   assert.equal(overlay.children[0].getAttribute("aria-pressed"), "true");
   overlay.children[1].trigger("click");
   assert.equal(selections.length, 2);
-  assert.equal(selections[1].id, buildings[1].id);
+  assert.equal(selections[1].id, firstScene.buildings[1].id);
   assert.equal(overlay.children[0].classList.contains("selected"), false);
   assert.equal(overlay.children[1].classList.contains("selected"), true);
+
+  await document.elements.get("#scene-next").trigger("click");
+  assert.deepEqual(fetchCalls, ["/demo-scenes", "/demo-scenes/hurricane-michael_00000247", "/demo-scenes/hurricane-harvey_00000177"]);
+  assert.equal(image.src, secondScene.image.post_url);
+  assert.equal(overlay.children.length, 76);
+  assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Harvey — Scene 177");
+  assert.equal(document.elements.get("#scene-building-count").textContent, "76 buildings");
+  assert.equal(document.elements.get("#scene-previous").disabled, false);
+  assert.equal(overlay.children[0].classList.contains("selected"), false);
+  overlay.children[0].trigger("click");
+  assert.equal(selections.at(-1).id, secondScene.buildings[0].id);
+
+  for (let index = 2; index < sceneSummaries.length; index += 1) {
+    await document.elements.get("#scene-next").trigger("click");
+  }
+  assert.equal(fetchCalls.length, sceneSummaries.length + 1);
+  assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
+  assert.equal(document.elements.get("#scene-next").disabled, true);
   console.log("scene_dashboard_render=passed");
 }
 

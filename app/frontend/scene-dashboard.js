@@ -9,7 +9,14 @@
   const sceneCanvas = document.querySelector("#scene-canvas");
   const scenePostImage = document.querySelector("#scene-post-image");
   const sceneOverlay = document.querySelector("#scene-overlay");
+  const sceneSelector = document.querySelector("#scene-selector");
+  const scenePrevious = document.querySelector("#scene-previous");
+  const sceneCurrent = document.querySelector("#scene-current");
+  const sceneNext = document.querySelector("#scene-next");
   let selectedPolygon = null;
+  let availableScenes = [];
+  let currentSceneIndex = -1;
+  let isSceneLoading = false;
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -18,6 +25,28 @@
 
   function displayName(value) {
     return String(value).replace(/[-_]/g, " ");
+  }
+
+  function titleCase(value) {
+    return displayName(value).split(" ").filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  }
+
+  function sceneLabel(scene) {
+    const match = String(scene.scene_id || "").match(/^(.*)_(\d+)$/);
+    const eventName = titleCase(scene.event_name || match?.[1] || scene.scene_id);
+    return match ? eventName + " — Scene " + Number(match[2]) : eventName;
+  }
+
+  function updateSceneControls() {
+    if (availableScenes.length === 0) {
+      sceneSelector.hidden = true;
+      return;
+    }
+    sceneSelector.hidden = availableScenes.length < 2;
+    const scene = availableScenes[currentSceneIndex];
+    sceneCurrent.textContent = scene ? sceneLabel(scene) : "Loading scene…";
+    scenePrevious.disabled = isSceneLoading || currentSceneIndex <= 0;
+    sceneNext.disabled = isSceneLoading || currentSceneIndex >= availableScenes.length - 1;
   }
 
   function loadImage(url) {
@@ -99,26 +128,30 @@
     });
   }
 
-  async function loadSceneDashboard() {
-    try {
-      const listResponse = await fetch(DEMO_SCENES_URL);
-      const listBody = await listResponse.json().catch(() => ({}));
-      if (!listResponse.ok) throw new Error("Available demo scenes could not be loaded.");
-      if (!Array.isArray(listBody.scenes) || listBody.scenes.length === 0) {
-        sceneDescription.textContent = "No precomputed demo scenes are available locally.";
-        setSceneStatus("You can still test a single matched building pair below.");
-        return;
-      }
+  function clearSceneForLoad() {
+    clearSelectedPolygon();
+    sceneOverlay.replaceChildren();
+    scenePostImage.removeAttribute("src");
+    sceneCanvas.hidden = true;
+    document.dispatchEvent(new Event("scene-changed"));
+  }
 
-      const selectedScene = listBody.scenes[0];
+  async function loadSceneAt(index) {
+    const selectedScene = availableScenes[index];
+    if (!selectedScene || isSceneLoading) return;
+    isSceneLoading = true;
+    updateSceneControls();
+    clearSceneForLoad();
+    try {
       const sceneResponse = await fetch(DEMO_SCENES_URL + "/" + encodeURIComponent(selectedScene.scene_id));
       const scene = await sceneResponse.json().catch(() => ({}));
       if (!sceneResponse.ok) throw new Error("The selected demo scene could not be loaded.");
-      if (!scene?.image?.post_url || !Number.isFinite(Number(scene?.image?.width)) || !Number.isFinite(Number(scene?.image?.height))) {
+      if (scene?.scene_id !== selectedScene.scene_id || !scene?.image?.post_url || !Number.isFinite(Number(scene?.image?.width)) || !Number.isFinite(Number(scene?.image?.height))) {
         throw new Error("The selected demo scene is incomplete.");
       }
 
-      sceneDescription.textContent = displayName(scene.event_name) + " · " + displayName(scene.scene_id);
+      currentSceneIndex = index;
+      sceneDescription.textContent = sceneLabel(scene);
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + " buildings" : "";
       sceneBuildingCount.hidden = false;
       sceneOverlay.setAttribute("viewBox", "0 0 " + Number(scene.image.width) + " " + Number(scene.image.height));
@@ -131,8 +164,36 @@
       sceneBuildingCount.hidden = true;
       sceneDescription.textContent = "Demo scene unavailable.";
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
+    } finally {
+      isSceneLoading = false;
+      updateSceneControls();
     }
   }
 
+  async function loadSceneDashboard() {
+    try {
+      const listResponse = await fetch(DEMO_SCENES_URL);
+      const listBody = await listResponse.json().catch(() => ({}));
+      if (!listResponse.ok) throw new Error("Available demo scenes could not be loaded.");
+      if (!Array.isArray(listBody.scenes) || listBody.scenes.length === 0) {
+        sceneDescription.textContent = "No precomputed demo scenes are available locally.";
+        setSceneStatus("You can still test a single matched building pair below.");
+        return;
+      }
+      availableScenes = listBody.scenes.filter((scene) => typeof scene?.scene_id === "string" && scene.scene_id);
+      if (availableScenes.length === 0) throw new Error("No usable demo scenes are available.");
+      currentSceneIndex = 0;
+      updateSceneControls();
+      await loadSceneAt(currentSceneIndex);
+    } catch (error) {
+      sceneCanvas.hidden = true;
+      sceneBuildingCount.hidden = true;
+      sceneDescription.textContent = "Demo scene unavailable.";
+      setSceneStatus(error.message || "The demo scene could not be loaded.", true);
+    }
+  }
+
+  scenePrevious.addEventListener("click", () => loadSceneAt(currentSceneIndex - 1));
+  sceneNext.addEventListener("click", () => loadSceneAt(currentSceneIndex + 1));
   loadSceneDashboard();
 })();
