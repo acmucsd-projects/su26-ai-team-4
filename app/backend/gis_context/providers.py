@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 from collections import Counter
+from datetime import datetime
+import os
 
 from shapely.errors import GEOSException
 from shapely.geometry import LineString, Point, Polygon, shape
@@ -20,7 +22,6 @@ HCAD_FIELDS = (
     "LANDUSE_DS", "landuse_cd", "ECON_CLASS", "IMPROVTYPE", "BLDTYPE_DS", "BLDG_STYCD",
     "BLDG_STYDS", "YEAR_BUILT", "BUILDCOUNT", "PROP_NAME",
 )
-OSM_KEYS = "building|building:use|amenity|healthcare|emergency|office|shop|tourism|leisure|landuse|name|addr:.*|site|social_facility"
 
 
 def source_info(provider: str, snapshot: str) -> Source:
@@ -33,7 +34,8 @@ def source_info(provider: str, snapshot: str) -> Source:
                       "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation", NSI_URL, True)
     return Source("osm", provider, "Overpass snapshot", snapshot,
                   "event_snapshot" if provider == "osm_historical" else "current_only",
-                  "© OpenStreetMap contributors; ODbL 1.0", "https://www.openstreetmap.org/copyright", OVERPASS_URL)
+                  "© OpenStreetMap contributors; ODbL 1.0", "https://www.openstreetmap.org/copyright",
+                  os.environ.get("GIS_OVERPASS_URL", OVERPASS_URL))
 
 
 def hcad_schema(client: CachedClient) -> dict:
@@ -68,24 +70,32 @@ def fetch_nsi(client: CachedClient, bbox, snapshot: str) -> tuple[dict, Source]:
     return payload, source_info("nsi", snapshot)
 
 
+def overpass_timestamp(value: str) -> str:
+    """Overpass dates use whole seconds; retain original capture precision in Scene."""
+    date = datetime.fromisoformat(utc_timestamp(value).replace("Z", "+00:00"))
+    return date.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def overpass_query(bbox, historical_time: str | None) -> str:
     west, south, east, north = bbox
-    date = f'[date:"{utc_timestamp(historical_time)}"]' if historical_time else ""
+    date = f'[date:"{overpass_timestamp(historical_time)}"]' if historical_time else ""
     bounds = f"({south},{west},{north},{east})"
-    # Include semantic objects, enclosing site relations, and relation members.
-    # Do not manufacture campus boundaries from a centroid or convex hull.
-    return (f"[out:json][timeout:45]{date};"
-            f'(nwr[~"^({OSM_KEYS})$"~"."]{bounds};rel["type"="site"]{bounds};)->.seed;'
-            "(.seed;rel(bw.seed);rel(bn.seed);rel(br.seed););(._;>>;);out meta geom;")
+    # A small all-object bbox is faster for attic data than tag-regex recursion.
+    # out geom includes complete way geometry and direct relation-member geometry;
+    # recursively downloading route members would expand far beyond this scene.
+    # Semantic filtering remains in osm_features/osm_claims. Enclosing polygons
+    # with no node/member in the bbox are a documented extract limitation.
+    return f"[out:json][timeout:25]{date};nwr{bounds};out meta geom;"
 
 
 def fetch_osm(client: CachedClient, bbox, snapshot: str, historical: bool) -> tuple[dict, Source]:
     provider = "osm_historical" if historical else "osm_current"
-    payload = client.get_json(OVERPASS_URL, provider=provider, release="Overpass attic" if historical else "current",
-                              bbox=bbox, snapshot=snapshot, form={"data": overpass_query(bbox, snapshot if historical else None)})
+    endpoint = os.environ.get("GIS_OVERPASS_URL", OVERPASS_URL)
+    payload = client.get_json(endpoint, provider=provider, release="Overpass attic" if historical else "current",
+                              bbox=bbox, snapshot=snapshot, params={"data": overpass_query(bbox, snapshot if historical else None)})
     if not isinstance(payload.get("elements"), list) or not payload.get("osm3s", {}).get("timestamp_osm_base"):
         raise ValueError("Incomplete Overpass response or missing source timestamp.")
-    source = source_info(provider, snapshot if historical else payload["osm3s"]["timestamp_osm_base"])
+    source = source_info(provider, overpass_timestamp(snapshot) if historical else payload["osm3s"]["timestamp_osm_base"])
     return payload, source
 
 

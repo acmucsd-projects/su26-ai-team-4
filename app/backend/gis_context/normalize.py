@@ -43,8 +43,8 @@ def property_category(value: object) -> str:
         (r"\b(residential|single[ -]?family|residence)\b", "residential"),
         (r"\b(warehouse|storage)\b", "warehouse"),
         (r"\b(industrial|manufacturing|factory)\b", "industrial"),
-        (r"\b(retail|shopping|store)\b", "commercial_retail"),
-        (r"\b(office|professional)\b", "office_professional"),
+        (r"\b(retail|shopping|store|auto service|auto dealer)\b", "commercial_retail"),
+        (r"\b(office|professional|bank)\b", "office_professional"),
         (r"\b(church|religious|mosque|temple)\b", "religious"),
         (r"\b(government|municipal|civic)\b", "government_civic"),
         (r"\b(recreation|community center)\b", "recreation_community"),
@@ -121,9 +121,9 @@ OSM_VALUES = {
     "house": "residential", "detached": "residential", "residential": "residential", "bungalow": "residential",
     "apartments": "multifamily", "dormitory": "residential", "retail": "commercial_retail",
     "restaurant": "commercial_retail", "cafe": "commercial_retail", "fast_food": "commercial_retail",
-    "office": "office_professional", "industrial": "industrial", "warehouse": "warehouse",
+    "office": "office_professional", "bank": "office_professional", "industrial": "industrial", "warehouse": "warehouse",
     "farm": "agricultural", "farmland": "agricultural", "farm_auxiliary": "agricultural",
-    "train_station": "transportation", "transportation": "transportation",
+    "train_station": "transportation", "transportation": "transportation", "bicycle_rental": "transportation",
 }
 CRITICAL_TAGS = {
     ("amenity", "hospital"), ("healthcare", "hospital"), ("amenity", "fire_station"),
@@ -155,6 +155,8 @@ def osm_claims(feature: Feature, match: Match) -> list[Claim]:
         building_claim = key in {"building", "building:use"} and match.relationship == "footprint"
         claim_scope = "building" if building_claim else scope
         kind = "structure_type" if key == "building" else "structure_use" if building_claim else "site_use" if scope == "site" else "mapped_place"
+        if key == "landuse" and scope == "site":
+            kind = "area_use"
         # Structural design tags do not prove the roof's current facility function.
         critical = (key, value) in CRITICAL_TAGS and match.spatial_confidence == "strong"
         label = f"{period} {claim_scope}: {value.replace('_', ' ')}"
@@ -162,15 +164,25 @@ def osm_claims(feature: Feature, match: Match) -> list[Claim]:
             label += f" ({name})"
         if scope == "site":
             label = f"Within {period.lower()} site: {name or value.replace('_', ' ')}"
+        if kind == "area_use":
+            label = f"Within {period.lower()} {value.replace('_', ' ')} area" + (f": {name}" if name else "")
         claims.append(make_claim(feature, match, kind, claim_scope, category, label,
                                  {key: value, **({"name": name} if name else {})},
                                  "explicit_osm_tag_not_independently_verified", mapped_name=name if not building_claim else None,
                                  critical_facility=critical))
     if name and not any(c.mapped_name for c in claims):
-        claims.append(make_claim(feature, match, "mapped_name", "building" if match.relationship == "footprint" else scope,
-                                 "unknown", f"{period} name ({scope}): {name}", {"name": name},
+        name_scope = "building" if match.relationship == "footprint" else scope
+        claims.append(make_claim(feature, match, "mapped_name", name_scope,
+                                 "unknown", f"{period} name ({name_scope}): {name}", {"name": name},
                                  "mapped_name_not_verified_building_identity", mapped_name=name))
-    return claims
+    unique = {}
+    for claim in claims:
+        key = (claim.kind, claim.scope, claim.category, claim.label, claim.critical_facility)
+        if key in unique:
+            unique[key].raw_value.update(claim.raw_value)
+        else:
+            unique[key] = claim
+    return list(unique.values())
 
 
 def compare_claims(claims: list[Claim]) -> list[dict]:

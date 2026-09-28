@@ -22,6 +22,7 @@ FLAGS = (
     "site_context", "critical_facility", "conflicting_claims", "ambiguous_rejected_candidates",
     "combined_displayable_context", "event_aligned_useful_context", "broad_use_coverage",
     "historical_current_conflicts", "no_context",
+    "landuse_area_context", "context_excluding_landuse_areas", "direct_building_place_context",
 )
 
 
@@ -87,6 +88,9 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "historical_current_conflicts": flag(any(c["reason"] == "historical_current_difference" for c in conflicts),
                                             all(statuses[p]["status"] == "complete" for p in ("osm_historical", "osm_current"))),
         "no_context": False if useful else True if complete else None,
+        "landuse_area_context": flag(any(c.kind == "area_use" for c in useful), complete),
+        "context_excluding_landuse_areas": flag(any(c.kind != "area_use" for c in useful), complete),
+        "direct_building_place_context": flag(any(c.scope in {"building", "place"} for c in useful), complete),
     }
     return {"building_id": building["id"], "uid": building["uid"], "geometry": geometry,
             "evaluation_status": "evaluated" if complete else "partially_evaluated",

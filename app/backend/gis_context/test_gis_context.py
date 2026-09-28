@@ -168,6 +168,21 @@ class MatchingTests(unittest.TestCase):
 
 
 class SemanticTests(unittest.TestCase):
+    def test_real_hcad_bank_and_compound_garage_description(self):
+        self.assertEqual(property_category("Bank"), "office_professional")
+        self.assertEqual(property_category("Auto Service Garage,Warehouse - Metallic"), "mixed")
+
+    def test_real_osm_duplicate_dentist_tags_preserve_one_claim(self):
+        claims = osm_claims(feature(properties={"amenity": "dentist", "healthcare": "dentist", "name": "Fixture"}), accepted("place"))
+        self.assertEqual(len(claims), 1)
+        self.assertEqual(claims[0].raw_value, {"amenity": "dentist", "healthcare": "dentist", "name": "Fixture"})
+
+    def test_residential_landuse_is_area_context_not_building_use(self):
+        claims = osm_claims(feature(properties={"landuse": "residential", "name": "Fixture Neighbourhood"}), accepted("site"))
+        self.assertEqual(claims[0].kind, "area_use")
+        self.assertEqual(claims[0].scope, "site")
+        self.assertIn("residential area", claims[0].label)
+
     def test_nsi_taxonomy_and_unknown(self):
         for code, expected in {"RES1-2SWB": "residential", "RES3F": "multifamily", "RES4": "lodging", "RES6": "medical",
                                "COM1": "commercial_retail", "COM6": "medical", "COM7": "medical", "GOV2": "emergency_services",
@@ -224,13 +239,24 @@ class SemanticTests(unittest.TestCase):
 
 
 class ProviderTests(unittest.TestCase):
-    def test_queries_are_bulk_semantic_and_historical(self):
+    def test_queries_are_bulk_all_tags_and_historical(self):
         query = overpass_query((-95.4, 29.7, -95.3, 29.8), "2017-09-01T12:00:00Z")
         self.assertIn('[date:"2017-09-01T12:00:00Z"]', query)
         self.assertIn("nwr", query)
-        for key in ("building:use", "healthcare", "emergency", "office", "shop", "name", "addr:", "site"):
-            self.assertIn(key, query)
+        self.assertIn("nwr(29.7,-95.4,29.8,-95.3);out meta geom;", query)
         self.assertNotIn("[date:", overpass_query((-95.4, 29.7, -95.3, 29.8), None))
+
+    def test_real_scene_query_does_not_expand_entire_highway_routes(self):
+        query = overpass_query((-95.4, 29.7, -95.3, 29.8), None)
+        self.assertNotIn(">>", query)
+        self.assertNotIn("rel(b", query)
+        self.assertIn("out meta geom", query)
+
+    def test_real_capture_precision_is_adapted_to_overpass_seconds(self):
+        capture = "2017-08-31T17:38:50.685Z"
+        query = overpass_query((-95.4, 29.7, -95.3, 29.8), capture)
+        self.assertIn('[date:"2017-08-31T17:38:50Z"]', query)
+        self.assertEqual(utc_timestamp(capture), "2017-08-31T17:38:50.685000Z")
 
     def test_nsi_ring_not_four_number_bbox(self):
         class Client:
