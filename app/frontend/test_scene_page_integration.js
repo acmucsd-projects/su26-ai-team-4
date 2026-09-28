@@ -111,8 +111,10 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=building-context-2"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=building-context-2"'));
+  assert.match(html, /href="styles\.css\?v=building-context-3"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=building-context-3"'));
+  assert.match(styles, /\.context-more summary:focus-visible\s*\{[^}]*outline: 2px solid var\(--blue\)/);
+  assert.match(styles, /\.context-more summary:focus:not\(:focus-visible\)\s*\{\s*outline: none/);
   assert.match(html, /openstreetmap.org\/copyright/);
   assert.match(html, /ODbL/);
   assert.match(html, /<details id="context-more"/);

@@ -61,14 +61,15 @@ demo-building IDs, not GIS provider IDs.
 | Scene | Selection | Expected context |
 | --- | --- | --- |
 | Harvey | `b0006` | Parcel-linked single-family structure use and separately modeled residential use |
-| Harvey | `b0004` | Dentist; mixed commercial/healthcare/professional modeled uses; low-rise office property |
+| Harvey | `b0004` | Mapped use: Dental office; Property use: Low-rise office; then Modeled use: Commercial / Healthcare / Professional services |
 | Harvey | `b0009` | Historical and current mapped place claims with separate timing |
 | Harvey | `b0069` | Compact, muted area-only residential context |
 | Michael | `b0010` | Residential: multifamily property, up to 10 units, **2017 pre-event** |
 | Michael | `b0032` | Commercial: retail property, **2017 pre-event** |
 | Michael | `b0148` | No context section; damage result remains visible |
-| Santa Rosa | `b0000` | One Education/campus statement; **vintage unverified**, supported by multiple sources |
+| Santa Rosa | `b0000` | One Education/campus statement; **School-site record · date uncertain**; category support from multiple sources |
 | Santa Rosa | `b0006` | One named campus statement plus a separate mixed modeled-use statement and a visible disagreement note |
+| Santa Rosa | `b0018` | Roseland Collegiate Prep, without redundant "Educational institution"; site: Within Roseland Collegiate Prep / St. Rose campus |
 | Santa Rosa | `b0048` | No context section |
 
 The collapsed section shows a category and up to three short, scope-labeled
@@ -77,6 +78,11 @@ expands source names, original classifications, dates and scope qualifications;
 it also holds lower-priority context such as a surrounding neighborhood. Area-only
 selections use a smaller, muted presentation. OpenStreetMap attribution remains
 visible. No facility badges are added.
+
+School-site technical timing (including **vintage unverified**) stays in the
+disclosure and structured temporal relation. Verified historical/current mapping
+uses a short combined label. The disclosure has a rounded blue keyboard
+`:focus-visible` state in both its collapsed and expanded states.
 
 Context clears on no-context selections, Clear, scene changes, filters that remove
 the selected footprint, manual uploads and crop examples. PRE/POST modes preserve
@@ -128,7 +134,8 @@ Each schema-v2 `building_context` includes:
   scope, modeled flag, temporal relation, multi-structure flag, qualifications and
   references to supporting claims. Each concept retains its own evidence links.
 - `statements`: deterministic UI wording and references to its supporting contexts,
-  direct supporting claims and separately identified corroborating claims.
+  direct supporting claims and separately identified corroborating claims. The
+  optional `support_label` distinguishes category support from shared site identity.
 - `primary_category`, `primary_label`, `primary_statement_ids`, `area_only`,
   source-support indicators, structured reviewed `conflicts` and readable notes.
 
@@ -142,14 +149,26 @@ recorded as `education_category_only`; it does not establish a roof's identity.
 Historical/current OSM and multiple Sonoma layers count as one provider family
 each when showing multiple-source support, not as independent observations.
 
+The final vocabulary review covered the distinct approved classifications in all
+three scenes. Bare OSM `house` remains **House**, rather than implying single-family
+occupancy; **Mobile home** and **Rural residential** retain their source distinctions.
+`dentist` becomes **Dental office** with the scope label **Mapped use** when unnamed.
+Redundant category wording is omitted from named-place summaries; raw names,
+classifications and all subtype concepts remain available in evidence.
+
 Mixed modeled occupancies keep all concepts and their claim links. A modeled
 School component can corroborate Education while its commercial component remains
 in a separate mixed-use statement. Conflicting categories, differing names and
 reviewed disagreements remain inspectable and are not merged into agreement.
 Areas never corroborate building use and stay outside the primary view when
 stronger context exists. Direct identities, structure use, modeled use, properties,
-sites and areas otherwise determine order; consolidated education inherits the
+sites and areas otherwise determine order; mixed modeled use follows property
+context and keeps a short category list. Consolidated education inherits the
 priority of its useful supporting context without inheriting that context's scope.
+The heading uses the highest-priority classified evidence, with equally useful
+different categories producing **Mixed Use**. A name-only claim cannot determine
+use or block a category supported by separate evidence. Date/category/text ordering
+breaks display ties consistently without depending on provider input order.
 
 A future assessment can consume `contexts`, `conflicts` and their evidence links
 alongside the existing, separate prediction probabilities. It need not parse UI
@@ -168,8 +187,10 @@ The integration was checked in local headless Chrome at desktop and 390-pixel
 mobile widths, including all examples above, clearing, filtering, scene switching,
 imagery modes, expanded context, uploads and examples. Screenshots and the local
 browser verification report for the cleaned presentation are ignored under
-`local_experiments/gis_context_v2/presentation-review/`. All 71 Python tests and
-three frontend Node tests pass. No model inference is needed.
+`local_experiments/gis_context_v2/final-context-review/`. All 74 Python tests and
+three frontend Node tests pass. Keyboard Tab/Enter, collapsed/expanded focus,
+original wording and school timing were also checked in real Chrome. No model
+inference is needed.
 
 ## Publication boundary
 

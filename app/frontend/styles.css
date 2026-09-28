@@ -139,7 +139,9 @@ button { cursor: pointer; }
 .area-only .context-value { color: var(--muted); font-weight: 400; }
 .area-only .context-category { display: none; }
 .context-more { margin-top: 12px; color: var(--muted); font-size: 0.78rem; }
-.context-more summary { width: fit-content; padding: 3px 0; cursor: pointer; }
+.context-more summary { width: fit-content; margin-left: -6px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.context-more summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; background: var(--blue-pale); color: var(--blue-dark); }
+.context-more summary:focus:not(:focus-visible) { outline: none; }
 .context-more[open] summary { margin-bottom: 10px; }
 .context-evidence { display: grid; gap: 12px; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); list-style: none; }
 .context-evidence p { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 0.73rem; line-height: 1.45; }
