@@ -16,6 +16,12 @@ def summary_text(report: dict) -> str:
         lines.append(f"| {metric} | {count} | {percent} | {value['unknown_buildings']} |")
     lines += ["", "Provider status:", ""]
     lines += [f"- {key}: {value['status']}" for key, value in report["providers"].items()]
+    if report.get("provider_overlap"):
+        lines += ["", "Provider overlap and ordered incremental semantic contribution:", "",
+                  "```json", json.dumps(report["provider_overlap"], indent=2), "```"]
+    if report.get("pre_qa_metrics"):
+        lines += ["", "Counts above reflect recorded manual holds. Pre-QA metrics, claims, and conflicts remain in audit.json.",
+                  "QA notes: " + report["qa"].get("summary", ""), ""]
     lines += ["", "Blockers:", ""] + ["- " + reason for reason in report["blockers"]]
     lines += ["", "Manual QA: " + report["qa"]["status"], "", "Decision: " + report["decision"], "",
               "See review.html for claims/evidence and review.geojson for geographic inspection.",
@@ -30,15 +36,18 @@ def write_reports(report: dict, output: Path) -> None:
     (output / "audit.json").write_text(json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
     summary = summary_text(report)
     (output / "summary.md").write_text(summary, encoding="utf-8")
-    columns = ["building_id", "uid", "evaluation_status", "flags", "claims", "conflicts", "candidates", "qa_status", "qa_reasons"]
+    flag_columns = list(report["metrics"])
+    columns = ["building_id", "uid", "evaluation_status", *flag_columns, "nsi_occupancies", "displayable_context",
+               "claims", "conflicts", "candidates", "qa_status", "qa_reasons", "qa_notes"]
     with (output / "review.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
         writer.writeheader()
         for row in report["buildings"]:
-            writer.writerow({key: json.dumps(row[key], ensure_ascii=False) if isinstance(row[key], (dict, list)) else row[key] for key in columns})
+            values = {**row, **row["flags"]}
+            writer.writerow({key: json.dumps(values.get(key), ensure_ascii=False) if isinstance(values.get(key), (dict, list)) else values.get(key) for key in columns})
     features, seen = [], set()
     cards = []
-    for row in report["buildings"]:
+    for index, row in enumerate(report["buildings"]):
         features.append({"type": "Feature", "geometry": row["geometry"], "properties": {
             key: row[key] for key in ("uid", "building_id", "claims", "flags", "qa_status", "qa_reasons")}})
         for candidate in row["candidates"]:
@@ -50,9 +59,12 @@ def write_reports(report: dict, output: Path) -> None:
                     "raw_source_values": candidate["raw_source_values"]}})
         context = row["displayable_context"]
         labels = "Not evaluated" if context is None else "; ".join(context) or "No displayable context"
+        qa_notes = "<p>QA findings: " + escape("; ".join(row["qa_notes"])) + "</p>" if row.get("qa_notes") else ""
+        map_name = f"qa-map-{index // 9 + 1:02d}.png"
+        map_link = f"<p><a href='{map_name}'>Local spatial review sheet</a> (automated candidate matches; manual holds below)</p>" if (output / map_name).is_file() else ""
         cards.append("<article><h2>" + escape(row["building_id"]) + "</h2><p>UID: " + escape(row["uid"]) + "</p><p>"
                      + escape(labels) + "</p><p>QA: " + escape(row["qa_status"] + " / " + ", ".join(row["qa_reasons"]))
-                     + "</p><details><summary>Claims, location, raw values, and matching evidence</summary><pre>"
+                     + "</p>" + qa_notes + map_link + "<details><summary>Claims, location, raw values, and matching evidence</summary><pre>"
                      + escape(json.dumps(row, indent=2, ensure_ascii=False)) + "</pre></details></article>")
     (output / "review.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
     html = ("<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width'>"

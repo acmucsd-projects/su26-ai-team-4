@@ -1,6 +1,7 @@
 """Synthetic geometry tests; none of these fixtures are Harvey audit evidence."""
 
 from dataclasses import replace
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -18,6 +19,7 @@ from .models import Feature, Match
 from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
 from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
 from .report import write_reports
+from .review import apply_review, evidence_sha256
 
 
 def feature(record_id="1", geometry=None, properties=None, provider="osm_current"):
@@ -331,6 +333,53 @@ class ProviderTests(unittest.TestCase):
 
 
 class ReportingTests(unittest.TestCase):
+    def review_fixture(self):
+        statuses = {p: {"status": "complete"} for p in PROVIDERS}
+        modeled = nsi_claims(feature(provider="nsi", properties={"occtype": "RES1"}), accepted("nsi_structure"))
+        dental = osm_claims(feature(properties={"amenity": "dentist", "name": "Old fixture name"}), accepted("place"))
+        rows = [build_row({"id": "a", "uid": "a"}, None, modeled, [], statuses),
+                build_row({"id": "b", "uid": "b"}, None, dental, [], statuses)]
+        report = {"status": "awaiting_manual_qa", "input_sha256": {"label": "fixture"},
+                  "cache_entries": [{"request": {"provider": "nsi"}, "sha256": "fixture"}],
+                  "providers": statuses, "buildings": rows, "metrics": aggregate(rows),
+                  "source_contribution": {}, "provider_overlap": {}, "qa": select_qa(rows)}
+        review = {"input_sha256": report["input_sha256"], "cache_response_sha256": {"nsi": "fixture"},
+                  "evidence_sha256": evidence_sha256(report),
+                  "reviewed_uids": ["a", "b"], "decision": "fixture only", "claim_actions": [
+                      {"uid": "a", "provider": "nsi", "record_id": "1", "action": "withhold_claim", "reason": "source footprint mismatch"},
+                      {"uid": "b", "provider": "osm_current", "record_id": "1", "action": "withhold_name", "reason": "stale name"}]}
+        return report, review
+
+    def test_real_qa_holds_recompute_coverage_and_preserve_raw_claims(self):
+        report, review = self.review_fixture()
+        result = apply_review(report, review)
+        self.assertEqual(result["metrics"]["combined_displayable_context"]["count"], 1)
+        self.assertEqual(result["pre_qa_metrics"]["combined_displayable_context"]["count"], 2)
+        self.assertFalse(result["buildings"][0]["claims"][0]["displayable"])
+        self.assertEqual(result["source_contribution"]["nsi"]["displayable_buildings"], 0)
+        dental = result["buildings"][1]["claims"][0]
+        self.assertEqual(dental["raw_value"]["name"], "Old fixture name")
+        self.assertIsNone(dental["mapped_name"])
+        self.assertNotIn("Old fixture name", dental["label"])
+        self.assertTrue(dental["displayable"])
+        self.assertTrue(report["buildings"][0]["claims"][0]["displayable"])
+
+    def test_real_qa_cannot_be_reused_after_inputs_or_provider_data_change(self):
+        report, review = self.review_fixture()
+        for key in ("input_sha256", "cache_response_sha256"):
+            changed = deepcopy(review)
+            changed[key] = {"different": "data"}
+            with self.assertRaisesRegex(ValueError, "hashes differ"):
+                apply_review(report, changed)
+        changed = deepcopy(review)
+        changed["reviewed_uids"] = ["a"]
+        with self.assertRaisesRegex(ValueError, "all scene UIDs"):
+            apply_review(report, changed)
+        changed_report = deepcopy(report)
+        changed_report["buildings"][0]["claims"][0]["label"] = "Changed normalization"
+        with self.assertRaisesRegex(ValueError, "hashes differ"):
+            apply_review(changed_report, review)
+
     def test_four_provider_pipeline_with_synthetic_data(self):
         # Deliberately invented fixtures: this validates software, not real Harvey coverage.
         with TemporaryDirectory() as temporary:

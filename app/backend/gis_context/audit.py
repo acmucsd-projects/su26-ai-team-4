@@ -1,6 +1,7 @@
 """Harvey-only offline audit orchestration, with explicit unevaluated results."""
 
 from dataclasses import asdict
+from itertools import combinations
 import json
 from pathlib import Path
 
@@ -23,6 +24,8 @@ FLAGS = (
     "combined_displayable_context", "event_aligned_useful_context", "broad_use_coverage",
     "historical_current_conflicts", "no_context",
     "landuse_area_context", "context_excluding_landuse_areas", "direct_building_place_context",
+    "hcad_parcel_ambiguity", "ambiguous_candidates", "site_context_excluding_landuse",
+    "direct_mapped_name", "broad_use_excluding_landuse_areas", "event_aligned_direct_context",
 )
 
 
@@ -91,6 +94,12 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "landuse_area_context": flag(any(c.kind == "area_use" for c in useful), complete),
         "context_excluding_landuse_areas": flag(any(c.kind != "area_use" for c in useful), complete),
         "direct_building_place_context": flag(any(c.scope in {"building", "place"} for c in useful), complete),
+        "hcad_parcel_ambiguity": flag(any(c["ambiguous"] for c in matches["hcad"]), hc),
+        "ambiguous_candidates": flag(any(c["ambiguous"] for c in candidates), complete),
+        "site_context_excluding_landuse": flag(any(c.scope == "site" and c.kind != "area_use" for c in useful), complete),
+        "direct_mapped_name": flag(any(c.mapped_name and c.scope in {"building", "place"} for c in useful), complete),
+        "broad_use_excluding_landuse_areas": flag(any(c.kind != "area_use" and c.category != "unknown" for c in useful), complete),
+        "event_aligned_direct_context": flag(any(c.source.temporal_status in {"event_year", "event_snapshot"} and c.scope in {"building", "place"} for c in useful), event_complete),
     }
     return {"building_id": building["id"], "uid": building["uid"], "geometry": geometry,
             "evaluation_status": "evaluated" if complete else "partially_evaluated",
@@ -124,6 +133,37 @@ def select_qa(rows: list[dict]) -> dict:
             row["qa_status"] = "pending_review"
     return {"status": "pending_review", "selected_uids": [r["uid"] for r in rows if r["qa_reasons"]],
             "note": "Selection is not a claim that manual review has been completed."}
+
+
+def source_coverage(rows: list[dict], statuses: dict) -> tuple[dict, dict | None]:
+    """Count unique displayable semantics, including after manual claim holds."""
+    sets = {p: set() for p in PROVIDERS}
+    for row in rows:
+        for claim in row["claims"]:
+            if claim["displayable"]:
+                source = claim["source"]
+                provider = source["dataset"] if source["provider"] == "osm" else source["provider"]
+                sets[provider].add(row["uid"])
+    complete = all(statuses[p]["status"] == "complete" for p in PROVIDERS)
+    contributions = {}
+    for provider, uids in sets.items():
+        others = set().union(*(sets[p] for p in PROVIDERS if p != provider))
+        ready = statuses[provider]["status"] == "complete"
+        contributions[provider] = {"displayable_buildings": len(uids) if ready or uids else None,
+                                   "percent": round(len(uids) / len(rows) * 100, 2) if ready else None,
+                                   "unique_additional_buildings": len(uids - others) if complete else None}
+    if not complete:
+        return contributions, None
+    seen, incremental = set(), {}
+    for provider in PROVIDERS:
+        added = len(sets[provider] - seen)
+        incremental[provider] = {"count": added, "percent_of_76": round(100 * added / len(rows), 2)}
+        seen.update(sets[provider])
+    overlap = {"incremental_order": list(PROVIDERS), "incremental": incremental,
+               "pairwise": {a + "+" + b: {"count": len(sets[a] & sets[b]),
+                            "percent_of_76": round(100 * len(sets[a] & sets[b]) / len(rows), 2)}
+                            for a, b in combinations(PROVIDERS, 2)}}
+    return contributions, overlap
 
 
 def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot: str, fetch: bool = False) -> dict:
@@ -176,16 +216,7 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
                 claims.extend(normalizer(feature, match))
         rows.append(build_row(building, mapping(scene.geographic[uid]), claims, candidates, statuses))
     complete = all(status["status"] == "complete" for status in statuses.values())
-    contributions = {}
-    for provider in PROVIDERS:
-        def contributes(claim, p=provider):
-            return claim["source"]["dataset"] == p if p.startswith("osm_") else claim["source"]["provider"] == p
-        count = sum(any(contributes(c) for c in row["claims"] if c["displayable"]) for row in rows)
-        exclusive = sum(bool(row["claims"]) and all(contributes(c) for c in row["claims"]) for row in rows)
-        ready = statuses[provider]["status"] == "complete"
-        contributions[provider] = {"displayable_buildings": count if ready or count else None,
-                                   "percent": round(count / 76 * 100, 2) if ready else None,
-                                   "unique_additional_buildings": exclusive if complete else None}
+    contributions, provider_overlap = source_coverage(rows, statuses)
     return {"report_schema_version": 1, "scene_id": SCENE_ID, "building_count": 76,
             "status": "awaiting_manual_qa" if complete else "partial_provider_data",
             "blockers": [] if complete else [p + ": " + statuses[p]["status"] for p in PROVIDERS if statuses[p]["status"] != "complete"],
@@ -193,5 +224,5 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
             "query_bbox_wgs84": scene.query_bbox, "query_extent_basis": "all raw POST lng_lat footprint bounds + 50 m; not image georeferencing",
             "input_sha256": {"scene_manifest": scene.manifest_sha256, "raw_post_label": scene.label_sha256},
             "providers": statuses, "cache_entries": client.used, "buildings": rows, "metrics": aggregate(rows),
-            "source_contribution": contributions, "qa": select_qa(rows),
+            "source_contribution": contributions, "provider_overlap": provider_overlap, "qa": select_qa(rows),
             "decision": "pending real-data manual QA; do not infer feasibility from footprint coverage"}
