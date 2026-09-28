@@ -7,7 +7,21 @@ surrounding-area context. No-context selections show no GIS section.
 
 ## Start or rebuild locally (PowerShell)
 
-From the repository root, using the existing ignored GIS environment:
+From the repository root, regenerate the reviewed overlays and start/restart the
+local demo in the background with one command:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\app\backend\run_local_gis_demo.ps1 -Restart
+```
+
+This uses a process-only execution-policy override because this Windows machine
+disables `.ps1` files by default; it does not change the machine policy. The helper
+checks that the saved PID belongs to this environment's local uvicorn server
+before restarting its process tree. Logs and PID stay in the ignored GIS folder.
+Omit `-Restart` to reuse a running instance. Open **http://127.0.0.1:8000/**.
+
+For a foreground server (after stopping any server already using port 8000), or
+to run the export separately, use the existing ignored GIS environment:
 
 ```powershell
 $demoPython = '.\local_experiments\gis_context_v2\.venv\Scripts\python.exe'
@@ -17,8 +31,7 @@ $env:DEMO_SCENES_ONLY = '1'
 & $demoPython -B -m uvicorn app.backend.api:app --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000/**. If the local server is already running, open that
-URL directly. Stop a foreground server with Ctrl+C before restarting on that port.
+Stop a foreground server with Ctrl+C before restarting on that port.
 
 If setting up another environment, install the lightweight server dependencies:
 
@@ -47,19 +60,23 @@ demo-building IDs, not GIS provider IDs.
 
 | Scene | Selection | Expected context |
 | --- | --- | --- |
-| Harvey | `b0006` | Modeled single-family residential, separate 2017 event-year property and parcel-linked structure context |
-| Harvey | `b0004` | Current dental use with the held business name absent; multiple modeled occupancies retained |
+| Harvey | `b0006` | Parcel-linked single-family structure use and separately modeled residential use |
+| Harvey | `b0004` | Dentist; mixed commercial/healthcare/professional modeled uses; low-rise office property |
 | Harvey | `b0009` | Historical and current mapped place claims with separate timing |
-| Michael | `b0003` | Modeled use and explicitly **2017 pre-event** property context |
+| Harvey | `b0069` | Compact, muted area-only residential context |
+| Michael | `b0010` | Residential: multifamily property, up to 10 units, **2017 pre-event** |
+| Michael | `b0032` | Commercial: retail property, **2017 pre-event** |
 | Michael | `b0148` | No context section; damage result remains visible |
-| Santa Rosa | `b0000` | School site membership, advertised July 2017 / **vintage unverified**, plus current parcel and OSM site context |
+| Santa Rosa | `b0000` | One Education/campus statement; **vintage unverified**, supported by multiple sources |
+| Santa Rosa | `b0006` | One named campus statement plus a separate mixed modeled-use statement and a visible disagreement note |
 | Santa Rosa | `b0048` | No context section |
 
-The first three grouped claims appear directly below the damage result. More
-claims use a collapsed disclosure. Claims group only when kind, scope, source,
-timing and qualifications agree; multiple occupancies remain explicit. Historical
-and current identities stay separate. OpenStreetMap attribution links to its
-copyright/ODbL page whenever OSM context is present. No facility badges are added.
+The collapsed section shows a category and up to three short, scope-labeled
+statements. Short timing labels remain visible. **Data sources & limitations**
+expands source names, original classifications, dates and scope qualifications;
+it also holds lower-priority context such as a surrounding neighborhood. Area-only
+selections use a smaller, muted presentation. OpenStreetMap attribution remains
+visible. No facility badges are added.
 
 Context clears on no-context selections, Clear, scene changes, filters that remove
 the selected footprint, manual uploads and crop examples. PRE/POST modes preserve
@@ -75,11 +92,12 @@ matches, enforces recorded claim holds (including kind-specific holds), and uses
 reviewed labels rather than raw tags to avoid resurrecting withheld names. It
 rejects a name hold whose reviewed name has not been cleared.
 
-Only compact presentation fields survive: kind, scope, title, value, human-readable
-source, timing, scope qualifier, OSM attribution flag and displayable state. Raw
-candidates, geometry, GIS record IDs, QA notes, scores and modeled years-built are
-excluded. The sidecar header includes canonical manifest and audit SHA-256 values
-for traceability. No source records are embedded in committed code or tests.
+Raw audits are unchanged. Sidecars retain each approved claim with its reviewed
+label, original classification values, source/dataset/release/snapshot,
+attribution and qualifications. Classification fields are allowlisted: stale raw
+names, candidates, geometry, GIS record IDs, free-form QA notes, scores and modeled
+years-built are excluded. The header includes manifest and audit SHA-256 values
+for traceability. Committed tests use synthetic evidence.
 
 When `GIS_CONTEXT_ROOT` is explicitly configured, `GET /demo-scenes/{scene_id}`
 validates the optional sidecar schema, reviewed status, exact manifest hash and UID
@@ -89,25 +107,73 @@ or unreviewed sidecars are ignored; invalid sidecars emit a server warning. Side
 files and raw audits are outside the static asset routes. With no configured root,
 the existing seven scene packs work normally without any GIS data dependency.
 
+## Normalization and future reporting
+
+`presentation.py` is a deterministic standard-library layer between the reviewed
+claim export and the frontend. Its small alias table recognizes the current
+classification vocabulary, preserves useful subtypes, and falls back to the
+audited broad category or Unknown. It never guesses a use from a name, changes a
+match/threshold, calls an external API, or invokes an LLM.
+
+The canonical taxonomy is Residential, Education, Medical / Healthcare,
+Commercial, Professional Services, Industrial, Warehouse, Government / Civic,
+Emergency Services, Religious, Lodging, Recreation / Community, Transportation,
+Agricultural, Mixed Use and Unknown. Reserved categories do not create new claims
+or critical-facility labels. Area is a **scope**, not a building-use category.
+
+Each schema-v2 `building_context` includes:
+
+- `claims`: individual approved evidence with original classification and provenance.
+- `contexts`: canonical category and subtype concepts, readable labels, name,
+  scope, modeled flag, temporal relation, multi-structure flag, qualifications and
+  references to supporting claims. Each concept retains its own evidence links.
+- `statements`: deterministic UI wording and references to its supporting contexts,
+  direct supporting claims and separately identified corroborating claims.
+- `primary_category`, `primary_label`, `primary_statement_ids`, `area_only`,
+  source-support indicators, structured reviewed `conflicts` and readable notes.
+
+Aliases such as generic office plus low-rise office consolidate within one scope
+and time; all original evidence remains. A parcel claim identical to its approved
+single-structure promotion is not repeated or counted as a second source.
+Named school-site statements can combine the **same name** across dated contexts;
+their separate dates remain structured and the combined timing stays qualified.
+Unnamed school use can support the Education category across scopes, explicitly
+recorded as `education_category_only`; it does not establish a roof's identity.
+Historical/current OSM and multiple Sonoma layers count as one provider family
+each when showing multiple-source support, not as independent observations.
+
+Mixed modeled occupancies keep all concepts and their claim links. A modeled
+School component can corroborate Education while its commercial component remains
+in a separate mixed-use statement. Conflicting categories, differing names and
+reviewed disagreements remain inspectable and are not merged into agreement.
+Areas never corroborate building use and stay outside the primary view when
+stronger context exists. Direct identities, structure use, modeled use, properties,
+sites and areas otherwise determine order; consolidated education inherits the
+priority of its useful supporting context without inheriting that context's scope.
+
+A future assessment can consume `contexts`, `conflicts` and their evidence links
+alongside the existing, separate prediction probabilities. It need not parse UI
+wording or provider strings. This milestone contains no LLM/report implementation.
+
 ## Validation
 
 ```powershell
 node app/frontend/test_scene_dashboard.js
 node app/frontend/test_scene_inspection.js
 node app/frontend/test_scene_page_integration.js
-& .\local_experiments\gis_context_v2\.venv\Scripts\python.exe -B -m unittest app.backend.test_building_context app.backend.test_api_demo_scenes app.backend.gis_context.test_gis_context
+& .\local_experiments\gis_context_v2\.venv\Scripts\python.exe -B -m unittest app.backend.test_building_context app.backend.test_api_demo_scenes app.backend.gis_context.test_gis_context app.backend.gis_context.test_presentation
 ```
 
 The integration was checked in local headless Chrome at desktop and 390-pixel
 mobile widths, including all examples above, clearing, filtering, scene switching,
 imagery modes, expanded context, uploads and examples. Screenshots and the local
-browser verification report are ignored under
-`local_experiments/gis_context_v2/dashboard-review/`. No model inference is needed.
+browser verification report for the cleaned presentation are ignored under
+`local_experiments/gis_context_v2/presentation-review/`. All 71 Python tests and
+three frontend Node tests pass. No model inference is needed.
 
 ## Publication boundary
 
-County-derived sidecars are authorized for this local evaluation only. Bay County
-redistribution terms remain unresolved; Sonoma county-derived restrictions need
-review before publication (including the school layer's CC BY-ND 3.0 terms).
-Neither these records nor raw extracts belong in versioned scene manifests or
-static deployment assets. Production deployment configuration is unchanged.
+External GIS sources may have attribution, redistribution, or licensing
+requirements that should be reviewed before broader/public/commercial use.
+Local sidecars and raw extracts remain ignored; canonical scene manifests and
+production deployment configuration are unchanged.
