@@ -1,19 +1,24 @@
 # Offline GIS building context v2
 
 This module audits **Harvey (76), Michael (177), Santa Rosa (49), and Florence
-(56)**. Florence is audit-only; it is not added to the demo dashboard. The
-module is independent of FastAPI, the frontend, and model inference.
+(56)**. Florence is a reviewed partial dashboard scene: 40 buildings have
+strongly matched NSI modeled occupancy; it has no strong direct mapped
+building/place evidence or documented Duplin property-use semantics. NSI is
+current modeled context, not evidence aligned to the 2018 event. The invalid
+Duplin parcel geometry (record 29988) is withheld without repair, and the
+incomplete Duplin provider is excluded from the Florence overlay. The recorded
+1/56 intervention rate counts this provider-record hold; it is not an error
+rate. The module is independent of FastAPI, the frontend, and model inference.
 It does not write scene manifests or guess geographic coordinates from pixels.
 See [milestone 2 findings and the frontend decision](MILESTONE_2_FEASIBILITY.md)
 and the [Harvey reference](HARVEY_FEASIBILITY.md) before interpreting reports.
 After manual QA, context beyond neighborhood areas covers 67/76 Harvey,
 164/177 Michael, and 48/49 Santa Rosa buildings. Sonoma-derived associations
 have a distribution constraint under the source items' No Derivatives terms.
-Florence uses NSI, historical/current OSM, and the current Duplin County parcel
-layer. That parcel layer has no documented property-use field; numeric
-`ValuationModel` values remain unclassified, and parcel matches do not establish
-building identity. Keep Florence extracts local pending evidence review and
-source-terms review.
+Florence was audited using NSI, historical/current OSM, and the current Duplin
+County parcel layer. Its parcel layer has no documented property-use field;
+numeric `ValuationModel` values remain unclassified, and parcel matches do not
+establish building identity. Raw Florence audit extracts remain local.
 
 ## Run
 
@@ -48,6 +53,10 @@ the other reviewed pilots. Florence can be audited with its exact raw POST label
   --post-label data/train/labels/hurricane-florence_00000459_post_disaster.json `
   --snapshot 2026-09-28 --fetch
 ```
+
+Florence review evidence remains local in the ignored audit workspace; the
+dashboard overlay contains only the 40 reviewed NSI claims. Its raw xBD label
+is needed only to regenerate the GIS audit, not to run the dashboard.
 
 The [milestone report](MILESTONE_2_FEASIBILITY.md)
 contains exact paths and commands to replay their completed manual reviews.

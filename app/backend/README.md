@@ -4,12 +4,15 @@ FastAPI backend for the released paired PRE+POST ResNet-18 plain-cross-entropy x
 
 The separate [offline GIS context audit](gis_context/README.md) makes no runtime
 provider requests and requires no model checkpoint. Real audits and manual reviews are
-complete for Harvey (76), Michael (177), and Santa Rosa (49). See the
+complete for Harvey (76), Michael (177), and Santa Rosa (49). Florence (56) is
+reviewed as a partial overlay with current modeled NSI occupancy on 40 buildings;
+no direct mapped building/place evidence or documented Duplin property-use
+semantics were retained. See the
 [milestone 2 findings](gis_context/MILESTONE_2_FEASIBILITY.md) for coverage,
 withheld claims, county licensing constraints and the frontend recommendation.
 
 The reviewed [GIS demo overlays](../demo_gis_context/README.md) are versioned and
-loaded automatically for these three scenes. `GIS_CONTEXT_ROOT` overrides that
+loaded automatically for these four scenes. `GIS_CONTEXT_ROOT` overrides that
 directory for development; canonical scene packs stay unchanged. See the
 [dashboard notes](gis_context/LOCAL_DASHBOARD.md) for examples and evidence details.
 

@@ -14,8 +14,16 @@ def evidence_sha256(report: dict) -> str:
 
 
 def apply_review(report: dict, review: dict) -> dict:
-    if report["status"] != "awaiting_manual_qa":
-        raise ValueError("Manual findings require a complete, unreviewed provider audit.")
+    excluded = set(review.get("excluded_providers", []))
+    partial_scope = report["status"] == "partial_provider_data"
+    if report["status"] != "awaiting_manual_qa" and not partial_scope:
+        raise ValueError("Manual findings require a complete audit or an explicit partial-provider review scope.")
+    if partial_scope:
+        partial = {p for p, value in report["providers"].items() if value["status"] != "complete"}
+        claimed = {((c["source"].get("dataset") if c["source"]["provider"] == "osm" else c["source"]["provider"]))
+                   for row in report["buildings"] for c in row["claims"]}
+        if partial != excluded or claimed & excluded:
+            raise ValueError("Partial review must exclude exactly the incomplete providers, which cannot supply claims.")
     hashes = {entry["request"]["provider"]: entry["sha256"] for entry in report["cache_entries"]}
     if (review["input_sha256"] != report["input_sha256"] or review["cache_response_sha256"] != hashes
             or review["evidence_sha256"] != evidence_sha256(report)):
@@ -65,6 +73,6 @@ def apply_review(report: dict, review: dict) -> dict:
     result["metrics"] = aggregate(result["buildings"])
     result["source_contribution"], result["provider_overlap"] = source_coverage(result["buildings"], result["providers"])
     result["qa"] = {**review, "status": "completed_with_findings", "selected_uids": report["qa"]["selected_uids"]}
-    result["status"] = "reviewed_with_findings"
+    result["status"] = "reviewed_with_findings_partial_scope" if partial_scope else "reviewed_with_findings"
     result["decision"] = review["decision"]
     return result

@@ -1,0 +1,4298 @@
+{
+  "audit_sha256": "88b296127026536b9b35512615485333325f36da10fc08289afc778668a5cdfc",
+  "buildings": {
+    "012d9e5d-4a7d-421b-ab0c-6f639d3de6bd": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "0a4dedb5-b641-4590-817d-4069021d079f": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "1089b094-b268-4555-b45c-b798bdfeb470": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "1118fdee-1079-491f-b090-dfa14cc06c02": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "1182376b-8e00-40bb-bb29-fad86f274e2b": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "1995bfaa-f41d-468d-a4fd-9ed78cbca82f": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "23dbc667-18fa-4807-9da6-674aaffc1ca0": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "250f3614-82ba-4535-b524-1047ddb27320": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "3beac56f-1feb-4add-818d-299fa85a53d0": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "3e090090-c75f-49fb-80f1-71cb9f4795ee": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "425ae212-6733-4f5c-8382-997bec5d1497": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "43c1520c-8f49-4bed-8cc4-ec426f6645bc": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "49039bef-fb14-4922-8122-6b3c59ee6f03": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "490f72dd-5f47-4bc9-ad38-b2090e81a1e3": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "51075698-3e29-42a5-8fcc-33ed961e1649": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "54cf136d-778a-41d6-abb7-3fc9e445e3f9": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "5ce2bf78-1c0e-4763-ad2f-4b62359b3461": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "5dbf87d7-41e1-4e5c-ba42-01aee1e6f9f6": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "5e09f69b-2ea5-46fa-acc6-4aa26384d89a": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "5e0a6ba2-cc39-48d2-a4be-c4eda76213ed": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "5f85b7e1-c7b5-4be9-9f1c-6b68c8e99aa1": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "6ac3b1e8-2005-48d9-ac7b-df85ad843c30": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "6c21c8b7-b452-46ef-8451-d0d9c996fa3f": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "6c3c165f-cd6d-4db2-adbf-8a8796177298": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "79142720-f62f-4365-8e76-52dbb8c1a660": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "81f01733-e601-4f02-95d1-31a34b943c25": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "8902294e-6cb4-40f4-acc2-4c951ba5984f": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "89b21263-1013-49ec-9ce9-c66dfcd2aa0a": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "95bf7ec7-2cd7-4461-9007-eab20b57d1d5": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "95fc2c49-e28d-4e50-8ec5-e8ef96739eae": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "97f6254e-849c-4c60-b997-309ed37969a8": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "98d21ca5-1695-4cf4-9c68-557c4e5097c8": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "9994c430-b20c-4d56-82db-99940267675a": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "9cebbe44-2c80-4892-bd76-8d196b091245": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "9d1187bf-87a7-45e3-9c68-87f39feb1eb9": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "9f9207ef-bdfe-4299-9ca5-432ee6276063": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "a20a4967-eb49-48cd-b44f-10dcdb904e68": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "a5f3a593-4a2e-48fe-abf9-9fd020a68ca5": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "ae4b64a4-5e72-48db-9dc8-6b03b218591b": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "b63cf9a3-e45c-445c-9b7f-e6c4bff2290a": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "ba7eef04-8e30-4ea2-bc61-710b747a8547": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "bcef16d8-f920-4ab9-85df-19e6bb7747ed": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "c50e90aa-6d7a-472d-bd97-d3ea578237d8": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "c7a2babe-6bf1-483f-a3c0-6d38c10d150b": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "cdfb791c-1077-45ed-bddb-a7ffa827b98a": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "cf7f805f-75a8-450d-9897-480a2c9b906f": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "d04e3492-1bd2-42c2-b2e3-907496c75415": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "d2c9550c-6636-4fed-b11c-a63ef7651dc0": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "d5162f7b-8b93-42c9-a113-95964a965d02": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "dccd3a83-fcf9-420e-8664-bfcf2cafddfa": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "ddff5a02-26e2-4ef4-8636-8a5290cf1db9": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SWB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "e213d645-9801-4f5b-93a1-c6202afbd9ec": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "e25c2754-0a50-49db-b52f-7ffdb6a0f82b": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "ee0893bb-0e81-46a6-863b-28bb96308f10": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    },
+    "f18ba9b6-dbae-4562-8164-aaa5fd213241": {
+      "area_only": false,
+      "claims": [],
+      "conflicts": [],
+      "contexts": [],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "unknown",
+      "primary_label": "Mapped context",
+      "primary_statement_ids": [],
+      "statements": [],
+      "version": 2
+    },
+    "fbd1afc8-d74f-4a93-af0c-d7b25a9d4e2e": {
+      "area_only": false,
+      "claims": [
+        {
+          "attribution": "USACE National Structure Inventory",
+          "category_hint": "residential",
+          "displayable": true,
+          "id": "claim-0",
+          "kind": "modeled_occupancy",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "original_value": "Single-family residential",
+          "original_values": {
+            "occtype": "RES1-1SNB"
+          },
+          "osm": false,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "qualifier": "Modeled occupancy; individual building use is unverified.",
+          "scope": "building",
+          "source": "USACE National Structure Inventory",
+          "source_dataset": "NSI public Base inventory",
+          "source_family": "nsi",
+          "source_key": "nsi",
+          "source_release": "2026 (documented; API unversioned)",
+          "source_snapshot": "2026-09-28",
+          "temporal_relation": "current_modeled_not_event_aligned",
+          "terms_url": "https://www.hec.usace.army.mil/confluence/nsi/technicalreferences/2026/technical-documentation",
+          "timing": "Current modeled inventory · retrieved 2026-09-28; not event-aligned",
+          "title": "Modeled use",
+          "value": "Single-family residential"
+        }
+      ],
+      "conflicts": [],
+      "contexts": [
+        {
+          "category": "residential",
+          "concepts": [
+            {
+              "category": "residential",
+              "label": "Single-family residential",
+              "subtype": "single_family",
+              "supporting_claims": [
+                "claim-0"
+              ]
+            }
+          ],
+          "id": "context-0",
+          "kind": "modeled_occupancy",
+          "label": "Single-family residential",
+          "modeled": true,
+          "multi_structure": false,
+          "name": null,
+          "qualifications": [
+            "modeled_occupancy",
+            "not_event_aligned"
+          ],
+          "scope": "modeled_building",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "temporal_label": "Current modeled context",
+          "temporal_relation": "current_modeled_not_event_aligned"
+        }
+      ],
+      "has_multiple_supporting_sources": false,
+      "notes": [],
+      "primary_category": "residential",
+      "primary_label": "Residential",
+      "primary_statement_ids": [
+        "statement-0"
+      ],
+      "statements": [
+        {
+          "category": "residential",
+          "context_ids": [
+            "context-0"
+          ],
+          "corroborating_claims": [],
+          "corroboration_basis": "same_scoped_context",
+          "has_multiple_sources": false,
+          "id": "statement-0",
+          "label": "Modeled use",
+          "modeled": true,
+          "name": null,
+          "scope": "modeled_building",
+          "support_label": "",
+          "supporting_claims": [
+            "claim-0"
+          ],
+          "supporting_sources": [
+            "nsi"
+          ],
+          "temporal_label": "Current modeled context",
+          "text": "Single-family residential"
+        }
+      ],
+      "version": 2
+    }
+  },
+  "review_status": "reviewed",
+  "scene_id": "hurricane-florence_00000459",
+  "scene_manifest_hash_format": "lf",
+  "scene_manifest_sha256": "21b4a1e437da88ccda8cfccd2e6e39433acb07f27fed93fb149062accc372cee",
+  "schema_version": 2
+}

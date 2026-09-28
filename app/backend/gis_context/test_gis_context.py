@@ -472,6 +472,21 @@ class ReportingTests(unittest.TestCase):
         self.assertTrue(dental["displayable"])
         self.assertTrue(report["buildings"][0]["claims"][0]["displayable"])
 
+    def test_explicit_partial_scope_can_review_complete_source_claims_only(self):
+        report, review = self.review_fixture()
+        report["providers"]["duplin_parcels"] = {"status": "partial"}
+        report["status"] = "partial_provider_data"
+        for row in report["buildings"]:
+            row["evaluation_status"] = "partially_evaluated"
+        review["excluded_providers"] = ["duplin_parcels"]
+        review["evidence_sha256"] = evidence_sha256(report)
+        result = apply_review(report, review)
+        self.assertEqual(result["status"], "reviewed_with_findings_partial_scope")
+        self.assertEqual(result["qa"]["excluded_providers"], ["duplin_parcels"])
+        review["excluded_providers"] = []
+        with self.assertRaisesRegex(ValueError, "exclude exactly"):
+            apply_review(report, review)
+
     def test_real_qa_cannot_be_reused_after_inputs_or_provider_data_change(self):
         report, review = self.review_fixture()
         for key in ("input_sha256", "cache_response_sha256"):

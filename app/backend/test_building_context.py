@@ -197,7 +197,7 @@ class LocalOverlayApiTests(unittest.TestCase):
 
 class PortableDemoContextTests(unittest.TestCase):
     scenes = {"hurricane-harvey_00000177": 76, "hurricane-michael_00000247": 175,
-              "santa-rosa-wildfire_00000014": 48}
+              "santa-rosa-wildfire_00000014": 48, "hurricane-florence_00000459": 40}
 
     def test_default_demo_context_is_displayable_and_preserves_predictions(self):
         self.assertEqual({p.stem for p in api.DEFAULT_GIS_CONTEXT_ROOT.glob("*.json")}, set(self.scenes))

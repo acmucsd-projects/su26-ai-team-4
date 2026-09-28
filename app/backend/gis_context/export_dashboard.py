@@ -115,28 +115,39 @@ def present_claim(claim: dict, claim_id: str = "claim-0") -> dict:
 
 def build_overlay(report: dict, manifest_bytes: bytes, audit_bytes: bytes) -> dict:
     manifest = json.loads(manifest_bytes)
-    digest = hashlib.sha256(manifest_bytes).hexdigest()
+    audit_manifest_digest = hashlib.sha256(manifest_bytes).hexdigest()
+    digest = hashlib.sha256(manifest_bytes.replace(b"\r\n", b"\n")).hexdigest()
     qa = report.get("qa", {})
     rows = report["buildings"]
     uids = [b["uid"] for b in manifest["buildings"]]
     row_uids = [b["uid"] for b in rows]
-    if (report["status"] != "reviewed_with_findings" or qa.get("status") != "completed_with_findings"
+    partial_scope = report["status"] == "reviewed_with_findings_partial_scope"
+    incomplete = {p for p, value in report["providers"].items() if value["status"] != "complete"}
+    allowed_status = {"reviewed_with_findings", "reviewed_with_findings_partial_scope"}
+    if (report["status"] not in allowed_status or qa.get("status") != "completed_with_findings"
+            or (partial_scope and incomplete != set(qa.get("excluded_providers", [])))
+            or (not partial_scope and incomplete)
             or report["scene_id"] != manifest["scene_id"]
-            or report["input_sha256"]["scene_manifest"] != digest
+            or report["input_sha256"]["scene_manifest"] != audit_manifest_digest
             or qa.get("input_sha256") != report["input_sha256"]
             or len(uids) != len(set(uids)) or len(row_uids) != len(uids) or set(row_uids) != set(uids)
             or sorted(qa.get("reviewed_uids", [])) != sorted(uids)
-            or any(p["status"] != "complete" for p in report["providers"].values())):
+            or (not partial_scope and any(p["status"] != "complete" for p in report["providers"].values()))):
         raise ValueError("Export requires complete, reviewed evidence for exactly this manifest")
     manifest_ids = {b["uid"]: b["id"] for b in manifest["buildings"]}
     buildings = {}
     for row in rows:
         if (row["qa_status"] not in {"reviewed", "reviewed_with_hold"}
-                or row["evaluation_status"] != "evaluated" or row["building_id"] != manifest_ids[row["uid"]]):
+                or row["evaluation_status"] not in ({"evaluated", "partially_evaluated"} if partial_scope else {"evaluated"})
+                or row["building_id"] != manifest_ids[row["uid"]]):
             raise ValueError("Unreviewed or mismatched building")
         claims = []
         for index, claim in enumerate(row["claims"]):
             source = claim["source"]
+            provider_key = source.get("dataset") if source["provider"] == "osm" else source["provider"]
+            provider_status = report["providers"].get(provider_key, {}).get("status")
+            if partial_scope and provider_status != "complete":
+                raise ValueError("Cannot export a claim from an incomplete provider.")
             provider = source["dataset"] if source["provider"] == "osm" else source["provider"]
             actions = [a for a in qa["claim_actions"] if a["uid"] == row["uid"]
                        and a["provider"] == provider and a["record_id"] == claim["source_record_id"]
@@ -165,20 +176,23 @@ def build_overlay(report: dict, manifest_bytes: bytes, audit_bytes: bytes) -> di
             raise ValueError("Invalid normalized context")
         buildings[row["uid"]] = context
     return {"schema_version": SCHEMA_VERSION, "review_status": "reviewed", "scene_id": report["scene_id"],
-            "scene_manifest_sha256": digest, "audit_sha256": hashlib.sha256(audit_bytes).hexdigest(),
+            "scene_manifest_sha256": digest, "scene_manifest_hash_format": "lf",
+            "audit_sha256": hashlib.sha256(audit_bytes).hexdigest(),
             "buildings": buildings}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-root", type=Path, default=LOCAL_ROOT)
+    parser.add_argument("--scene", choices=SCENE_COUNTS, help="Export one reviewed scene; default validates and exports all scenes.")
     args = parser.parse_args()
     local_root = args.local_root.resolve()
     if not local_root.is_relative_to(LOCAL_ROOT.resolve()):
         parser.error("Artifacts must stay in ignored local_experiments/gis_context_v2")
     # Validate every scene before replacing any existing sidecar.
     overlays = []
-    for scene_id, count in SCENE_COUNTS.items():
+    scenes = {args.scene: SCENE_COUNTS[args.scene]} if args.scene else SCENE_COUNTS
+    for scene_id, count in scenes.items():
         audit_bytes = (local_root / scene_id / "audit.json").read_bytes()
         report = json.loads(audit_bytes)
         if len(report["buildings"]) != count:

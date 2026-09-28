@@ -1,9 +1,17 @@
 # Reviewed GIS demo context
 
-These three versioned, derived overlays reproduce the approved Building Context
+These four versioned, derived overlays reproduce the approved Building Context
 for Harvey (`hurricane-harvey_00000177`), Michael (`hurricane-michael_00000247`),
-and Santa Rosa (`santa-rosa-wildfire_00000014`). They cover 302 buildings, with
-displayable context on 76, 175, and 48 respectively. Total JSON size is about 1.5 MB.
+Santa Rosa (`santa-rosa-wildfire_00000014`), and Florence
+(`hurricane-florence_00000459`). They cover 358 buildings, with displayable
+context on 76, 175, 48, and 40 respectively. Total JSON size is about 1.5 MB.
+
+Florence is partial: its 40 reviewed claims are current NSI modeled occupancy,
+not event-aligned observations. No direct mapped building/place evidence or
+documented Duplin property-use semantics were retained. The incomplete Duplin
+parcel source, including one invalid geometry, is excluded from the overlay.
+Unknown context remains empty. The raw xBD label is needed only to regenerate
+the GIS audit, not to display this tracked overlay.
 
 The app loads this directory by default. `GIS_CONTEXT_ROOT` selects a development
 overlay directory instead; missing or invalid overrides do not fall back here.
