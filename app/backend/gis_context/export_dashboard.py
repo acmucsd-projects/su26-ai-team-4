@@ -1,12 +1,12 @@
 """Export completed manual QA into ignored, compact dashboard sidecars (offline)."""
 
 import argparse
-from collections import OrderedDict
 import hashlib
 import json
 from pathlib import Path
 
-from app.backend.building_context import SCHEMA_VERSION, valid_claim
+from app.backend.building_context import SCHEMA_VERSION, valid_claim, valid_context
+from .presentation import normalize_context
 from .scenes import SCENE_COUNTS
 
 
@@ -30,8 +30,8 @@ TITLES = {
     "site_use": "Site context",
     "area_use": "Surrounding area",
 }
-ORDER = ["mapped_name", "mapped_place", "modeled_occupancy", "structure_type", "structure_use",
-         "school_site", "site_use", "property_use", "area_use"]
+CLASSIFICATION_FIELDS = {"LANDUSE_DS", "BLDTYPE_DS", "BLDG_STYDS", "DORAPPDESC", "UseCodeDescription",
+                         "occtype", "amenity", "building", "office", "shop", "leisure", "landuse", "healthcare"}
 
 
 def timing(source: dict) -> str:
@@ -46,11 +46,12 @@ def timing(source: dict) -> str:
     }[source["temporal_status"]]
 
 
-def present_claim(claim: dict) -> dict:
+def present_claim(claim: dict, claim_id: str = "claim-0") -> dict:
     """Use the reviewed label, never reconstruct identities from raw tags."""
     kind, scope, source = claim["kind"], claim["scope"], claim["source"]
     value = claim["label"].split(": ", 1)[-1].removesuffix(" (name withheld after QA)")
     value = value.removesuffix(" (advertised July 2017; vintage unverified)")
+    original_value = value
     title = TITLES.get(kind)
     qualifier = ""
     if kind == "mapped_name":
@@ -73,9 +74,40 @@ def present_claim(claim: dict) -> dict:
         # Keep names/acronyms as reviewed; assessor descriptions often arrive in all caps.
         if value.isupper():
             value = value.capitalize()
-    result = {"kind": kind, "scope": scope, "title": title, "value": value,
+    relation = source["temporal_status"]
+    qualifications = []
+    if scope == "parcel":
+        qualifications.append("parcel_context")
+    if scope == "site":
+        qualifications.append("surrounding_area" if kind == "area_use" else "site_membership")
+    if kind == "structure_use":
+        qualifications.append("single_structure_link")
+    multi_structure = claim["spatial_evidence"].get("structure_association") == "multi_structure"
+    if multi_structure:
+        qualifications.append("multi_structure_parcel")
+    if kind == "modeled_occupancy":
+        qualifications.extend(["modeled_occupancy", "not_event_aligned"])
+    if relation == "pre_event_reference_vintage_unverified":
+        qualifications.append("vintage_unverified")
+        qualifier += " Advertised 2017 layer; live service edited in 2022. Not an exact event snapshot."
+    if "(name withheld after QA)" in claim["label"]:
+        qualifications.append("name_withheld")
+        qualifier += " Business name withheld after review; mapped use retained."
+    provider = source["provider"]
+    result = {"id": claim_id, "kind": kind, "scope": scope, "title": title, "value": value,
               "source": SOURCE_NAMES[source["provider"]], "timing": timing(source),
-              "qualifier": qualifier, "osm": source["provider"] == "osm", "displayable": True}
+              "qualifier": qualifier.strip(), "osm": provider == "osm", "displayable": True,
+              "original_value": original_value,
+              "original_values": {k: str(v) for k, v in claim.get("raw_value", {}).items()
+                                  if k in CLASSIFICATION_FIELDS and v is not None},
+              "name": claim.get("mapped_name"), "category_hint": claim.get("category", "unknown"),
+              "source_key": source["dataset"] if provider == "osm" else provider,
+              "source_family": "sonoma" if provider.startswith("sonoma_") else provider,
+              "source_dataset": source.get("dataset", ""), "source_release": source.get("release", ""),
+              "source_snapshot": source["snapshot"], "attribution": source.get("attribution", ""),
+              "terms_url": source.get("terms_url", ""),
+              "temporal_relation": relation, "modeled": kind == "modeled_occupancy",
+              "multi_structure": multi_structure, "qualifications": qualifications}
     if not valid_claim(result):
         raise ValueError("Unsupported claim presentation")
     return result
@@ -103,7 +135,7 @@ def build_overlay(report: dict, manifest_bytes: bytes, audit_bytes: bytes) -> di
                 or row["evaluation_status"] != "evaluated" or row["building_id"] != manifest_ids[row["uid"]]):
             raise ValueError("Unreviewed or mismatched building")
         claims = []
-        for claim in row["claims"]:
+        for index, claim in enumerate(row["claims"]):
             source = claim["source"]
             provider = source["dataset"] if source["provider"] == "osm" else source["provider"]
             actions = [a for a in qa["claim_actions"] if a["uid"] == row["uid"]
@@ -118,22 +150,20 @@ def build_overlay(report: dict, manifest_bytes: bytes, audit_bytes: bytes) -> di
                 if claim["kind"] == "mapped_name":
                     # Name-only claims have no independent use left after a name hold.
                     continue
-            # Candidates, raw values, scores, IDs, years-built and QA notes are never exported.
-            claims.append(present_claim(claim))
-        groups = OrderedDict()
-        for claim in sorted(claims, key=lambda c: ORDER.index(c["kind"])):
-            key = tuple(claim[k] for k in ("kind", "scope", "title", "source", "timing", "qualifier"))
-            if key not in groups:
-                groups[key] = {**claim, "values": []}
-            if claim["value"] not in groups[key]["values"]:
-                groups[key]["values"].append(claim["value"])
-        compact = []
-        for claim in groups.values():
-            claim["value"] = "; ".join(claim.pop("values"))
-            if not valid_claim(claim):
-                raise ValueError("Invalid grouped context")
-            compact.append(claim)
-        buildings[row["uid"]] = {"claims": compact}
+            # Keep original classifications and provenance; never copy raw IDs,
+            # candidates, held identities, scores, years-built or free-form QA notes.
+            claims.append(present_claim(claim, f"claim-{index}"))
+        claim_ids = {c["id"] for c in claims}
+        conflicts = []
+        for conflict in row.get("conflicts", []):
+            references = [f"claim-{i}" for i in conflict["claim_indices"] if f"claim-{i}" in claim_ids]
+            if len(references) > 1:
+                conflicts.append({"reason": conflict["reason"], "supporting_claims": references,
+                                  "resolution": conflict.get("resolution", "preserved_separately")})
+        context = normalize_context(claims, conflicts)
+        if not valid_context(context):
+            raise ValueError("Invalid normalized context")
+        buildings[row["uid"]] = context
     return {"schema_version": SCHEMA_VERSION, "review_status": "reviewed", "scene_id": report["scene_id"],
             "scene_manifest_sha256": digest, "audit_sha256": hashlib.sha256(audit_bytes).hexdigest(),
             "buildings": buildings}

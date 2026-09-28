@@ -12,8 +12,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.backend.api import create_app
-from app.backend.building_context import load_context_overlay
+from app.backend.building_context import SCHEMA_VERSION, load_context_overlay
 from app.backend.gis_context.export_dashboard import build_overlay, present_claim
+from app.backend.gis_context.presentation import normalize_context
 from app.backend.test_api_demo_scenes import SCENE_ID, write_demo_scene
 
 
@@ -105,10 +106,12 @@ class ReviewedExportTests(unittest.TestCase):
         report, manifest = evidence([claim(), claim(), claim(label="Modeled use (NSI): Retail"),
                                      claim("site_use", "site", "osm", "event_snapshot", "Site: Example Park"),
                                      claim("site_use", "site", "osm", "current_only", "Site: Example Park")])
-        claims = export(report, manifest)["buildings"]["test-uid"]["claims"]
-        self.assertEqual(len(claims), 3)
-        self.assertEqual(claims[0]["value"], "Single-family residential; Retail")
-        self.assertNotEqual(claims[1]["timing"], claims[2]["timing"])
+        context = export(report, manifest)["buildings"]["test-uid"]
+        self.assertEqual(len(context["claims"]), 5)  # Individually inspectable, including duplicates.
+        self.assertEqual(len(context["contexts"]), 3)
+        self.assertEqual(context["contexts"][0]["category"], "mixed_use")
+        self.assertEqual(len(context["contexts"][0]["concepts"]), 2)
+        self.assertNotEqual(context["contexts"][1]["temporal_relation"], context["contexts"][2]["temporal_relation"])
 
     def test_reject_unreviewed_partial_stale_or_misaligned_input(self):
         original, manifest = evidence([claim()])
@@ -144,9 +147,9 @@ class LocalOverlayApiTests(unittest.TestCase):
         self.manifest_path.write_bytes(self.original)
         self.overlays = self.root / "overlays"
         self.overlays.mkdir()
-        self.overlay = {"schema_version": 1, "review_status": "reviewed", "scene_id": SCENE_ID,
+        self.overlay = {"schema_version": SCHEMA_VERSION, "review_status": "reviewed", "scene_id": SCENE_ID,
                         "scene_manifest_sha256": hashlib.sha256(self.original).hexdigest(),
-                        "buildings": {"test-uid": {"claims": [present_claim(claim())]}, "second-uid": {"claims": []}}}
+                        "buildings": {"test-uid": normalize_context([present_claim(claim())]), "second-uid": normalize_context([])}}
         self.overlay_path = self.overlays / f"{SCENE_ID}.json"
 
     def write_overlay(self):
