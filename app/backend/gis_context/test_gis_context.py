@@ -436,6 +436,16 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("local_parcel_match", row["flags"])
         self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
 
+    def test_socal_uses_historical_current_osm_and_nsi_only(self):
+        scene_id = "socal-fire_00000663"
+        self.assertEqual(SCENE_COUNTS[scene_id], 48)
+        providers = SCENE_PROVIDERS[scene_id]
+        self.assertEqual(providers, ("osm_historical", "osm_current", "nsi"))
+        statuses = {p: {"status": "complete"} for p in providers}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertFalse(any(key.startswith("local_") for key in row["flags"]))
+        self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
+
     def test_rows_without_a_local_provider_omit_local_metrics(self):
         statuses = {p: {"status": "complete"} for p in ("nsi", "osm_historical", "osm_current")}
         row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
