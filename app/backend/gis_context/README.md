@@ -4,7 +4,9 @@ This module audits **only `hurricane-harvey_00000177` (76 demo buildings)**. It 
 an offline utility, independent of FastAPI, the frontend, and model inference.
 It does not write scene manifests or guess geographic coordinates from pixels.
 See [the current feasibility finding](HARVEY_FEASIBILITY.md) before interpreting
-any generated report. The first real-data audit is blocked by missing raw labels.
+any generated report. The real Harvey audit and manual review are complete:
+67/76 buildings have context beyond broad neighborhood areas, and 76/76 have
+some scoped context when those areas are included.
 
 ## Run
 
@@ -25,16 +27,21 @@ fails closed. Neither the training cache nor a model checkpoint is required.
 
 ```powershell
 & $gisPython -B -m app.backend.gis_context `
-  --post-label 'D:/xbd/train/labels/hurricane-harvey_00000177_post_disaster.json' `
+  --post-label data/tier1/labels/hurricane-harvey_00000177_post_disaster.json `
   --snapshot 2026-09-28 --fetch
 ```
 
-The path above is illustrative; it is not a discovered dataset location. The
-default is `data/train/labels/hurricane-harvey_00000177_post_disaster.json`, the
+The path above was found in the restored dataset. The legacy
+default remains `data/train/labels/hurricane-harvey_00000177_post_disaster.json`, the
 same raw-label layout used by `package_demo_scene.py`. Without the file, the
 command writes a **blocked** report with 76 unevaluated rows and exits 2. Missing
 provider data also exits 2. Exit 0 means provider evaluation finished, **not**
-that manual QA or a feasibility decision succeeded.
+that manual QA or a feasibility decision succeeded. To replay the recorded
+Harvey review, omit `--fetch` and add
+`--qa-review app/backend/gis_context/HARVEY_QA.json`. Review decisions apply only
+when input, provider-response and normalized-evidence hashes match. Changed
+data or semantics require another manual review. The completed report preserves
+pre-QA metrics and withheld source values alongside final displayable counts.
 
 Omit `--fetch` and reuse the same `--snapshot` to replay from cache without
 network access. Use a new snapshot label deliberately to obtain a new current
@@ -42,6 +49,9 @@ extract; OSM's actual database timestamp is recorded separately. Requests are
 content-keyed by endpoint, parameters, bbox, snapshot, release, and query version.
 Cached response hashes are checked on replay. Failed/partial API responses are
 not treated as empty successful extracts. TLS verification stays enabled.
+`GIS_OVERPASS_URL` can explicitly select a compatible public history endpoint;
+it is included in source provenance and the cache key. Leave it unset for the
+completed Harvey cache, which uses `https://overpass-api.de/api/interpreter`.
 
 ## Data flow and relationships
 
@@ -74,9 +84,15 @@ HCAD `BUILDCOUNT=1` permit an additional parcel-linked structure-description
 claim. `BUILDCOUNT` absent or greater than one does not support promotion.
 No purpose is inferred from roof shape, size, imagery, or damage predictions.
 
-The Overpass query includes semantic nodes, ways, relations, parent relations,
-and their members. Multipolygon holes are preserved; unclosed/unsupported
-relations are reported for review. It does not turn streets into centroid POIs.
+The Overpass query retrieves all objects in the small bbox, including nodes,
+ways and relations, with all tags, metadata, full way geometry and direct
+relation-member geometry. Semantic filtering happens locally. This avoids
+recursive named-route expansion that caused real Harvey timeouts. An enclosing
+area with no node/direct member inside the bbox can be missed; this is not an
+exhaustive enclosing-area search. Multipolygon holes are preserved;
+unclosed/unsupported relations are reported for review. Streets do not become
+centroid POIs. The exact acquisition timestamp is retained; Overpass's query
+timestamp is floored to whole seconds (0.685 seconds earlier for Harvey).
 POIs 5–15 m away never label roofs; any site context must independently satisfy
 the site matcher. This deliberately sacrifices some coverage.
 
@@ -94,6 +110,10 @@ candidate raw values but not guessed. NSI occupancy claims say **Modeled use**.
 NSI occupancies remain separate claims. OSM current-only assertions never
 become disaster-time identities. A name on a place is not a verified building
 identity. Structure design tags and mapped tenant use remain distinct.
+Neighborhood `landuse` polygons produce `area_use` claims, separate from direct
+building/place use and site facilities. Reports expose coverage with and without
+these broad areas. Equivalent OSM amenity/healthcare tags produce one claim
+while preserving both raw tags.
 
 Critical-facility flags require explicit hospital/emergency-service OSM tags
 and a strong spatial relationship. A modeled NSI hospital, an OSM structural
@@ -116,7 +136,11 @@ Outputs live under ignored `local_experiments/gis_context_v2/`:
   raw values, accepted/rejected evidence, provider status, and metrics.
 - `summary.md`: count/percentage table and blockers.
 - `review.csv`, `review.html`, `review.geojson`: local manual review artifacts.
+  CSV exposes one column per metric plus modeled occupancies and claim evidence.
   HTML makes no remote requests; open GeoJSON in a GIS viewer for spatial QA.
+  Completed Harvey review sheets `qa-map-01.png` through `qa-map-09.png` are
+  also local; HTML links to them when present. The ignored `review_maps.py`
+  helper uses optional matplotlib (not needed to run or replay the audit).
 
 All percentages use 76 buildings, not provider records. `null` means unknown,
 not zero. Partial-data counts are marked as lower bounds, with unknown counts
@@ -124,12 +148,20 @@ and percentages withheld where coverage is incomplete. `no_context=true` is
 only possible after all four providers completed. Raw footprint matches do not
 count as semantic coverage. Source contribution includes exclusive additional
 buildings only when all sources completed.
+Pairwise overlap and ordered incremental contribution count unique displayable
+semantic claims. Rejected-neighbor incidence is separate from explicit
+ambiguity and must never be interpreted as a match error rate.
 
 The QA selector includes every named-place, critical-facility, and conflict
 result; up to 20 representative contexts spanning source/category/scope/time;
 and up to 10 rejected/ambiguous buildings. **Selection is not completed review.**
 Record actual findings separately and assess semantic errors before recommending
 expansion to Michael or Santa Rosa. Tests use labeled synthetic fixtures only.
+The completed [Harvey review](HARVEY_QA.json) covers all 76 buildings and holds
+two questionable NSI claims plus two stale/unresolved OSM names/activity claims.
+One dental-use claim remains displayable with its old name withheld. Raw spatial
+acceptance is preserved separately from displayability. These holds do not
+modify matching thresholds, source extracts, or canonical scene assets.
 
 ## Verified sources and terms
 

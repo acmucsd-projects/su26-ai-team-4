@@ -3,8 +3,9 @@
 FastAPI backend for the released paired PRE+POST ResNet-18 plain-cross-entropy xBD checkpoint.
 
 The separate [offline GIS context audit](gis_context/README.md) enriches no runtime
-requests and requires no model checkpoint. Its first Harvey feasibility run is
-currently blocked by missing raw geographic labels; see the linked audit notes.
+requests and requires no model checkpoint. Its real 76-building Harvey audit and
+manual review are complete; see the linked findings for coverage, scope limits
+and withheld claims.
 
 ## Input contract
 
