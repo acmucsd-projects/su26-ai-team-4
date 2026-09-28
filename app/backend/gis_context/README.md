@@ -1,12 +1,13 @@
 # Offline GIS building context v2
 
-This module audits **only `hurricane-harvey_00000177` (76 demo buildings)**. It is
+This module audits **Harvey (76), Michael (177), and Santa Rosa (49)**. It is
 an offline utility, independent of FastAPI, the frontend, and model inference.
 It does not write scene manifests or guess geographic coordinates from pixels.
-See [the current feasibility finding](HARVEY_FEASIBILITY.md) before interpreting
-any generated report. The real Harvey audit and manual review are complete:
-67/76 buildings have context beyond broad neighborhood areas, and 76/76 have
-some scoped context when those areas are included.
+See [milestone 2 findings and the frontend decision](MILESTONE_2_FEASIBILITY.md)
+and the [Harvey reference](HARVEY_FEASIBILITY.md) before interpreting reports.
+After manual QA, context beyond neighborhood areas covers 67/76 Harvey,
+164/177 Michael, and 48/49 Santa Rosa buildings. Sonoma-derived associations
+have a distribution constraint under the source items' No Derivatives terms.
 
 ## Run
 
@@ -21,7 +22,7 @@ $gisPython = 'local_experiments/gis_context_v2/.venv/Scripts/python.exe'
 
 Supply the **original** POST label with `metadata.capture_date` (timezone-aware
 acquisition timestamp) and `features.lng_lat` WKT polygons keyed by
-`properties.uid`. All 76 demo UIDs must join exactly once. Geometry outside the
+`properties.uid`. Every packaged UID must join exactly once. Geometry outside the
 demo is retained as competition for matches. Invalid/duplicate geographic data
 fails closed. Neither the training cache nor a model checkpoint is required.
 
@@ -31,10 +32,14 @@ fails closed. Neither the training cache nor a model checkpoint is required.
   --snapshot 2026-09-28 --fetch
 ```
 
-The path above was found in the restored dataset. The legacy
-default remains `data/train/labels/hurricane-harvey_00000177_post_disaster.json`, the
-same raw-label layout used by `package_demo_scene.py`. Without the file, the
-command writes a **blocked** report with 76 unevaluated rows and exits 2. Missing
+Use `--scene hurricane-michael_00000247` or
+`--scene santa-rosa-wildfire_00000014` with the corresponding POST label to run
+the other authorized pilots. The [milestone report](MILESTONE_2_FEASIBILITY.md)
+contains exact paths and commands to replay their completed manual reviews.
+The default scene remains Harvey; the default label path is
+`data/train/labels/<scene>_post_disaster.json`, the legacy packaging layout.
+Without the file, the command writes a **blocked** report with all scene rows
+unevaluated and exits 2. Missing
 provider data also exits 2. Exit 0 means provider evaluation finished, **not**
 that manual QA or a feasibility decision succeeded. To replay the recorded
 Harvey review, omit `--fetch` and add
@@ -63,10 +68,12 @@ is available in the packaged scene. This envelope supports the building audit;
 verify it against the actual source metadata before interpreting scene-wide
 context outside the labeled roofs.
 
-`providers.py` fetches HCAD once for that envelope (plus a cached schema request),
-NSI once, and Overpass once each for acquisition-time and current snapshots.
-There are no requests per building. HCAD truncation fails the provider audit;
-the code never silently accepts the first 2,000 records. Adapters preserve raw
+`providers.py` fetches HCAD for Harvey, NSI, and Overpass acquisition-time/current
+snapshots. `local_providers.py` adds Bay's 2017 parcels for Michael and current
+Sonoma parcels plus advertised-2017 school properties for Santa Rosa. Schema
+checks and extracts are cached; the school service edit date remains qualified.
+There are no requests per building. County truncation fails the provider audit;
+the code never silently accepts a capped first page. Adapters preserve raw
 values, source record IDs, versions/timestamps where supplied, and attribution.
 
 Independent matchers handle these relationships:
@@ -80,8 +87,11 @@ Independent matchers handle these relationships:
 | Site/campus | ≥ .80 coverage and centroid inside an explicit area, or the areal members of an explicit OSM site relation. No synthesized hull/bbox campus. |
 
 Parcel attributes remain parcel claims. Only a single raw xBD structure **and**
-HCAD `BUILDCOUNT=1` permit an additional parcel-linked structure-description
-claim. `BUILDCOUNT` absent or greater than one does not support promotion.
+provider building count of one permit an additional qualified structure-use
+claim (HCAD `BUILDCOUNT`, Bay `BLDCNT`, Sonoma primary plus secondary counts).
+Missing or greater-than-one counts do not support promotion. Michael manual QA
+also withheld six promotions because of image-edge competition, partial roofs,
+and offsets; the raw-label count is not a complete real-world structure census.
 No purpose is inferred from roof shape, size, imagery, or damage predictions.
 
 The Overpass query retrieves all objects in the small bbox, including nodes,
@@ -132,31 +142,35 @@ when the OSM record identity is stable.
 Outputs live under ignored `local_experiments/gis_context_v2/`:
 
 - `cache/`: raw provider responses and request/hash metadata.
-- `hurricane-harvey_00000177/audit.json`: all 76 UIDs, claims, candidate geometry,
+- `<scene>/audit.json`: all scene UIDs, claims, candidate geometry,
   raw values, accepted/rejected evidence, provider status, and metrics.
 - `summary.md`: count/percentage table and blockers.
 - `review.csv`, `review.html`, `review.geojson`: local manual review artifacts.
   CSV exposes one column per metric plus modeled occupancies and claim evidence.
   HTML makes no remote requests; open GeoJSON in a GIS viewer for spatial QA.
-  Completed Harvey review sheets `qa-map-01.png` through `qa-map-09.png` are
-  also local; HTML links to them when present. The ignored `review_maps.py`
+  Completed review sheets are also local (9 Harvey, 20 Michael, 6 Santa Rosa);
+  HTML links to them when present. The ignored `review_maps.py`
   helper uses optional matplotlib (not needed to run or replay the audit).
 
-All percentages use 76 buildings, not provider records. `null` means unknown,
+All percentages use the scene's building count, not provider records. `null` means unknown,
 not zero. Partial-data counts are marked as lower bounds, with unknown counts
 and percentages withheld where coverage is incomplete. `no_context=true` is
-only possible after all four providers completed. Raw footprint matches do not
+only possible after all scene providers completed. Raw footprint matches do not
 count as semantic coverage. Source contribution includes exclusive additional
 buildings only when all sources completed.
 Pairwise overlap and ordered incremental contribution count unique displayable
 semantic claims. Rejected-neighbor incidence is separate from explicit
 ambiguity and must never be interpreted as a match error rate.
 
-The QA selector includes every named-place, critical-facility, and conflict
+The QA selector includes every named-place, site/area, critical-facility, and conflict
 result; up to 20 representative contexts spanning source/category/scope/time;
 and up to 10 rejected/ambiguous buildings. **Selection is not completed review.**
-Record actual findings separately and assess semantic errors before recommending
-expansion to Michael or Santa Rosa. Tests use labeled synthetic fixtures only.
+Record actual findings separately; tests use labeled synthetic fixtures only.
+Michael and Santa Rosa reviews cover all 226 roofs. Their local
+`<scene>/manual-review.json` files preserve input/provider/evidence hashes,
+per-claim holds, notes and the frontend recommendation. An optional `kind`
+selector withholds a structure promotion without deleting its parcel claim.
+Hold counts are intervention rates, not independent error estimates.
 The completed [Harvey review](HARVEY_QA.json) covers all 76 buildings and holds
 two questionable NSI claims plus two stale/unresolved OSM names/activity claims.
 One dental-use claim remains displayable with its old name withheld. Raw spatial
@@ -164,6 +178,12 @@ acceptance is preserved separately from displayability. These holds do not
 modify matching thresholds, source extracts, or canonical scene assets.
 
 ## Verified sources and terms
+
+Bay and Sonoma endpoints, fields, temporal findings and source terms are
+documented in [milestone 2](MILESTONE_2_FEASIBILITY.md). Both Sonoma item licenses
+specify CC BY-ND 3.0; keep derived associations out of distributable assets
+until permission is resolved. Bay's archive item has no explicit license text;
+public query access does not establish unrestricted redistribution rights.
 
 The adapter's HCAD fields were checked against the live official
 [2017 layer 19](https://geohwp.houstontx.gov/arcgis/rest/services/03_BaseData_External/Parcels_Historic/FeatureServer/19).
