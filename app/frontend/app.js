@@ -24,6 +24,54 @@ const resultClass = document.querySelector("#result-class");
 const resultConfidence = document.querySelector("#result-confidence");
 const resultBadge = document.querySelector("#result-badge");
 const probabilityBars = document.querySelector("#probability-bars");
+const buildingContext = document.querySelector("#building-context");
+const contextClaims = document.querySelector("#context-claims");
+const contextMore = document.querySelector("#context-more");
+const contextSecondaryClaims = document.querySelector("#context-secondary-claims");
+const contextAttribution = document.querySelector("#context-attribution");
+
+function clearBuildingContext() {
+  buildingContext.hidden = true;
+  contextClaims.replaceChildren();
+  contextSecondaryClaims.replaceChildren();
+  contextMore.hidden = true;
+  contextMore.open = false;
+  contextAttribution.hidden = true;
+}
+
+function showBuildingContext(context) {
+  clearBuildingContext();
+  const claims = Array.isArray(context?.claims) ? context.claims.filter((claim) =>
+    claim?.displayable === true && ["title", "value", "source", "timing"].every((key) =>
+      typeof claim[key] === "string" && claim[key].trim())) : [];
+  if (!claims.length) return;
+  claims.forEach((claim, index) => {
+    const row = document.createElement("li");
+    const description = document.createElement("p");
+    const label = document.createElement("span");
+    label.className = "context-label";
+    label.textContent = claim.title + ": ";
+    const value = document.createElement("span");
+    value.className = "context-value";
+    value.textContent = claim.value;
+    description.append(label, value);
+    const provenance = document.createElement("p");
+    provenance.className = "context-provenance";
+    provenance.textContent = claim.timing + " · " + claim.source;
+    row.append(description, provenance);
+    if (typeof claim.qualifier === "string" && claim.qualifier) {
+      const qualifier = document.createElement("p");
+      qualifier.className = "context-qualifier";
+      qualifier.textContent = claim.qualifier;
+      row.append(qualifier);
+    }
+    (index < 3 ? contextClaims : contextSecondaryClaims).append(row);
+  });
+  contextMore.hidden = claims.length <= 3;
+  document.querySelector("#context-more-label").textContent = "More context (" + (claims.length - 3) + ")";
+  contextAttribution.hidden = !claims.some((claim) => claim.osm === true);
+  buildingContext.hidden = false;
+}
 
 function setStatus(message = "", isError = false) {
   statusMessage.textContent = message;
@@ -68,6 +116,7 @@ function leaveSceneSelectionForManualInput() {
 
 function setManualFile(slot, file) {
   if (!file) return;
+  clearBuildingContext();
   leaveSceneSelectionForManualInput();
   state[slot] = { file, name: file.name };
   state.source = "custom";
@@ -81,6 +130,7 @@ function setManualFile(slot, file) {
 
 function selectExample(name) {
   const example = EXAMPLES[name];
+  clearBuildingContext();
   clearSceneBuildingSelection();
   state.pre = { assetUrl: example.pre, name: name + "-pre.png" };
   state.post = { assetUrl: example.post, name: name + "-post.png" };
@@ -149,6 +199,7 @@ function inspectSceneBuilding(building) {
   document.querySelectorAll(".example-button").forEach((button) => button.classList.remove("selected"));
   selectionLabel.textContent = "Scene selection";
   showResult(prediction, "Scene selection");
+  showBuildingContext(building.building_context);
   setStatus("Viewing precomputed scene result for " + building.id + ".");
   return true;
 }
@@ -186,6 +237,7 @@ async function predictDamage() {
 }
 
 function clearSelection() {
+  clearBuildingContext();
   clearSceneBuildingSelection();
   state.pre = null;
   state.post = null;

@@ -127,5 +127,17 @@ button { cursor: pointer; }
 .probability-track { height: 7px; overflow: hidden; border-radius: 99px; background: rgba(255, 255, 255, 0.14); }
 .probability-fill { height: 100%; border-radius: inherit; background: #7fa5ff; transition: width 360ms ease; }
 .probability-value { color: #fff; font-variant-numeric: tabular-nums; text-align: right; }
+.building-context { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.building-context h3 { margin: 0 0 12px; color: var(--ink); font-size: 0.94rem; }
+.context-claims { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+.context-claims p { margin: 0; overflow-wrap: anywhere; font-size: 0.83rem; line-height: 1.45; }
+.context-label { color: var(--muted); }
+.context-value { color: var(--ink); font-weight: 600; }
+.context-claims .context-provenance, .context-claims .context-qualifier { margin-top: 3px; color: var(--muted); font-size: 0.73rem; }
+.context-more { margin-top: 12px; color: var(--muted); font-size: 0.78rem; }
+.context-more summary { width: fit-content; padding: 3px 0; cursor: pointer; }
+.context-more[open] summary { margin-bottom: 10px; }
+.context-attribution { margin: 12px 0 0; font-size: 0.7rem; }
+.context-attribution a { color: var(--muted); text-underline-offset: 2px; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
 @media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-selector { gap: 6px; padding: 6px; } .scene-nav-button { padding: 7px; font-size: 0.72rem; } .scene-current { font-size: 0.76rem; } .scene-summary-metrics { gap: 6px; } .scene-summary-metric { padding: 4px 6px; font-size: 0.69rem; } .scene-filters { gap: 6px; } .scene-filter-button { min-height: 28px; padding: 4px 7px; font-size: 0.69rem; } .scene-mode-button { padding: 6px 8px; font-size: 0.69rem; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }

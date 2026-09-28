@@ -46,6 +46,7 @@ function createDocument() {
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder",
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
+    "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
@@ -91,6 +92,14 @@ async function main() {
     id: "hurricane-michael_00000247_b0001",
     crops: { pre_url: "/demo-scenes/hurricane-michael_00000247/crops/0001_pre.png", post_url: "/demo-scenes/hurricane-michael_00000247/crops/0001_post.png" },
     prediction: { predicted_class: "major-damage", confidence: 0.8, probabilities: { "no-damage": 0.05, "minor-damage": 0.1, "major-damage": 0.8, destroyed: 0.05 } },
+    building_context: { claims: [
+      { title: "Modeled use", value: "Single-family residential", source: "USACE National Structure Inventory", timing: "Current modeled inventory; not event-aligned", displayable: true },
+      { title: "Property context", value: "Residential", source: "Bay County Property Appraiser", timing: "2017 pre-event property record", displayable: true },
+      { title: "School site context", value: "Within Example School", source: "Sonoma County", timing: "Advertised July 2017 · vintage unverified", qualifier: "Site membership; individual building use may differ.", displayable: true },
+      { title: "Site context", value: "Within Example School", source: "OpenStreetMap", timing: "Mapped near disaster date · 2017-10-11", osm: true, displayable: true },
+      { title: "Mapped place", value: "Example Dental", source: "OpenStreetMap", timing: "Current context", osm: true, displayable: true },
+      { title: "Mapped place", value: "QA-held identity", source: "OpenStreetMap", timing: "Current context", osm: true, displayable: false },
+    ] },
   };
   const second = {
     id: "hurricane-michael_00000247_b0002",
@@ -117,24 +126,56 @@ async function main() {
   assert.equal(document.elements.get("#result-badge").textContent, "Scene selection");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
   assert.equal(document.elements.get("#result-card").hidden, false);
+  const gis = document.elements.get("#building-context");
+  const primary = document.elements.get("#context-claims");
+  const secondary = document.elements.get("#context-secondary-claims");
+  const text = (element) => element.textContent + element.children.map(text).join(" ");
+  assert.equal(gis.hidden, false);
+  assert.equal(primary.children.length, 3);
+  assert.equal(secondary.children.length, 2);
+  assert.match(text(primary), /Modeled use:.*Single-family residential/);
+  assert.match(text(primary), /USACE National Structure Inventory/);
+  assert.match(text(primary), /2017 pre-event property record/);
+  assert.match(text(primary), /Within Example School/);
+  assert.match(text(primary), /vintage unverified/);
+  assert.match(text(secondary), /Mapped near disaster date/);
+  assert.match(text(secondary), /Current context/);
+  assert.doesNotMatch(text(primary) + text(secondary), /QA-held identity/);
+  assert.equal(document.elements.get("#context-attribution").hidden, false);
   await document.elements.get("#predict-button").trigger("click");
   assert.equal(fetchCalls, 0);
+  assert.equal(gis.hidden, false);
 
   assert.equal(selectSceneBuilding(second), true);
   assert.equal(document.elements.get("#pre-preview").src, second.crops.pre_url);
   assert.equal(document.elements.get("#result-class").textContent, "no damage");
   assert.equal(document.elements.get("#result-confidence").textContent, "90.0% confidence");
+  assert.equal(gis.hidden, true);
+  assert.equal(primary.children.length, 0);
+  assert.equal(secondary.children.length, 0);
+  assert.equal(document.elements.get("#context-attribution").hidden, true);
 
+  selectSceneBuilding(first);
   document.examples[0].trigger("click");
+  assert.equal(gis.hidden, true);
   assert.equal(document.elements.get("#pre-preview").src, "examples/no_damage/pre.png");
   assert.equal(document.elements.get("#post-preview").src, "examples/no_damage/post.png");
   assert.equal(document.elements.get("#result-card").hidden, true);
   assert.ok(clearedSceneSelections > 0);
 
+  selectSceneBuilding(first);
   document.elements.get("#pre-image").files = [{ name: "manual-pre.png" }];
   document.elements.get("#pre-image").trigger("change");
   assert.equal(document.elements.get("#pre-preview").src, "blob:manual");
   assert.equal(document.elements.get("#selection-label").textContent, "Custom upload");
+  assert.equal(gis.hidden, true);
+  selectSceneBuilding(first);
+  document.elements.get("#context-more").open = true;
+  document.elements.get("#clear-selection").trigger("click");
+  assert.equal(gis.hidden, true);
+  assert.equal(document.elements.get("#context-more").open, false);
+  selectSceneBuilding({ ...second, building_context: { claims: first.building_context.claims.filter((c) => !c.displayable) } });
+  assert.equal(gis.hidden, true);
   console.log("scene_inspection=passed");
 }
 

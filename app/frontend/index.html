@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=scene-filters-1">
+  <link rel="stylesheet" href="styles.css?v=building-context-1">
   <script src="scene-dashboard.js?v=scene-filters-1" defer></script>
-  <script src="app.js?v=scene-selector-1" defer></script>
+  <script src="app.js?v=building-context-1" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -111,6 +111,15 @@
           <p class="section-kicker">Model result</p>
           <div class="result-summary"><div><p id="result-class" class="result-class">—</p><p id="result-confidence" class="result-confidence">—</p></div><span id="result-badge" class="result-badge">Prediction</span></div>
           <div id="probability-bars" class="probability-bars"></div>
+        </section>
+        <section id="building-context" class="building-context" hidden aria-labelledby="building-context-title" aria-live="polite">
+          <h3 id="building-context-title">Building Context</h3>
+          <ul id="context-claims" class="context-claims"></ul>
+          <details id="context-more" class="context-more" hidden>
+            <summary id="context-more-label">More context</summary>
+            <ul id="context-secondary-claims" class="context-claims"></ul>
+          </details>
+          <p id="context-attribution" class="context-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a></p>
         </section>
       </div>
     </section>

@@ -58,6 +58,7 @@ function createDocument() {
     "#scene-summary", "#scene-summary-total", "#scene-summary-no-damage", "#scene-summary-minor-damage", "#scene-summary-major-damage", "#scene-summary-destroyed", "#scene-summary-severe", "#scene-summary-severe-detail",
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
+    "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
@@ -110,8 +111,10 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=scene-filters-1"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=scene-selector-1"'));
+  assert.match(html, /href="styles\.css\?v=building-context-1"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=building-context-1"'));
+  assert.match(html, /openstreetmap.org\/copyright/);
+  assert.match(html, /ODbL/);
   assert.match(styles, /\.scene-canvas img, \.scene-overlay \{ position: absolute/);
   assert.match(styles, /\.scene-building\.neutral/);
   assert.match(styles, /\.scene-imagery-mode/);
@@ -130,6 +133,7 @@ async function main() {
     post_pixel_polygon: [[0, 0], [10, 0], [10, 10]],
     crops: { pre_url: "/demo-scenes/hurricane-michael_00000247/crops/0051675_pre.png", post_url: "/demo-scenes/hurricane-michael_00000247/crops/0051675_post.png" },
     prediction: { predicted_class: "major-damage", confidence: 0.8, probabilities: { "no-damage": 0.05, "minor-damage": 0.1, "major-damage": 0.8, destroyed: 0.05 } },
+    building_context: { claims: [{ title: "Property context", value: "Residential", source: "Bay County", timing: "2017 pre-event property record", displayable: true }] },
   };
   const scene = { scene_id: "hurricane-michael_00000247", event_name: "hurricane-michael", image: { width: 1024, height: 1024, pre_url: "/demo-scenes/hurricane-michael_00000247/pre.png", post_url: "/demo-scenes/hurricane-michael_00000247/post.png" }, buildings: [building] };
   const nextBuilding = {
@@ -189,6 +193,7 @@ async function main() {
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
   assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
+  assert.equal(document.elements.get("#building-context").hidden, false);
   await filterButton("severe").trigger("click");
   assert.equal(overlay.children.length, 1);
   assert.equal(overlay.children[0].classList.contains("selected"), true);
@@ -200,6 +205,7 @@ async function main() {
   await imageryButtons[2].trigger("click");
   assert.equal(overlay.children[0].classList.contains("selected"), true);
   await filterButton("no-damage").trigger("click");
+  assert.equal(document.elements.get("#building-context").hidden, true);
   assert.equal(overlay.children.length, 0);
   assert.equal(document.elements.get("#pre-preview").src, undefined);
   assert.equal(document.elements.get("#post-preview").src, undefined);
@@ -208,7 +214,9 @@ async function main() {
   await filterButton("all").trigger("click");
   assert.equal(overlay.children.length, 1);
   overlay.children[0].trigger("click");
+  assert.equal(document.elements.get("#building-context").hidden, false);
   await document.elements.get("#scene-next").trigger("click");
+  assert.equal(document.elements.get("#building-context").hidden, true);
   assert.equal(document.elements.get("#scene-summary-total").textContent, "1 buildings analyzed");
   assert.equal(document.elements.get("#scene-summary-no-damage").textContent, "1");
   assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "0");
@@ -223,6 +231,7 @@ async function main() {
   assert.equal(document.elements.get("#pre-preview").src, nextBuilding.crops.pre_url);
   assert.equal(document.elements.get("#post-preview").src, nextBuilding.crops.post_url);
   assert.equal(document.elements.get("#result-class").textContent, "no damage");
+  assert.equal(document.elements.get("#building-context").hidden, true);
   assert.equal(predictRequests, 0);
   console.log("scene_page_integration=passed");
 }
