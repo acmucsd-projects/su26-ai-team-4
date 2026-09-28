@@ -11,13 +11,13 @@ from unittest.mock import Mock, patch
 
 from shapely.geometry import Point, Polygon, box, mapping
 
-from .audit import FLAGS, PROVIDERS, aggregate, build_row, empty_report, run_audit, select_qa
+from .audit import FLAGS, PROVIDERS, aggregate, build_row, empty_report, run_audit, select_qa, source_coverage
 from .cache import CachedClient, canonical
 from .geometry import Projection, SCENE_ID, load_scene, overlap, utc_timestamp
 from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matches, site_matches
 from .models import Feature, Match, Source
 from .local_providers import LOCAL, fetch_local, local_features, local_claims
-from .scenes import SCENE_COUNTS, SCENE_PROVIDERS
+from .scenes import SCENE_COUNTS, SCENE_PROVIDERS, OPTIONAL_PROVIDERS
 from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
 from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
 from .report import write_reports
@@ -436,15 +436,36 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("local_parcel_match", row["flags"])
         self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
 
-    def test_socal_uses_historical_current_osm_and_nsi_only(self):
+    def test_socal_uses_optional_historical_current_osm_and_nsi(self):
         scene_id = "socal-fire_00000663"
         self.assertEqual(SCENE_COUNTS[scene_id], 48)
         providers = SCENE_PROVIDERS[scene_id]
         self.assertEqual(providers, ("osm_historical", "osm_current", "nsi"))
+        self.assertEqual(OPTIONAL_PROVIDERS[scene_id], {"osm_historical"})
         statuses = {p: {"status": "complete"} for p in providers}
+        statuses["osm_historical"] = {"status": "unavailable", "optional": True}
         row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
-        self.assertFalse(any(key.startswith("local_") for key in row["flags"]))
+        self.assertTrue(row["flags"]["no_context"])
+        self.assertIsNone(row["flags"]["historical_osm_useful_context"])
+        self.assertIsNone(row["flags"]["event_or_pre_event_context"])
         self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
+
+    def test_unavailable_optional_provider_does_not_block_completed_baseline_coverage(self):
+        statuses = {"osm_historical": {"status": "unavailable", "optional": True},
+                    "osm_current": {"status": "complete"}, "nsi": {"status": "complete"}}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertEqual(aggregate([row])["no_context"]["count"], 1)
+        contributions, overlap = source_coverage([row], statuses)
+        self.assertIsNone(contributions["osm_historical"]["unique_additional_buildings"])
+        self.assertNotIn("osm_historical", overlap["incremental_order"])
+
+    def test_modeled_building_scope_is_not_counted_as_direct_building_place_evidence(self):
+        nsi = nsi_claims(feature(provider="nsi", properties={"occtype": "RES1"}), accepted("nsi_structure"))
+        statuses = {p: {"status": "complete"} for p in ("nsi", "osm_current")}
+        statuses["osm_historical"] = {"status": "unavailable", "optional": True}
+        row = build_row({"id": "a", "uid": "a"}, None, nsi, [], statuses)
+        self.assertTrue(row["flags"]["nsi_normalized_occupancy"])
+        self.assertFalse(row["flags"]["direct_building_place_context"])
 
     def test_rows_without_a_local_provider_omit_local_metrics(self):
         statuses = {p: {"status": "complete"} for p in ("nsi", "osm_historical", "osm_current")}
@@ -493,6 +514,19 @@ class ReportingTests(unittest.TestCase):
         result = apply_review(report, review)
         self.assertEqual(result["status"], "reviewed_with_findings_partial_scope")
         self.assertEqual(result["qa"]["excluded_providers"], ["duplin_parcels"])
+        review["excluded_providers"] = []
+        with self.assertRaisesRegex(ValueError, "exclude exactly"):
+            apply_review(report, review)
+
+    def test_unavailable_optional_historical_source_requires_explicit_review_exclusion(self):
+        report, review = self.review_fixture()
+        report["providers"]["osm_historical"] = {"status": "unavailable", "optional": True}
+        report["status"] = "awaiting_manual_qa"
+        review["excluded_providers"] = ["osm_historical"]
+        review["evidence_sha256"] = evidence_sha256(report)
+        result = apply_review(report, review)
+        self.assertEqual(result["status"], "reviewed_with_findings_partial_scope")
+        self.assertEqual(result["qa"]["excluded_providers"], ["osm_historical"])
         review["excluded_providers"] = []
         with self.assertRaisesRegex(ValueError, "exclude exactly"):
             apply_review(report, review)

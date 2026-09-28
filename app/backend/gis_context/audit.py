@@ -14,7 +14,7 @@ from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matche
 from .normalize import compare_claims, hcad_claims, nsi_claims, osm_claims
 from .providers import fetch_hcad, fetch_nsi, fetch_osm, geojson_features, osm_features
 from .local_providers import LOCAL, fetch_local, local_features, local_claims
-from .scenes import SCENE_COUNTS, SCENE_PROVIDERS, LOCAL_PARCELS
+from .scenes import SCENE_COUNTS, SCENE_PROVIDERS, LOCAL_PARCELS, OPTIONAL_PROVIDERS
 
 
 PROVIDERS = ("hcad", "nsi", "osm_historical", "osm_current")
@@ -77,9 +77,14 @@ def flag(value: bool, complete: bool):
     return True if value else False if complete else None
 
 
+def required_providers_complete(statuses: dict) -> bool:
+    return all(value["status"] == "complete" for provider, value in statuses.items()
+               if not value.get("optional", False))
+
+
 def build_row(building: dict, geometry: dict, claims, candidates: list[dict], statuses: dict) -> dict:
     providers = tuple(statuses)
-    complete = all(statuses[p]["status"] == "complete" for p in providers)
+    complete = required_providers_complete(statuses)
     event_complete = all(statuses[p]["status"] == "complete" for p in ("hcad", "osm_historical") if p in statuses)
     useful = [claim for claim in claims if claim.displayable]
     conflicts = compare_claims(useful)
@@ -115,7 +120,8 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "no_context": False if useful else True if complete else None,
         "landuse_area_context": flag(any(c.kind == "area_use" for c in useful), complete),
         "context_excluding_landuse_areas": flag(any(c.kind != "area_use" for c in useful), complete),
-        "direct_building_place_context": flag(any(c.scope in {"building", "place"} for c in useful), complete),
+        "direct_building_place_context": flag(any(c.scope in {"building", "place"} and not c.source.modeled
+                                                   for c in useful), complete),
         "hcad_parcel_ambiguity": flag(any(c["ambiguous"] for c in matches.get("hcad", [])), hc),
         "ambiguous_candidates": flag(any(c["ambiguous"] for c in candidates), complete),
         "site_context_excluding_landuse": flag(any(c.scope == "site" and c.kind != "area_use" for c in useful), complete),
@@ -133,8 +139,8 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "neighborhood_only_context": flag(bool(useful) and all(c.kind == "area_use" for c in useful), complete),
         "school_site_context": flag(any(c.scope == "site" and c.category == "education" for c in useful), complete),
         "facility_context": flag(any(not c.source.modeled and c.kind != "area_use" and c.category in {"education", "medical", "emergency_services", "government_civic", "religious", "recreation_community"} for c in useful), complete),
-        "pre_event_aligned_useful_context": flag(any(c.source.temporal_status == "pre_event_historical" for c in useful), complete),
-        "event_or_pre_event_context": flag(any(c.source.temporal_status in {"event_year", "event_snapshot", "pre_event_historical"} for c in useful), complete),
+        "pre_event_aligned_useful_context": flag(any(c.source.temporal_status == "pre_event_historical" for c in useful), event_complete),
+        "event_or_pre_event_context": flag(any(c.source.temporal_status in {"event_year", "event_snapshot", "pre_event_historical"} for c in useful), event_complete),
         "unverified_historical_reference_context": flag(any(c.source.temporal_status == "pre_event_reference_vintage_unverified" for c in useful), complete),
     }
     if "hcad" not in providers:
@@ -185,25 +191,28 @@ def source_coverage(rows: list[dict], statuses: dict) -> tuple[dict, dict | None
                 source = claim["source"]
                 provider = source["dataset"] if source["provider"] == "osm" else source["provider"]
                 sets[provider].add(row["uid"])
-    complete = all(statuses[p]["status"] == "complete" for p in providers)
+    complete = required_providers_complete(statuses)
     contributions = {}
     for provider, uids in sets.items():
         others = set().union(*(sets[p] for p in providers if p != provider))
         ready = statuses[provider]["status"] == "complete"
         contributions[provider] = {"displayable_buildings": len(uids) if ready or uids else None,
                                    "percent": round(len(uids) / len(rows) * 100, 2) if ready else None,
-                                   "unique_additional_buildings": len(uids - others) if complete else None}
+                                   "unique_additional_buildings": len(uids - others) if complete and ready else None}
     if not complete:
         return contributions, None
     seen, incremental = set(), {}
     for provider in providers:
+        if statuses[provider]["status"] != "complete":
+            continue
         added = len(sets[provider] - seen)
         incremental[provider] = {"count": added, "percent_of_scene": round(100 * added / len(rows), 2)}
         seen.update(sets[provider])
-    overlap = {"incremental_order": list(providers), "incremental": incremental,
+    available = [provider for provider in providers if statuses[provider]["status"] == "complete"]
+    overlap = {"incremental_order": available, "incremental": incremental,
                "pairwise": {a + "+" + b: {"count": len(sets[a] & sets[b]),
                             "percent_of_scene": round(100 * len(sets[a] & sets[b]) / len(rows), 2)}
-                            for a, b in combinations(providers, 2)}}
+                            for a, b in combinations(available, 2)}}
     return contributions, overlap
 
 
@@ -213,6 +222,7 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
     if scene_id not in SCENE_COUNTS or len(manifest.get("buildings", [])) != SCENE_COUNTS[scene_id]:
         raise ValueError("Expected an authorized scene and canonical building count.")
     providers = SCENE_PROVIDERS[scene_id]
+    optional_providers = OPTIONAL_PROVIDERS.get(scene_id, set())
     try:
         scene = load_scene(manifest_path, label_path)
     except (OSError, ValueError, KeyError, TypeError, GEOSException) as error:
@@ -222,6 +232,11 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
     client = CachedClient(cache_root, network=fetch)
     statuses, all_matches, all_features = {}, {}, {}
     for provider in providers:
+        if provider in optional_providers:
+            statuses[provider] = {"status": "unavailable", "optional": True,
+                                  "reason": "Unavailable — event-date provider requests timed out; historical OSM was not retried per instruction."}
+            all_matches[provider], all_features[provider] = {}, {}
+            continue
         try:
             if provider == "hcad":
                 payload, source = fetch_hcad(client, scene.query_bbox, snapshot)
@@ -244,11 +259,11 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
                 parts = [matcher(scene.metric, layers[layer]) for layer, matcher in (
                     ("footprint", footprint_matches), ("place", poi_matches), ("site", site_matches))]
                 matches = {uid: sum((part[uid] for part in parts), []) for uid in scene.metric}
-            statuses[provider] = {"status": "partial" if issues else "complete", "records": len(features),
+            statuses[provider] = {"status": "partial" if issues else "complete", "optional": provider in optional_providers, "records": len(features),
                                   "parse_issues": issues, "source": asdict(source)}
             all_matches[provider], all_features[provider] = matches, {f.record_id: f for f in features}
         except (OSError, ValueError, KeyError, TypeError, GEOSException) as error:
-            statuses[provider] = {"status": "unavailable", "reason": str(error)}
+            statuses[provider] = {"status": "unavailable", "optional": provider in optional_providers, "reason": str(error)}
             all_matches[provider], all_features[provider] = {}, {}
     rows = []
     for building in manifest["buildings"]:
@@ -263,11 +278,16 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
                 normalizer = local_claims if provider in LOCAL else hcad_claims if provider == "hcad" else nsi_claims if provider == "nsi" else osm_claims
                 claims.extend(normalizer(feature, match))
         rows.append(build_row(building, mapping(scene.geographic[uid]), claims, candidates, statuses))
-    complete = all(status["status"] == "complete" for status in statuses.values())
+    complete = required_providers_complete(statuses)
+    unavailable_required = [p + ": " + statuses[p]["status"] for p in providers
+                            if not statuses[p].get("optional", False) and statuses[p]["status"] != "complete"]
+    unavailable_optional = [p + ": " + statuses[p]["status"] for p in providers
+                            if statuses[p].get("optional", False) and statuses[p]["status"] != "complete"]
     contributions, provider_overlap = source_coverage(rows, statuses)
     return {"report_schema_version": 2, "scene_id": scene_id, "building_count": len(rows),
             "status": "awaiting_manual_qa" if complete else "partial_provider_data",
-            "blockers": [] if complete else [p + ": " + statuses[p]["status"] for p in providers if statuses[p]["status"] != "complete"],
+            "blockers": unavailable_required,
+            "limitations": unavailable_optional,
             "post_acquisition_time": scene.acquisition_time, "metric_crs": f"EPSG:{scene.projection.epsg}",
             "query_bbox_wgs84": scene.query_bbox, "query_extent_basis": "all raw POST lng_lat footprint bounds + 50 m; not image georeferencing",
             "input_sha256": {"scene_manifest": scene.manifest_sha256, "raw_post_label": scene.label_sha256},

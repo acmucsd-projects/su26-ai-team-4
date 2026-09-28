@@ -15,7 +15,9 @@ def evidence_sha256(report: dict) -> str:
 
 def apply_review(report: dict, review: dict) -> dict:
     excluded = set(review.get("excluded_providers", []))
-    partial_scope = report["status"] == "partial_provider_data"
+    partial_scope = (report["status"] == "partial_provider_data"
+                     or any(value.get("optional") and value["status"] != "complete"
+                            for value in report["providers"].values()))
     if report["status"] != "awaiting_manual_qa" and not partial_scope:
         raise ValueError("Manual findings require a complete audit or an explicit partial-provider review scope.")
     if partial_scope:

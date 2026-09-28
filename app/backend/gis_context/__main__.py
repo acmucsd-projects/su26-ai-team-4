@@ -42,7 +42,7 @@ def main() -> int:
     print(report["status"] + ": " + str(output / "summary.md"))
     for reason in report["blockers"]:
         print(reason)
-    return 0 if report["status"] in {"awaiting_manual_qa", "reviewed_with_findings"} else 2
+    return 0 if report["status"] in {"awaiting_manual_qa", "reviewed_with_findings", "reviewed_with_findings_partial_scope"} else 2
 
 
 if __name__ == "__main__":

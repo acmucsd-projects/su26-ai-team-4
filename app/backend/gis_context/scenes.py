@@ -14,4 +14,5 @@ SCENE_PROVIDERS = {
     "hurricane-florence_00000459": ("duplin_parcels", "nsi", "osm_historical", "osm_current"),
     "socal-fire_00000663": ("osm_historical", "osm_current", "nsi"),
 }
+OPTIONAL_PROVIDERS = {"socal-fire_00000663": {"osm_historical"}}
 LOCAL_PARCELS = {"hcad", "bay_2017", "sonoma_parcels", "duplin_parcels"}
