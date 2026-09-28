@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from shapely.geometry import Point, Polygon, box, mapping
 
@@ -15,7 +15,9 @@ from .audit import FLAGS, PROVIDERS, aggregate, build_row, empty_report, run_aud
 from .cache import CachedClient, canonical
 from .geometry import Projection, SCENE_ID, load_scene, overlap, utc_timestamp
 from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matches, site_matches
-from .models import Feature, Match
+from .models import Feature, Match, Source
+from .local_providers import LOCAL, fetch_local, local_features, local_claims
+from .scenes import SCENE_PROVIDERS
 from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
 from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
 from .report import write_reports
@@ -330,6 +332,83 @@ class ProviderTests(unittest.TestCase):
             (directory / "response.json").write_bytes(b'{}')
             with self.assertRaisesRegex(ValueError, "integrity"):
                 client.get_json("https://example.invalid", **kwargs)
+
+
+class LocalProviderTests(unittest.TestCase):
+    def source(self, provider):
+        config = LOCAL[provider]
+        return Source(provider, config['name'], config['release'], '2026-09-28', config['temporal'], config['credit'], config['terms'], config['url'])
+
+    def test_local_schema_dates_and_truncation(self):
+        config = LOCAL['sonoma_schools']
+        schema = {'name': config['name'], 'fields': [{'name': f} for f in config['fields']],
+                  'maxRecordCount': 1000, 'editingInfo': {'dataLastEditDate': 1654891237240}}
+        client = Mock()
+        client.get_json.side_effect = [schema, {'type': 'FeatureCollection', 'features': []}]
+        _, source = fetch_local(client, 'sonoma_schools', (-123, 38, -122, 39), '2026-09-28')
+        self.assertIn('2022-06-10', source.release)
+        self.assertEqual(source.temporal_status, 'pre_event_reference_vintage_unverified')
+        for bad in ({'features': [], 'exceededTransferLimit': True}, {'features': [{}] * 1000}):
+            client.get_json.side_effect = [schema, bad]
+            with self.assertRaisesRegex(ValueError, 'truncated'):
+                fetch_local(client, 'sonoma_schools', (-123, 38, -122, 39), '2026-09-28')
+        client.get_json.side_effect = [{**schema, 'fields': []}]
+        with self.assertRaisesRegex(ValueError, 'schema'):
+            fetch_local(client, 'sonoma_schools', (-123, 38, -122, 39), '2026-09-28')
+
+    def test_local_counts_and_literal_descriptions(self):
+        for provider, fields, count, description in [
+            ('bay_2017', {'BLDCNT': 1}, 1, {'DORAPPDESC': 'MOBILE HOME'}),
+            ('sonoma_parcels', {'BuildingPrimaryCount': 1, 'BuildingSecondaryCount': 2}, 3, {'UseCodeDescription': 'RURAL RES/SINGLE RES'}),
+            ('sonoma_parcels', {'BuildingPrimaryCount': 1, 'BuildingSecondaryCount': None}, None, {'UseCodeDescription': 'RURAL RES SFD W/GRANNY UNIT'}),
+        ]:
+            payload = {'type': 'FeatureCollection', 'features': [{'geometry': mapping(box(-122.74, 38.49, -122.739, 38.491)),
+                       'properties': {'OBJECTID': 1, **fields, **description}}]}
+            features, issues = local_features(payload, self.source(provider), Projection(32610))
+            self.assertEqual(issues, [])
+            self.assertEqual(features[0].properties['BUILDCOUNT'], count)
+            claims = local_claims(features[0], accepted('parcel', building_promotion_allowed=False, structure_association='multi_structure'))
+            self.assertEqual([(c.scope, c.category) for c in claims], [('parcel', 'residential')])
+            self.assertEqual(claims[0].raw_value, description)
+        for provider, field, value in [('bay_2017', 'DORAPPDESC', 'COUNTY'), ('sonoma_parcels', 'UseCodeDescription', 'RURAL RES/VACANT HOMESITE')]:
+            f = Feature('1', box(0, 0, 10, 10), {field: value}, self.source(provider))
+            self.assertEqual(local_claims(f, accepted('parcel')), [])
+
+    def test_school_property_is_shared_site_and_never_verified_event_or_critical(self):
+        f = Feature('1', box(-5, -5, 40, 20), {'SCHOOLNAME': 'Fixture combined school property'}, self.source('sonoma_schools'))
+        roofs = {'a': box(0, 0, 10, 10), 'b': box(20, 0, 30, 10)}
+        matches = site_matches(roofs, [f])
+        statuses = {p: {'status': 'complete'} for p in SCENE_PROVIDERS['santa-rosa-wildfire_00000014']}
+        for uid in roofs:
+            claims = local_claims(f, matches[uid][0])
+            row = build_row({'id': uid, 'uid': uid}, None, claims, [], statuses)
+            self.assertTrue(row['flags']['school_site_context'])
+            self.assertTrue(row['flags']['unverified_historical_reference_context'])
+            self.assertFalse(row['flags']['critical_facility'])
+            self.assertFalse(row['flags']['event_or_pre_event_context'])
+            self.assertFalse(row['flags']['direct_building_place_context'])
+
+    def test_bay_pre_event_structure_claim_can_be_held_without_losing_property_context(self):
+        f = Feature('1', box(0, 0, 10, 10), {'DORAPPDESC': 'SINGLE FAMILY'}, self.source('bay_2017'))
+        claims = local_claims(f, accepted('parcel', building_promotion_allowed=True))
+        statuses = {p: {'status': 'complete'} for p in SCENE_PROVIDERS['hurricane-michael_00000247']}
+        rows = [build_row({'id': 'a', 'uid': 'a'}, None, claims, [], statuses)]
+        report = {'status': 'awaiting_manual_qa', 'input_sha256': {}, 'cache_entries': [], 'providers': statuses,
+                  'buildings': rows, 'metrics': aggregate(rows), 'source_contribution': {}, 'provider_overlap': {}, 'qa': select_qa(rows)}
+        review = {'input_sha256': {}, 'cache_response_sha256': {}, 'evidence_sha256': evidence_sha256(report), 'reviewed_uids': ['a'],
+                  'decision': 'fixture only', 'claim_actions': [{'uid': 'a', 'provider': 'bay_2017', 'record_id': '1', 'kind': 'structure_use',
+                  'action': 'withhold_claim', 'reason': 'Unlabeled competing roof outside the image.'}]}
+        result = apply_review(report, review)
+        flags = result['buildings'][0]['flags']
+        self.assertTrue(flags['pre_event_aligned_useful_context'])
+        self.assertFalse(flags['event_aligned_useful_context'])
+        self.assertTrue(flags['parcel_only_context'])
+        self.assertFalse(flags['direct_building_place_context'])
+        self.assertEqual([c['displayable'] for c in result['buildings'][0]['claims']], [True, False])
+
+    def test_osm_education_office_remains_noncritical_place(self):
+        claims = osm_claims(feature(properties={'office': 'educational_institution', 'name': 'Fixture Prep'}), accepted('place', confidence='moderate'))
+        self.assertEqual([(c.category, c.scope, c.critical_facility) for c in claims], [('education', 'place', False)])
 
 
 class ReportingTests(unittest.TestCase):

@@ -149,7 +149,7 @@ def osm_claims(feature: Feature, match: Match) -> list[Claim]:
         if key == "shop":
             category = "commercial_retail"
         if key == "office":
-            category = "office_professional"
+            category = "education" if value == "educational_institution" else "office_professional"
         if category == "unknown":
             continue
         building_claim = key in {"building", "building:use"} and match.relationship == "footprint"

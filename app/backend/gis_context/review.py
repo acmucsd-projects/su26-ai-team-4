@@ -36,7 +36,8 @@ def apply_review(report: dict, review: dict) -> dict:
             if action["uid"] != row["uid"]:
                 continue
             selected = [c for c in claims if c.source_record_id == action["record_id"] and
-                        (c.source.dataset if c.source.provider == "osm" else c.source.provider) == action["provider"]]
+                        (c.source.dataset if c.source.provider == "osm" else c.source.provider) == action["provider"] and
+                        ("kind" not in action or c.kind == action["kind"])]
             if not selected:
                 raise ValueError("Manual action does not identify an existing claim.")
             for claim in selected:

@@ -12,6 +12,7 @@ from shapely import wkt
 from shapely.geometry import box
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform, unary_union
+from .scenes import SCENE_COUNTS
 
 
 SCENE_ID = "hurricane-harvey_00000177"
@@ -76,10 +77,12 @@ class Scene:
 def load_scene(manifest_path: Path, post_label_path: Path, margin_m: float = 50) -> Scene:
     manifest_bytes = manifest_path.read_bytes()
     manifest = json.loads(manifest_bytes)
-    if manifest.get("scene_id") != SCENE_ID or len(manifest.get("buildings", [])) != 76:
-        raise ValueError("This milestone accepts only the 76-building Harvey demo pack.")
-    if post_label_path.name != SCENE_ID + "_post_disaster.json":
-        raise ValueError("Expected the exact raw Harvey POST label filename.")
+    scene_id = manifest.get("scene_id")
+    count = SCENE_COUNTS.get(scene_id)
+    if count is None or len(manifest.get("buildings", [])) != count:
+        raise ValueError("Expected an authorized scene and its canonical building count.")
+    if post_label_path.name != scene_id + "_post_disaster.json":
+        raise ValueError("Expected the exact raw scene POST label filename.")
     label_bytes = post_label_path.read_bytes()
     raw = json.loads(label_bytes)
     acquisition = utc_timestamp(raw.get("metadata", {}).get("capture_date"))
@@ -95,7 +98,7 @@ def load_scene(manifest_path: Path, post_label_path: Path, margin_m: float = 50)
         validate_geographic(geometry, polygon=True)
         geographic[uid] = geometry
     uids = [b["uid"] for b in manifest["buildings"]]
-    if len(set(uids)) != 76 or set(uids) - geographic.keys():
+    if len(set(uids)) != count or set(uids) - geographic.keys():
         raise ValueError("Demo UIDs must each join exactly once to raw POST lng_lat geometry.")
     extent = unary_union(list(geographic.values()))
     if extent.bounds[2] - extent.bounds[0] > 0.1 or extent.bounds[3] - extent.bounds[1] > 0.1:
