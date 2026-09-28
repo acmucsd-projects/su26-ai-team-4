@@ -1,13 +1,19 @@
 # Offline GIS building context v2
 
-This module audits **Harvey (76), Michael (177), and Santa Rosa (49)**. It is
-an offline utility, independent of FastAPI, the frontend, and model inference.
+This module audits **Harvey (76), Michael (177), Santa Rosa (49), and Florence
+(56)**. Florence is audit-only; it is not added to the demo dashboard. The
+module is independent of FastAPI, the frontend, and model inference.
 It does not write scene manifests or guess geographic coordinates from pixels.
 See [milestone 2 findings and the frontend decision](MILESTONE_2_FEASIBILITY.md)
 and the [Harvey reference](HARVEY_FEASIBILITY.md) before interpreting reports.
 After manual QA, context beyond neighborhood areas covers 67/76 Harvey,
 164/177 Michael, and 48/49 Santa Rosa buildings. Sonoma-derived associations
 have a distribution constraint under the source items' No Derivatives terms.
+Florence uses NSI, historical/current OSM, and the current Duplin County parcel
+layer. That parcel layer has no documented property-use field; numeric
+`ValuationModel` values remain unclassified, and parcel matches do not establish
+building identity. Keep Florence extracts local pending evidence review and
+source-terms review.
 
 ## Run
 
@@ -34,7 +40,16 @@ fails closed. Neither the training cache nor a model checkpoint is required.
 
 Use `--scene hurricane-michael_00000247` or
 `--scene santa-rosa-wildfire_00000014` with the corresponding POST label to run
-the other authorized pilots. The [milestone report](MILESTONE_2_FEASIBILITY.md)
+the other reviewed pilots. Florence can be audited with its exact raw POST label:
+
+```powershell
+& $gisPython -B -m app.backend.gis_context `
+  --scene hurricane-florence_00000459 `
+  --post-label data/train/labels/hurricane-florence_00000459_post_disaster.json `
+  --snapshot 2026-09-28 --fetch
+```
+
+The [milestone report](MILESTONE_2_FEASIBILITY.md)
 contains exact paths and commands to replay their completed manual reviews.
 The default scene remains Harvey; the default label path is
 `data/train/labels/<scene>_post_disaster.json`, the legacy packaging layout.
@@ -69,9 +84,11 @@ verify it against the actual source metadata before interpreting scene-wide
 context outside the labeled roofs.
 
 `providers.py` fetches HCAD for Harvey, NSI, and Overpass acquisition-time/current
-snapshots. `local_providers.py` adds Bay's 2017 parcels for Michael and current
-Sonoma parcels plus advertised-2017 school properties for Santa Rosa. Schema
-checks and extracts are cached; the school service edit date remains qualified.
+snapshots. `local_providers.py` adds Bay's 2017 parcels for Michael, current
+Sonoma parcels plus advertised-2017 school properties for Santa Rosa, and current
+Duplin County parcel boundaries for the Florence audit. Duplin property-use
+codes are not interpreted. Schema checks and extracts are cached; the school
+service edit date remains qualified.
 There are no requests per building. County truncation fails the provider audit;
 the code never silently accepts a capped first page. Adapters preserve raw
 values, source record IDs, versions/timestamps where supplied, and attribution.

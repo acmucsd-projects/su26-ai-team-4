@@ -17,7 +17,7 @@ from .geometry import Projection, SCENE_ID, load_scene, overlap, utc_timestamp
 from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matches, site_matches
 from .models import Feature, Match, Source
 from .local_providers import LOCAL, fetch_local, local_features, local_claims
-from .scenes import SCENE_PROVIDERS
+from .scenes import SCENE_COUNTS, SCENE_PROVIDERS
 from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
 from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
 from .report import write_reports
@@ -388,6 +388,20 @@ class LocalProviderTests(unittest.TestCase):
             self.assertFalse(row['flags']['event_or_pre_event_context'])
             self.assertFalse(row['flags']['direct_building_place_context'])
 
+    def test_duplin_parcel_model_codes_are_not_normalized_as_property_use(self):
+        config = LOCAL['duplin_parcels']
+        self.assertEqual(config['temporal'], 'current_only')
+        self.assertNotIn('Name1', config['fields'])
+        self.assertNotIn('Name2', config['fields'])
+        schema = {'name': config['name'], 'fields': [{'name': f} for f in config['fields']]}
+        client = Mock()
+        client.get_json.side_effect = [schema, {'type': 'FeatureCollection', 'features': []}]
+        _, source = fetch_local(client, 'duplin_parcels', (-78, 34, -77, 35), '2026-09-28')
+        self.assertEqual(source.temporal_status, 'current_only')
+        f = Feature('1', box(0, 0, 10, 10),
+                    {'ValuationModel': '2', 'NeighborhoodName': 'Fixture subdivision'}, source)
+        self.assertEqual(local_claims(f, accepted('parcel')), [])
+
     def test_bay_pre_event_structure_claim_can_be_held_without_losing_property_context(self):
         f = Feature('1', box(0, 0, 10, 10), {'DORAPPDESC': 'SINGLE FAMILY'}, self.source('bay_2017'))
         claims = local_claims(f, accepted('parcel', building_promotion_allowed=True))
@@ -412,6 +426,21 @@ class LocalProviderTests(unittest.TestCase):
 
 
 class ReportingTests(unittest.TestCase):
+    def test_florence_uses_duplin_and_global_provider_configuration(self):
+        scene_id = "hurricane-florence_00000459"
+        self.assertEqual(SCENE_COUNTS[scene_id], 56)
+        providers = SCENE_PROVIDERS[scene_id]
+        self.assertEqual(providers, ("duplin_parcels", "nsi", "osm_historical", "osm_current"))
+        statuses = {p: {"status": "complete"} for p in providers}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertIn("local_parcel_match", row["flags"])
+        self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
+
+    def test_rows_without_a_local_provider_omit_local_metrics(self):
+        statuses = {p: {"status": "complete"} for p in ("nsi", "osm_historical", "osm_current")}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertFalse(any(key.startswith("local_") for key in row["flags"]))
+
     def review_fixture(self):
         statuses = {p: {"status": "complete"} for p in PROVIDERS}
         modeled = nsi_claims(feature(provider="nsi", properties={"occtype": "RES1"}), accepted("nsi_structure"))

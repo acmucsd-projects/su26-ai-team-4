@@ -37,6 +37,17 @@ LOCAL = {
         "terms": "https://www.arcgis.com/home/item.html?id=b9bf5d61fa7147ce9f5481989ef78ede",
         "fields": ("OBJECTID", "APN", "DISTRICT", "SCHOOLNAME"),
     },
+    "duplin_parcels": {
+        "url": "https://gis.duplinnc.gov/server/rest/services/TaxMapping/Parcels/FeatureServer/0",
+        "name": "Parcels", "release": "current Duplin County tax parcel service; vintage not stated",
+        "temporal": "current_only",
+        "credit": "Duplin County GIS / Tax Mapping",
+        "terms": "https://www.duplinnc.gov/277/GIS",
+        # Avoid owner names and account/deed fields. The layer has no documented
+        # parcel-use field; numeric ValuationModel values are retained unclassified.
+        "fields": ("OBJECTID", "PIN", "CYPAR", "TOTAL_ACRES", "ActualYearBuilt",
+                   "HeatedAreaCard", "ValuationModel", "Neighborhood", "NeighborhoodName"),
+    },
 }
 
 # Literal descriptions seen in these providers; never infer use from an opaque
@@ -112,6 +123,10 @@ def local_claims(feature, match):
     if not match.accepted:
         return []
     provider, props = feature.source.provider, feature.properties
+    if provider == "duplin_parcels":
+        # Parcel geometry supports parcel-scope matching only. The source does
+        # not publish a documented land-use classification for normalization.
+        return []
     if provider == "sonoma_schools":
         name = str(props.get("SCHOOLNAME") or "").strip() or None
         return [make_claim(feature, match, "school_site", "site", "education",

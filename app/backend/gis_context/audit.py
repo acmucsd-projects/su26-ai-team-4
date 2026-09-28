@@ -60,6 +60,11 @@ def empty_report(manifest: dict, reason: str) -> dict:
             for b in manifest["buildings"]]
     scene_id = manifest.get("scene_id", SCENE_ID)
     providers = SCENE_PROVIDERS.get(scene_id, PROVIDERS)
+    flags = [key for key in FLAGS
+             if (not key.startswith("hcad_") or "hcad" in providers)
+             and (not key.startswith("local_") or any(p in LOCAL_PARCELS for p in providers))]
+    for row in rows:
+        row["flags"] = {key: None for key in flags}
     return {"report_schema_version": 2, "scene_id": scene_id, "building_count": len(rows),
             "status": "blocked_missing_raw_input", "blockers": [reason],
             "providers": {p: {"status": "not_queried", "reason": "raw_input_unavailable"} for p in providers},
@@ -80,9 +85,9 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     conflicts = compare_claims(useful)
     by_provider = {p: [c for c in useful if (c.source.dataset == p if p.startswith("osm_") else c.source.provider == p)] for p in providers}
     matches = {p: [c for c in candidates if c["provider"] == p] for p in providers}
-    local_provider = next(p for p in providers if p in LOCAL_PARCELS)
-    local_accepted = [c for c in matches[local_provider] if c["accepted"]]
-    local_ready = statuses[local_provider]["status"] == "complete"
+    local_provider = next((p for p in providers if p in LOCAL_PARCELS), None)
+    local_accepted = [c for c in matches[local_provider] if c["accepted"]] if local_provider else []
+    local_ready = statuses[local_provider]["status"] == "complete" if local_provider else False
     hcad_accepted = [c for c in matches.get("hcad", []) if c["accepted"]]
     hc = statuses.get("hcad", {}).get("status") == "complete"
     ns = statuses["nsi"]["status"] == "complete"
@@ -118,12 +123,12 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "broad_use_excluding_landuse_areas": flag(any(c.kind != "area_use" and c.category != "unknown" for c in useful), complete),
         "event_aligned_direct_context": flag(any(c.source.temporal_status in {"event_year", "event_snapshot"} and c.scope in {"building", "place"} for c in useful), event_complete),
         "local_parcel_match": flag(bool(local_accepted), local_ready),
-        "local_useful_context": flag(any(c.category != "unknown" for c in by_provider[local_provider]), local_ready),
+        "local_useful_context": flag(any(c.category != "unknown" for c in by_provider.get(local_provider, [])), local_ready),
         "local_single_structure": flag(any(c["evidence"].get("structure_association") == "single_structure_supported" for c in local_accepted), local_ready),
         "local_multi_structure": flag(any(c["evidence"].get("structure_association") == "multi_structure" for c in local_accepted), local_ready),
         "local_structure_count_unknown": flag(any(c["evidence"].get("structure_association") == "structure_count_unknown" for c in local_accepted), local_ready),
-        "local_parcel_ambiguity": flag(any(c["ambiguous"] for c in matches[local_provider]), local_ready),
-        "local_promoted_structure_context": flag(any(c.scope == "building" for c in by_provider[local_provider]), local_ready),
+        "local_parcel_ambiguity": flag(any(c["ambiguous"] for c in matches.get(local_provider, [])), local_ready),
+        "local_promoted_structure_context": flag(any(c.scope == "building" for c in by_provider.get(local_provider, [])), local_ready),
         "parcel_only_context": flag(any(c.scope == "parcel" for c in useful) and all(c.scope == "parcel" or c.kind == "area_use" for c in useful), complete),
         "neighborhood_only_context": flag(bool(useful) and all(c.kind == "area_use" for c in useful), complete),
         "school_site_context": flag(any(c.scope == "site" and c.category == "education" for c in useful), complete),
@@ -134,6 +139,8 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     }
     if "hcad" not in providers:
         flags = {k: v for k, v in flags.items() if not k.startswith("hcad_")}
+    if local_provider is None:
+        flags = {k: v for k, v in flags.items() if not k.startswith("local_")}
     return {"building_id": building["id"], "uid": building["uid"], "geometry": geometry,
             "evaluation_status": "evaluated" if complete else "partially_evaluated",
             "claims": [c.to_dict() for c in claims], "candidates": candidates, "conflicts": conflicts,
