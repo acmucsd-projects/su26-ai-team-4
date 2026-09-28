@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -12,8 +13,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.backend.api import create_app
+from app.backend import api
 from app.backend.building_context import SCHEMA_VERSION, load_context_overlay
-from app.backend.gis_context.export_dashboard import build_overlay, present_claim
+from app.backend.gis_context.export_dashboard import CLASSIFICATION_FIELDS, build_overlay, present_claim
 from app.backend.gis_context.presentation import normalize_context
 from app.backend.test_api_demo_scenes import SCENE_ID, write_demo_scene
 
@@ -159,7 +161,7 @@ class LocalOverlayApiTests(unittest.TestCase):
         self.write_overlay()
         for enabled in (False, True):
             with self.subTest(enabled=enabled), patch.dict(os.environ, {
-                "DEMO_SCENE_ROOT": str(self.scenes), "GIS_CONTEXT_ROOT": str(self.overlays) if enabled else "",
+                "DEMO_SCENE_ROOT": str(self.scenes), "GIS_CONTEXT_ROOT": str(self.overlays if enabled else self.root / "missing"),
                 "DEMO_SCENES_ONLY": "1",
             }), patch("app.backend.api.load_classifier") as load, patch("app.backend.api.predict_images") as predict:
                 with TestClient(create_app()) as client:
@@ -191,6 +193,77 @@ class LocalOverlayApiTests(unittest.TestCase):
         self.write_overlay()
         with self.assertLogs("app.backend.building_context", level="WARNING"):
             self.assertEqual(load_context_overlay(self.overlays, SCENE_ID, self.manifest_path, self.manifest), {})
+
+
+class PortableDemoContextTests(unittest.TestCase):
+    scenes = {"hurricane-harvey_00000177": 76, "hurricane-michael_00000247": 175,
+              "santa-rosa-wildfire_00000014": 48}
+
+    def test_default_demo_context_is_displayable_and_preserves_predictions(self):
+        self.assertEqual({p.stem for p in api.DEFAULT_GIS_CONTEXT_ROOT.glob("*.json")}, set(self.scenes))
+        with patch.dict(os.environ, {"GIS_CONTEXT_ROOT": "", "DEMO_SCENE_ROOT": str(api.DEFAULT_DEMO_SCENE_ROOT),
+                                     "DEMO_SCENES_ONLY": "1"}), patch("app.backend.api.load_classifier") as load:
+            with TestClient(create_app()) as client:
+                for scene, count in self.scenes.items():
+                    package = json.loads((api.DEFAULT_GIS_CONTEXT_ROOT / f"{scene}.json").read_text(encoding="utf-8"))
+                    manifest = json.loads((api.DEFAULT_DEMO_SCENE_ROOT / scene / "scene.json").read_text(encoding="utf-8"))
+                    response = client.get(f"/demo-scenes/{scene}")
+                    self.assertEqual(response.status_code, 200)
+                    buildings = response.json()["buildings"]
+                    self.assertEqual(sum("building_context" in b for b in buildings), count)
+                    for original, actual in zip(manifest["buildings"], buildings):
+                        self.assertEqual(actual["prediction"], original["prediction"])
+                        context = package["buildings"][actual["uid"]]
+                        if context["claims"]:
+                            self.assertEqual(actual["building_context"], context)
+                        else:
+                            self.assertNotIn("building_context", actual)
+                        self.assertEqual(normalize_context(context["claims"], context["conflicts"]), context)
+                        for claim in context["claims"]:
+                            self.assertTrue(claim["displayable"])
+                            self.assertLessEqual(set(claim["original_values"]), CLASSIFICATION_FIELDS)
+                    for forbidden in ('"candidates":', '"source_record_id":', '"spatial_evidence":', '"raw_value":', '"med_yr_blt":'):
+                        self.assertNotIn(forbidden, json.dumps(package))
+                self.assertFalse(client.get("/health").json()["inference_available"])
+            load.assert_not_called()
+
+    def test_relocated_data_works_with_lf_and_crlf_without_audit_workspace(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            overlays, scenes = root / "app/demo_gis_context", root / "app/demo_scenes"
+            shutil.copytree(api.DEFAULT_GIS_CONTEXT_ROOT, overlays)
+            for scene in self.scenes:
+                path = scenes / scene / "scene.json"
+                path.parent.mkdir(parents=True)
+                source = (api.DEFAULT_DEMO_SCENE_ROOT / scene / "scene.json").read_bytes().replace(b"\r\n", b"\n")
+                for ending in (b"\n", b"\r\n"):
+                    with self.subTest(scene=scene, ending=ending):
+                        path.write_bytes(source.replace(b"\n", ending))
+                        self.assertEqual(len(load_context_overlay(overlays, scene, path, json.loads(source))), self.scenes[scene])
+                path.write_bytes(source + b" ")
+                with self.assertLogs("app.backend.building_context", level="WARNING"):
+                    self.assertEqual(load_context_overlay(overlays, scene, path, json.loads(source)), {})
+                path.write_bytes(source)
+            with patch.dict(os.environ, {"GIS_CONTEXT_ROOT": "", "DEMO_SCENE_ROOT": str(scenes), "DEMO_SCENES_ONLY": "1"}), \
+                    patch("app.backend.api.DEFAULT_GIS_CONTEXT_ROOT", overlays):
+                with TestClient(create_app()) as client:
+                    for scene, count in self.scenes.items():
+                        self.assertEqual(sum("building_context" in b for b in client.get(f"/demo-scenes/{scene}").json()["buildings"]), count)
+            self.assertFalse((root / "local_experiments").exists())
+
+    def test_explicit_override_and_missing_default_do_not_fall_back(self):
+        with TemporaryDirectory() as temporary:
+            missing = Path(temporary) / "missing"
+            for override in (True, False):
+                with self.subTest(override=override), patch.dict(os.environ, {
+                    "GIS_CONTEXT_ROOT": str(missing) if override else "", "DEMO_SCENES_ONLY": "1",
+                    "DEMO_SCENE_ROOT": str(api.DEFAULT_DEMO_SCENE_ROOT),
+                }), patch("app.backend.api.DEFAULT_GIS_CONTEXT_ROOT", api.DEFAULT_GIS_CONTEXT_ROOT if override else missing):
+                    with TestClient(create_app()) as client:
+                        for scene in self.scenes:
+                            response = client.get(f"/demo-scenes/{scene}")
+                            self.assertEqual(response.status_code, 200)
+                            self.assertTrue(all("building_context" not in b for b in response.json()["buildings"]))
 
 
 if __name__ == "__main__":

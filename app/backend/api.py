@@ -36,6 +36,7 @@ DEFAULT_CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_CHECKPOINT_PATH = Path(__file__).resolve().parents[2] / "checkpoints" / DEFAULT_CHECKPOINT_NAME
 DEFAULT_FRONTEND_PATH = Path(__file__).resolve().parents[1] / "frontend"
 DEFAULT_DEMO_SCENE_ROOT = Path(__file__).resolve().parents[1] / "demo_scenes"
+DEFAULT_GIS_CONTEXT_ROOT = Path(__file__).resolve().parents[1] / "demo_gis_context"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
@@ -153,7 +154,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     selected_model_path = model_path or configured_model_path()
     frontend_path = configured_frontend_path()
     demo_scene_root = configured_demo_scene_root()
-    context_root = Path(os.environ["GIS_CONTEXT_ROOT"]) if os.environ.get("GIS_CONTEXT_ROOT") else None
+    context_root = Path(os.environ["GIS_CONTEXT_ROOT"]) if os.environ.get("GIS_CONTEXT_ROOT") else DEFAULT_GIS_CONTEXT_ROOT
     scenes_only = os.environ.get("DEMO_SCENES_ONLY") == "1"
 
     @asynccontextmanager

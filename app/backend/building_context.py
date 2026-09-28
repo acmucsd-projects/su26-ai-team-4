@@ -1,4 +1,4 @@
-"""Optional, local reviewed context overlays. No provider or inference dependencies."""
+"""Reviewed demo context overlays. No provider or inference dependencies."""
 
 import hashlib
 import json
@@ -117,9 +117,18 @@ def load_context_overlay(root: Path | None, scene_id: str, manifest_path: Path, 
         if not path.exists():
             return {}
         overlay = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(overlay, dict):
+            raise ValueError("overlay must be an object")
+        manifest_bytes = manifest_path.read_bytes()
+        hash_format = overlay.get("scene_manifest_hash_format", "bytes")
+        if hash_format == "lf":
+            # Git may check out identical JSON with CRLF on Windows and LF elsewhere.
+            manifest_bytes = manifest_bytes.replace(b"\r\n", b"\n")
+        elif hash_format != "bytes":
+            raise ValueError("unsupported manifest hash format")
         if (overlay["schema_version"] != SCHEMA_VERSION or overlay["review_status"] != "reviewed"
                 or overlay["scene_id"] != scene_id
-                or overlay["scene_manifest_sha256"] != hashlib.sha256(manifest_path.read_bytes()).hexdigest()):
+                or overlay["scene_manifest_sha256"] != hashlib.sha256(manifest_bytes).hexdigest()):
             raise ValueError("overlay is unreviewed or belongs to a different manifest")
         buildings = overlay["buildings"]
         uids = [b["uid"] for b in manifest["buildings"]]

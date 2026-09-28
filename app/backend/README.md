@@ -8,10 +8,33 @@ complete for Harvey (76), Michael (177), and Santa Rosa (49). See the
 [milestone 2 findings](gis_context/MILESTONE_2_FEASIBILITY.md) for coverage,
 withheld claims, county licensing constraints and the frontend recommendation.
 
-For clicked-building context from these reviewed results, use the optional
-[local dashboard integration](gis_context/LOCAL_DASHBOARD.md). Ignored sidecars
-are enabled only through `GIS_CONTEXT_ROOT`; canonical scene packs stay unchanged.
-`DEMO_SCENES_ONLY=1` supports local review without a checkpoint or inference.
+The reviewed [GIS demo overlays](../demo_gis_context/README.md) are versioned and
+loaded automatically for these three scenes. `GIS_CONTEXT_ROOT` overrides that
+directory for development; canonical scene packs stay unchanged. See the
+[dashboard notes](gis_context/LOCAL_DASHBOARD.md) for examples and evidence details.
+
+## Portable scene-only demo
+
+Python 3.10+ is required. From the repository root on Windows PowerShell:
+
+```powershell
+git switch feature/gis-building-context-v2
+git pull --ff-only
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r app/backend/requirements-demo.txt
+Remove-Item Env:GIS_CONTEXT_ROOT -ErrorAction SilentlyContinue
+$env:DEMO_SCENES_ONLY = '1'
+.\.venv\Scripts\python.exe -m uvicorn app.backend.api:app --host 127.0.0.1 --port 8000
+```
+
+Open **http://127.0.0.1:8000/**. No checkpoint, inference, raw GIS downloads, audit
+artifacts, or `local_experiments/gis_context_v2` directory is needed. On macOS/Linux,
+use `python3 -m venv .venv`, `.venv/bin/python -m pip install -r app/backend/requirements-demo.txt`,
+then `unset GIS_CONTEXT_ROOT` and
+`DEMO_SCENES_ONLY=1 .venv/bin/python -m uvicorn app.backend.api:app --host 127.0.0.1 --port 8000`.
+
+External GIS data has attribution/redistribution/licensing considerations to review
+if the project expands beyond this presentation/demo; attribution stays in the data.
 
 ## Input contract
 

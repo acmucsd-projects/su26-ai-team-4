@@ -7,8 +7,12 @@ surrounding-area context. No-context selections show no GIS section.
 
 ## Start or rebuild locally (PowerShell)
 
-From the repository root, regenerate the reviewed overlays and start/restart the
-local demo in the background with one command:
+The three reviewed overlays are versioned under `app/demo_gis_context` and loaded
+by default. A fresh checkout needs only the environment setup in the
+[backend README](../README.md#portable-scene-only-demo), with no GIS audit files.
+`GIS_CONTEXT_ROOT` remains an explicit development override.
+
+From the repository root, start/restart the local demo in the background:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\app\backend\run_local_gis_demo.ps1 -Restart
@@ -17,7 +21,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\app\backend\run_local_
 This uses a process-only execution-policy override because this Windows machine
 disables `.ps1` files by default; it does not change the machine policy. The helper
 checks that the saved PID belongs to this environment's local uvicorn server
-before restarting its process tree. Logs and PID stay in the ignored GIS folder.
+before restarting its process tree. Logs and PID stay in the ignored GIS folder,
+created if absent. The helper prefers the root `.venv`, with the older ignored
+GIS environment as a fallback. It exports only with `-RebuildLocalOverlays`, which
+requires the existing reviewed audits and selects the resulting local overlays.
 Omit `-Restart` to reuse a running instance. Open **http://127.0.0.1:8000/**.
 
 For a foreground server (after stopping any server already using port 8000), or
@@ -110,8 +117,10 @@ validates the optional sidecar schema, reviewed status, exact manifest hash and 
 coverage, then joins nonempty context into `building.building_context`. It never
 modifies `prediction` or writes canonical scene files. Missing, stale, malformed
 or unreviewed sidecars are ignored; invalid sidecars emit a server warning. Sidecar
-files and raw audits are outside the static asset routes. With no configured root,
-the existing seven scene packs work normally without any GIS data dependency.
+files and raw audits are outside the static asset routes. With no override, the
+committed overlays supply context for the three reviewed scenes; the other four
+scene packs have no GIS context. Packaged manifest hashes normalize CRLF/LF checkout
+differences; other manifest changes still fail closed.
 
 ## Normalization and future reporting
 
@@ -187,14 +196,19 @@ The integration was checked in local headless Chrome at desktop and 390-pixel
 mobile widths, including all examples above, clearing, filtering, scene switching,
 imagery modes, expanded context, uploads and examples. Screenshots and the local
 browser verification report for the cleaned presentation are ignored under
-`local_experiments/gis_context_v2/final-context-review/`. All 74 Python tests and
+`local_experiments/gis_context_v2/final-context-review/`. All 77 Python tests and
 three frontend Node tests pass. Keyboard Tab/Enter, collapsed/expanded focus,
 original wording and school timing were also checked in real Chrome. No model
 inference is needed.
+
+Portability checks also cover the committed default overlays, a relocated data
+directory without an audit workspace, LF/CRLF manifests, stale-manifest rejection,
+and development overrides. The packaged contexts equal the reviewed local export.
 
 ## Publication boundary
 
 External GIS sources may have attribution, redistribution, or licensing
 requirements that should be reviewed before broader/public/commercial use.
-Local sidecars and raw extracts remain ignored; canonical scene manifests and
+Development sidecars and raw extracts remain ignored; the compact reviewed demo
+overlays are versioned. Canonical scene manifests and
 production deployment configuration are unchanged.
