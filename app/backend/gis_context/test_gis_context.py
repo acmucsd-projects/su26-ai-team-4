@@ -1,0 +1,380 @@
+"""Synthetic geometry tests; none of these fixtures are Harvey audit evidence."""
+
+from dataclasses import replace
+import hashlib
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import unittest
+from unittest.mock import patch
+
+from shapely.geometry import Point, Polygon, box, mapping
+
+from .audit import FLAGS, PROVIDERS, aggregate, build_row, empty_report, run_audit, select_qa
+from .cache import CachedClient, canonical
+from .geometry import Projection, SCENE_ID, load_scene, overlap, utc_timestamp
+from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matches, site_matches
+from .models import Feature, Match
+from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
+from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
+from .report import write_reports
+
+
+def feature(record_id="1", geometry=None, properties=None, provider="osm_current"):
+    return Feature(record_id, geometry if geometry is not None else box(0, 0, 10, 10),
+                   properties or {}, source_info(provider, "2026-09-28"))
+
+
+def accepted(relationship="footprint", confidence="strong", **evidence):
+    return Match("1", relationship, True, confidence, "test", evidence)
+
+
+class GeometryTests(unittest.TestCase):
+    def test_metric_projection_and_roundtrip(self):
+        # Synthetic Houston location, not the unknown Harvey scene location.
+        geo = box(-95.4000, 29.7500, -95.3999, 29.7501)
+        projection = Projection.for_geometry(geo)
+        self.assertEqual(projection.epsg, 32615)
+        metric = projection.project(geo)
+        self.assertGreater(metric.area, 90)
+        self.assertLess(metric.area, 120)
+        self.assertLess(projection.unproject(metric).hausdorff_distance(geo), 1e-9)
+
+    def test_overlap_metrics(self):
+        result = overlap(box(0, 0, 10, 10), box(5, 0, 15, 10))
+        self.assertEqual(result["intersection_m2"], 50)
+        self.assertEqual(result["xbd_coverage"], .5)
+        self.assertAlmostEqual(result["iou"], 1 / 3)
+        self.assertEqual(result["centroid_distance_m"], 5)
+
+    def test_timestamp_requires_timezone(self):
+        self.assertEqual(utc_timestamp("2017-09-01T12:00:00-05:00"), "2017-09-01T17:00:00Z")
+        for value in (None, "2017-08-25", "2017-08-25T12:00:00"):
+            with self.assertRaises(ValueError):
+                utc_timestamp(value)
+
+    def test_raw_uid_join_and_missing_geometry(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = {"scene_id": SCENE_ID, "buildings": [{"id": str(i), "uid": str(i)} for i in range(76)]}
+            raw = {"metadata": {"capture_date": "2017-09-01T12:00:00Z"}, "features": {"lng_lat": [
+                {"properties": {"uid": str(i)}, "wkt": box(-95.4 + i * .0001, 29.75, -95.39995 + i * .0001, 29.75005).wkt}
+                for i in reversed(range(76))]}}
+            manifest_path, label_path = root / "scene.json", root / (SCENE_ID + "_post_disaster.json")
+            manifest_path.write_text(json.dumps(manifest))
+            label_path.write_text(json.dumps(raw))
+            scene = load_scene(manifest_path, label_path)
+            self.assertEqual(len(scene.metric), 76)
+            self.assertAlmostEqual(scene.geographic["0"].bounds[0], -95.4)
+            raw["features"]["lng_lat"].pop()
+            label_path.write_text(json.dumps(raw))
+            with self.assertRaisesRegex(ValueError, "UIDs"):
+                load_scene(manifest_path, label_path)
+
+
+class MatchingTests(unittest.TestCase):
+    def setUp(self):
+        self.buildings = {"a": box(0, 0, 10, 10), "b": box(20, 0, 30, 10)}
+
+    def test_strong_and_moderate_footprints(self):
+        strong = footprint_matches(self.buildings, [feature()])["a"][0]
+        self.assertTrue(strong.accepted)
+        self.assertEqual(strong.spatial_confidence, "strong")
+        moderate = footprint_matches(self.buildings, [feature(geometry=box(5, 0, 15, 10))])["a"][0]
+        self.assertTrue(moderate.accepted)
+        self.assertEqual(moderate.spatial_confidence, "moderate")
+
+    def test_close_footprint_competitors_rejected(self):
+        matches = footprint_matches(self.buildings, [feature("1"), feature("2", box(.1, 0, 10.1, 10))])["a"]
+        self.assertFalse(any(m.accepted for m in matches))
+        self.assertTrue(matches[0].ambiguous)
+
+    def test_one_external_footprint_cannot_identify_two_roofs(self):
+        buildings = {"a": box(0, 0, 10, 10), "b": box(10, 0, 20, 10)}
+        result = footprint_matches(buildings, [feature(geometry=box(0, 0, 20, 10))])
+        self.assertFalse(any(m.accepted for ms in result.values() for m in ms))
+
+    def test_poi_containment_and_boundary(self):
+        inside = poi_matches(self.buildings, [feature(geometry=Point(5, 5))])["a"][0]
+        self.assertTrue(inside.accepted)
+        self.assertEqual(inside.spatial_confidence, "strong")
+        boundary = poi_matches(self.buildings, [feature(geometry=Point(0, 5))])["a"][0]
+        self.assertTrue(boundary.accepted)
+        self.assertEqual(boundary.spatial_confidence, "moderate")
+
+    def test_near_poi_uniqueness_and_distance(self):
+        near = poi_matches(self.buildings, [feature(geometry=Point(-4, 5))])["a"][0]
+        self.assertTrue(near.accepted)
+        between = poi_matches(self.buildings, [feature(geometry=Point(15, 5))])
+        self.assertFalse(any(m.accepted for ms in between.values() for m in ms))
+        self.assertTrue(between["a"][0].ambiguous)
+        far = poi_matches(self.buildings, [feature(geometry=Point(-8, 5))])["a"][0]
+        self.assertFalse(far.accepted)
+        self.assertEqual(poi_matches(self.buildings, [feature(geometry=Point(-16, 5))])["a"], [])
+
+    def test_poi_inside_overlapping_buildings_rejected(self):
+        buildings = {"a": box(0, 0, 10, 10), "b": box(4, 4, 14, 14)}
+        matches = poi_matches(buildings, [feature(geometry=Point(5, 5))])
+        self.assertTrue(all(m.ambiguous and not m.accepted for ms in matches.values() for m in ms))
+
+    def test_parcel_single_and_multi_structure(self):
+        parcel = feature(geometry=box(-1, -1, 11, 11), properties={"BUILDCOUNT": 1}, provider="hcad")
+        result = parcel_matches(self.buildings, [parcel])["a"][0]
+        self.assertTrue(result.evidence["building_promotion_allowed"])
+        parcel.geometry = box(-1, -1, 31, 11)
+        result = parcel_matches(self.buildings, [parcel])["a"][0]
+        self.assertEqual(result.evidence["structure_association"], "multi_structure")
+        self.assertFalse(result.evidence["building_promotion_allowed"])
+
+    def test_parcel_unknown_count_and_competing_parcels(self):
+        parcel = feature(geometry=box(-1, -1, 11, 11), provider="hcad")
+        match = parcel_matches(self.buildings, [parcel])["a"][0]
+        self.assertEqual(match.evidence["structure_association"], "structure_count_unknown")
+        other = feature("2", parcel.geometry, provider="hcad")
+        matches = parcel_matches(self.buildings, [parcel, other])["a"]
+        self.assertTrue(all(m.ambiguous and not m.accepted for m in matches))
+
+    def test_site_membership_preserves_scope(self):
+        site = feature(geometry=box(-1, -1, 31, 11), properties={"amenity": "school", "name": "Synthetic School"})
+        match = site_matches(self.buildings, [site])["a"][0]
+        claims = osm_claims(site, match)
+        self.assertTrue(all(c.scope == "site" and not c.critical_facility for c in claims))
+        self.assertIn("Within", claims[0].label)
+
+    def test_nsi_inside_and_near(self):
+        rows = [feature("inside", Point(5, 5), {"occtype": "RES1-1SNB"}, "nsi"),
+                feature("near", Point(-1, 5), {"occtype": "COM6"}, "nsi")]
+        matches = nsi_matches(self.buildings, rows)["a"]
+        self.assertEqual([m.record_id for m in matches if m.accepted], ["inside"])
+
+    def test_stacked_nsi_preserves_mixed_occupancy(self):
+        features = [feature("1", Point(5, 5), {"occtype": "RES3A", "ftprntid": "xyz", "ftprntsrc": "NGA"}, "nsi"),
+                    feature("2", Point(6, 5), {"occtype": "COM1", "ftprntid": "xyz", "ftprntsrc": "NGA"}, "nsi")]
+        matches = nsi_matches(self.buildings, features)["a"]
+        self.assertTrue(all(m.accepted for m in matches))
+        claims = [nsi_claims(f, m)[0] for f, m in zip(features, matches)]
+        self.assertEqual({c.category for c in claims}, {"multifamily", "commercial_retail"})
+        self.assertEqual(compare_claims(claims), [])
+
+    def test_unlinked_nsi_records_are_ambiguous(self):
+        records = [feature("1", Point(2, 2), provider="nsi"), feature("2", Point(8, 8), provider="nsi")]
+        self.assertTrue(all(m.ambiguous and not m.accepted for m in nsi_matches(self.buildings, records)["a"]))
+
+    def test_shared_nsi_footprint_across_roofs_rejected(self):
+        records = [feature("1", Point(5, 5), {"ftprntid": "f", "ftprntsrc": "NGA"}, "nsi"),
+                   feature("2", Point(25, 5), {"ftprntid": "f", "ftprntsrc": "NGA"}, "nsi")]
+        results = nsi_matches(self.buildings, records)
+        self.assertFalse(any(m.accepted for matches in results.values() for m in matches))
+
+
+class SemanticTests(unittest.TestCase):
+    def test_nsi_taxonomy_and_unknown(self):
+        for code, expected in {"RES1-2SWB": "residential", "RES3F": "multifamily", "RES4": "lodging", "RES6": "medical",
+                               "COM1": "commercial_retail", "COM6": "medical", "COM7": "medical", "GOV2": "emergency_services",
+                               "EDU1": "education", "EDU2": "education", "RES10": "unknown", "nonsense": "unknown"}.items():
+            self.assertEqual(nsi_occupancy(code)[0], expected)
+
+    def test_nsi_is_modeled_not_critical_or_exact_year(self):
+        record = feature(properties={"occtype": "COM6", "med_yr_blt": 1970}, provider="nsi")
+        claim = nsi_claims(record, accepted("nsi_structure"))[0]
+        self.assertTrue(claim.source.modeled)
+        self.assertFalse(claim.critical_facility)
+        self.assertNotIn("1970", json.dumps(claim.to_dict()))
+        self.assertIn("Modeled use", claim.label)
+
+    def test_parcel_property_not_outbuilding_use(self):
+        record = feature(properties={"LANDUSE_DS": "Residential", "BLDTYPE_DS": "Single family residential", "Tax_Year": "2017"}, provider="hcad")
+        match = accepted("parcel", structure_association="multi_structure", building_promotion_allowed=False)
+        claims = hcad_claims(record, match)
+        self.assertTrue(all(c.scope == "parcel" for c in claims))
+        self.assertTrue(all(c.ambiguity for c in claims))
+
+    def test_unknown_property_codes_not_guessed(self):
+        self.assertEqual(property_category("A1"), "unknown")
+        self.assertEqual(property_category("NONRESIDENTIAL"), "unknown")
+        self.assertEqual(property_category("Single Family Residential"), "residential")
+
+    def test_critical_requires_explicit_strong_mapped_evidence(self):
+        record = feature(properties={"amenity": "hospital"})
+        self.assertTrue(osm_claims(record, accepted("place"))[0].critical_facility)
+        self.assertFalse(osm_claims(record, accepted("place", "moderate"))[0].critical_facility)
+        self.assertFalse(osm_claims(feature(properties={"building": "hospital"}), accepted())[0].critical_facility)
+        self.assertFalse(osm_claims(feature(properties={"amenity": "school"}), accepted())[0].critical_facility)
+
+    def test_inactive_and_vacant_places_not_active_uses(self):
+        self.assertEqual(osm_claims(feature(properties={"shop": "vacant"}), accepted("place")), [])
+        claims = osm_claims(feature(properties={"amenity": "hospital", "disused": "yes"}), accepted("place"))
+        self.assertEqual(claims, [])
+
+    def test_temporal_and_name_changes_preserved(self):
+        old = feature(properties={"amenity": "school", "name": "Old School"}, provider="osm_historical")
+        old.source = replace(old.source, snapshot="2017-09-01T00:00:00Z")
+        new = feature(properties={"amenity": "school", "name": "New School"})
+        claims = osm_claims(old, accepted("place")) + osm_claims(new, accepted("place"))
+        self.assertEqual(claims[0].source.temporal_status, "event_snapshot")
+        self.assertEqual(claims[1].source.temporal_status, "current_only")
+        self.assertEqual(compare_claims(claims)[0]["reason"], "historical_current_difference")
+
+    def test_modeled_conflict_but_no_cross_scope_false_conflict(self):
+        modeled = nsi_claims(feature(properties={"occtype": "RES1"}, provider="nsi"), accepted("nsi_structure"))[0]
+        mapped = osm_claims(feature(properties={"building:use": "hospital"}), accepted())[0]
+        self.assertEqual(compare_claims([modeled, mapped])[0]["reason"], "modeled_vs_mapped_difference")
+        mapped.scope = "parcel"
+        self.assertEqual(compare_claims([modeled, mapped]), [])
+
+
+class ProviderTests(unittest.TestCase):
+    def test_queries_are_bulk_semantic_and_historical(self):
+        query = overpass_query((-95.4, 29.7, -95.3, 29.8), "2017-09-01T12:00:00Z")
+        self.assertIn('[date:"2017-09-01T12:00:00Z"]', query)
+        self.assertIn("nwr", query)
+        for key in ("building:use", "healthcare", "emergency", "office", "shop", "name", "addr:", "site"):
+            self.assertIn(key, query)
+        self.assertNotIn("[date:", overpass_query((-95.4, 29.7, -95.3, 29.8), None))
+
+    def test_nsi_ring_not_four_number_bbox(self):
+        class Client:
+            def get_json(self, url, **kwargs):
+                self.params = kwargs["params"]
+                return {"type": "FeatureCollection", "features": []}
+        client = Client()
+        fetch_nsi(client, (-95.4, 29.7, -95.3, 29.8), "test")
+        self.assertEqual(len(client.params["bbox"].split(",")), 10)
+
+    def test_hcad_schema_validation_and_truncation(self):
+        class Client:
+            def get_json(self, url, **kwargs):
+                if url.endswith("/query"):
+                    return {"type": "FeatureCollection", "features": [], "exceededTransferLimit": True}
+                return {"name": "HCAD Parcels 2017", "fields": [{"name": k} for k in HCAD_FIELDS]}
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            fetch_hcad(Client(), (-95.4, 29.7, -95.3, 29.8), "test")
+
+    def test_hcad_record_year_not_blindly_event_aligned(self):
+        payload = {"type": "FeatureCollection", "features": [{"geometry": mapping(box(-95.4, 29.7, -95.399, 29.701)),
+                   "properties": {"OBJECTID": 1, "Tax_Year": "2020"}}]}
+        records, issues = geojson_features(payload, source_info("hcad", "test"), Projection(32615))
+        self.assertFalse(issues)
+        self.assertEqual(records[0].source.temporal_status, "tax_year_unverified")
+
+    def test_osm_multipolygon_hole_and_named_node(self):
+        def geom(coords):
+            return [{"lon": x, "lat": y} for x, y in coords]
+        outer = [(-95.4, 29.7), (-95.399, 29.7), (-95.399, 29.701), (-95.4, 29.701), (-95.4, 29.7)]
+        inner = [(-95.3998, 29.7002), (-95.3992, 29.7002), (-95.3992, 29.7008), (-95.3998, 29.7008), (-95.3998, 29.7002)]
+        payload = {"elements": [{"type": "relation", "id": 1, "version": 2, "timestamp": "2017-01-01T00:00:00Z",
+                    "tags": {"type": "multipolygon", "amenity": "school"}, "members": [
+                        {"type": "way", "role": "outer", "geometry": geom(outer)},
+                        {"type": "way", "role": "inner", "geometry": geom(inner)}]},
+                   {"type": "node", "id": 2, "lat": 29.7, "lon": -95.4, "tags": {"shop": "books", "name": "Fixture"}}]}
+        layers, issues = osm_features(payload, source_info("osm_current", "test"), Projection(32615))
+        self.assertFalse(issues)
+        self.assertEqual(len(layers["site"][0].geometry.interiors), 1)
+        self.assertEqual(len(layers["place"]), 1)
+
+    def test_bad_relation_not_replaced_with_bbox(self):
+        payload = {"elements": [{"type": "relation", "id": 1, "tags": {"type": "site", "amenity": "school"}, "members": []}]}
+        layers, issues = osm_features(payload, source_info("osm_current", "test"), Projection(32615))
+        self.assertEqual(layers["site"], [])
+        self.assertEqual(len(issues), 1)
+
+    def test_duplicate_provider_ids_do_not_keep_arbitrary_winner(self):
+        record = {"geometry": mapping(Point(-95.4, 29.7)), "properties": {"fd_id": 1, "occtype": "RES1"}}
+        records, issues = geojson_features({"type": "FeatureCollection", "features": [record, record]},
+                                          source_info("nsi", "test"), Projection(32615))
+        self.assertFalse(records)
+        self.assertEqual(len(issues), 2)
+
+    def test_cache_replay_and_integrity(self):
+        with TemporaryDirectory() as temporary:
+            client = CachedClient(Path(temporary))
+            kwargs = {"provider": "fixture", "release": "test"}
+            with self.assertRaises(FileNotFoundError):
+                client.get_json("https://example.invalid", **kwargs)
+            request = {"provider": "fixture", "release": "test", "query_bbox_wgs84": None, "snapshot": None,
+                       "query_schema_version": 1, "url": "https://example.invalid", "params": {}, "form": None}
+            directory = Path(temporary) / "fixture" / hashlib.sha256(canonical(request)).hexdigest()
+            directory.mkdir(parents=True)
+            raw = b'{"features": []}'
+            (directory / "response.json").write_bytes(raw)
+            (directory / "metadata.json").write_text(json.dumps({"request": request, "sha256": hashlib.sha256(raw).hexdigest()}))
+            self.assertEqual(client.get_json("https://example.invalid", **kwargs), {"features": []})
+            (directory / "response.json").write_bytes(b'{}')
+            with self.assertRaisesRegex(ValueError, "integrity"):
+                client.get_json("https://example.invalid", **kwargs)
+
+
+class ReportingTests(unittest.TestCase):
+    def test_four_provider_pipeline_with_synthetic_data(self):
+        # Deliberately invented fixtures: this validates software, not real Harvey coverage.
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            buildings = [{"id": f"fixture_{i}", "uid": str(i)} for i in range(76)]
+            polygons = [box(-95.4 + i * .0003, 29.75, -95.3999 + i * .0003, 29.7501) for i in range(76)]
+            manifest = root / "scene.json"
+            manifest.write_text(json.dumps({"scene_id": SCENE_ID, "buildings": buildings}))
+            label = root / (SCENE_ID + "_post_disaster.json")
+            label.write_text(json.dumps({"metadata": {"capture_date": "2017-09-01T12:00:00Z"}, "features": {"lng_lat": [
+                {"properties": {"uid": str(i)}, "wkt": p.wkt} for i, p in enumerate(polygons)]}}))
+            initial = manifest.read_bytes()
+            hcad = {"type": "FeatureCollection", "features": [{"geometry": mapping(polygons[0]), "properties": {
+                "OBJECTID": 1, "PARCEL_ID": "fixture", "Tax_Year": "2017", "LANDUSE_DS": "Residential", "BUILDCOUNT": 1}}]}
+            nsi = {"type": "FeatureCollection", "features": [{"geometry": mapping(polygons[1].centroid), "properties": {"fd_id": 1, "occtype": "COM1"}}]}
+            def osm(client, bbox, snapshot, historical):
+                point = polygons[2].centroid
+                payload = {"elements": [{"type": "node", "id": 1, "lon": point.x, "lat": point.y,
+                           "tags": {"name": "Fixture School" if historical else "Fixture Hospital", "amenity": "school" if historical else "hospital"}}]}
+                return payload, source_info("osm_historical" if historical else "osm_current", snapshot)
+            with patch("app.backend.gis_context.audit.fetch_hcad", return_value=(hcad, source_info("hcad", "test"))), \
+                 patch("app.backend.gis_context.audit.fetch_nsi", return_value=(nsi, source_info("nsi", "test"))), \
+                 patch("app.backend.gis_context.audit.fetch_osm", side_effect=osm):
+                report = run_audit(manifest, label, root / "cache", "2026-09-28")
+            self.assertEqual(report["status"], "awaiting_manual_qa")
+            self.assertEqual(report["metrics"]["combined_displayable_context"]["count"], 3)
+            self.assertEqual(report["metrics"]["event_aligned_useful_context"]["count"], 2)
+            self.assertEqual(report["metrics"]["no_context"]["count"], 73)
+            self.assertEqual(report["metrics"]["historical_current_conflicts"]["count"], 1)
+            self.assertIn("2", report["qa"]["selected_uids"])
+            self.assertEqual(manifest.read_bytes(), initial)
+            write_reports(report, root / "report")
+            self.assertEqual(len(json.loads((root / "report" / "audit.json").read_text())["buildings"]), 76)
+
+    def test_missing_input_is_unknown_not_zero_coverage(self):
+        manifest = {"buildings": [{"id": str(i), "uid": str(i)} for i in range(76)]}
+        report = empty_report(manifest, "missing raw POST labels")
+        self.assertEqual(len(report["buildings"]), 76)
+        for value in report["metrics"].values():
+            self.assertIsNone(value["count"])
+            self.assertIsNone(value["percent_of_76"])
+            self.assertEqual(value["unknown_buildings"], 76)
+
+    def test_no_context_only_after_complete_evaluation(self):
+        statuses = {p: {"status": "complete"} for p in PROVIDERS}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertTrue(row["flags"]["no_context"])
+        statuses["nsi"] = {"status": "unavailable"}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertIsNone(row["flags"]["no_context"])
+
+    def test_missing_raw_input_never_queries_network(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "scene.json"
+            manifest.write_text(json.dumps({"scene_id": SCENE_ID, "buildings": [{"id": str(i), "uid": str(i)} for i in range(76)]}))
+            with patch("app.backend.gis_context.cache.urlopen", side_effect=AssertionError("Network must not be used")):
+                report = run_audit(manifest, root / (SCENE_ID + "_post_disaster.json"), root / "cache", "test", True)
+            self.assertEqual(report["status"], "blocked_missing_raw_input")
+
+    def test_review_artifacts_escape_provider_text(self):
+        report = empty_report({"buildings": [{"id": "<script>bad</script>", "uid": "a"}]}, "missing")
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            write_reports(report, root)
+            self.assertEqual(len(list(root.iterdir())), 5)
+            html = (root / "review.html").read_text(encoding="utf-8")
+            self.assertNotIn("<script>bad</script>", html)
+            self.assertIn("&lt;script&gt;", html)
+
+
+if __name__ == "__main__":
+    unittest.main()

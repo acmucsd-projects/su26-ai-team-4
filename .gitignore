@@ -27,3 +27,6 @@ base_train/ezekiel_resnet18_baseline/results_prepost_plaince/
 # Archived local training experiments and generated artifacts
 /base_train/old_experiments/
 base_train/ezekiel_resnet18_baseline/*.pt
+
+# Offline GIS provider extracts, environments, and review artifacts
+/local_experiments/gis_context_v2/
