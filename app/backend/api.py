@@ -18,7 +18,18 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
 
-from .inference import LoadedClassifier, load_classifier, predict_images
+from .building_context import load_context_overlay
+
+
+def load_classifier(model_path):
+    # Scene-only review needs neither a checkpoint nor the inference dependencies.
+    from .inference import load_classifier as load
+    return load(model_path)
+
+
+def predict_images(classifier, pre_image, post_image):
+    from .inference import predict_images as predict
+    return predict(classifier, pre_image, post_image)
 
 
 DEFAULT_CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
@@ -142,10 +153,12 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     selected_model_path = model_path or configured_model_path()
     frontend_path = configured_frontend_path()
     demo_scene_root = configured_demo_scene_root()
+    context_root = Path(os.environ["GIS_CONTEXT_ROOT"]) if os.environ.get("GIS_CONTEXT_ROOT") else None
+    scenes_only = os.environ.get("DEMO_SCENES_ONLY") == "1"
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.classifier = load_classifier(selected_model_path)
+        app.state.classifier = None if scenes_only else load_classifier(selected_model_path)
         yield
 
     app = FastAPI(title="Building Damage Classifier API", version="1.0.0", lifespan=lifespan)
@@ -162,7 +175,9 @@ def create_app(model_path: Path | None = None) -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict[str, object]:
-        classifier: LoadedClassifier = app.state.classifier
+        classifier = app.state.classifier
+        if scenes_only:
+            return {"status": "ok", "mode": "scenes_only", "inference_available": False}
         return {
             "status": "ok",
             "device": str(classifier.device),
@@ -200,7 +215,14 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         """Return one packaged scene manifest with client-ready asset URLs."""
 
         scene_directory = demo_scene_directory(demo_scene_root, scene_id)
-        return public_demo_scene_manifest(load_demo_scene_manifest(scene_directory, scene_id), scene_id)
+        manifest = load_demo_scene_manifest(scene_directory, scene_id)
+        overlay = load_context_overlay(context_root, scene_id, scene_directory / "scene.json", manifest)
+        public_manifest = public_demo_scene_manifest(manifest, scene_id)
+        if overlay:
+            for building in public_manifest["buildings"]:
+                if building["uid"] in overlay:
+                    building["building_context"] = overlay[building["uid"]]
+        return public_manifest
 
     @app.get("/demo-scenes/{scene_id}/{asset_path:path}")
     async def get_demo_scene_asset(scene_id: str, asset_path: str) -> FileResponse:
@@ -214,6 +236,8 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         pre_image: UploadFile = File(..., description="PRE-disaster crop of the building"),
         post_image: UploadFile = File(..., description="POST-disaster crop of the same building"),
     ) -> PredictResponse:
+        if scenes_only:
+            raise HTTPException(status_code=503, detail="Scene-only demo: select a scene building to view its precomputed result. New predictions are disabled.")
         uploads = (("pre_image", pre_image), ("post_image", post_image))
         image_bytes: dict[str, bytes] = {}
         for field_name, upload in uploads:

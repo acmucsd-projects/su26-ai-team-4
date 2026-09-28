@@ -1,0 +1,7 @@
+# Local precomputed scene review only; no torch/checkpoint required.
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32
+pillow
+pydantic==2.13.5
+httpx
