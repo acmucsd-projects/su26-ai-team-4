@@ -1,13 +1,13 @@
 # Local Building Context review
 
-The dashboard can display the completed GIS v2 reviews for Harvey (76 buildings),
-Michael (177), and Santa Rosa (49). All 302 buildings are represented in the local
-overlays; 76, 175, and 48 respectively have displayable context. Some have only
-surrounding-area context. No-context selections show no GIS section.
+The dashboard can display reviewed GIS v2 context for Harvey (76 buildings),
+Michael (177), Santa Rosa (49), Florence (56), and SoCal (48). The five overlays
+cover 406 buildings; 386 have displayable context. Some have only surrounding-
+area context. No-context selections show no GIS section.
 
 ## Start or rebuild locally (PowerShell)
 
-The three reviewed overlays are versioned under `app/demo_gis_context` and loaded
+The five reviewed overlays are versioned under `app/demo_gis_context` and loaded
 by default. A fresh checkout needs only the environment setup in the
 [backend README](../README.md#portable-scene-only-demo), with no GIS audit files.
 `GIS_CONTEXT_ROOT` remains an explicit development override.
@@ -118,8 +118,8 @@ coverage, then joins nonempty context into `building.building_context`. It never
 modifies `prediction` or writes canonical scene files. Missing, stale, malformed
 or unreviewed sidecars are ignored; invalid sidecars emit a server warning. Sidecar
 files and raw audits are outside the static asset routes. With no override, the
-committed overlays supply context for the three reviewed scenes; the other four
-scene packs have no GIS context. Packaged manifest hashes normalize CRLF/LF checkout
+committed overlays supply context for five reviewed scenes; Matthew and Palu
+have no GIS context. Packaged manifest hashes normalize CRLF/LF checkout
 differences; other manifest changes still fail closed.
 
 ## Normalization and future reporting

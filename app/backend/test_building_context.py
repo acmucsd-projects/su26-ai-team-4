@@ -197,7 +197,8 @@ class LocalOverlayApiTests(unittest.TestCase):
 
 class PortableDemoContextTests(unittest.TestCase):
     scenes = {"hurricane-harvey_00000177": 76, "hurricane-michael_00000247": 175,
-              "santa-rosa-wildfire_00000014": 48, "hurricane-florence_00000459": 40}
+              "santa-rosa-wildfire_00000014": 48, "hurricane-florence_00000459": 40,
+              "socal-fire_00000663": 47}
 
     def test_default_demo_context_is_displayable_and_preserves_predictions(self):
         self.assertEqual({p.stem for p in api.DEFAULT_GIS_CONTEXT_ROOT.glob("*.json")}, set(self.scenes))
@@ -218,7 +219,13 @@ class PortableDemoContextTests(unittest.TestCase):
                             self.assertEqual(actual["building_context"], context)
                         else:
                             self.assertNotIn("building_context", actual)
-                        self.assertEqual(normalize_context(context["claims"], context["conflicts"]), context)
+                        normalized = normalize_context(context["claims"], context["conflicts"])
+                        if context["notes"] != normalized["notes"]:
+                            self.assertEqual(context["notes"], sorted(set(normalized["notes"] + [
+                                "Historical OSM was unavailable; event-time mapped context could not be assessed."
+                            ])))
+                            normalized["notes"] = context["notes"]
+                        self.assertEqual(normalized, context)
                         for claim in context["claims"]:
                             self.assertTrue(claim["displayable"])
                             self.assertLessEqual(set(claim["original_values"]), CLASSIFICATION_FIELDS)

@@ -32,6 +32,9 @@ TITLES = {
 }
 CLASSIFICATION_FIELDS = {"LANDUSE_DS", "BLDTYPE_DS", "BLDG_STYDS", "DORAPPDESC", "UseCodeDescription",
                          "occtype", "amenity", "building", "office", "shop", "leisure", "landuse", "healthcare"}
+UNAVAILABLE_PROVIDER_NOTES = {
+    "osm_historical": "Historical OSM was unavailable; event-time mapped context could not be assessed.",
+}
 
 
 def timing(source: dict) -> str:
@@ -172,6 +175,11 @@ def build_overlay(report: dict, manifest_bytes: bytes, audit_bytes: bytes) -> di
                 conflicts.append({"reason": conflict["reason"], "supporting_claims": references,
                                   "resolution": conflict.get("resolution", "preserved_separately")})
         context = normalize_context(claims, conflicts)
+        context["notes"] = sorted(set(context["notes"] + [
+            UNAVAILABLE_PROVIDER_NOTES[provider]
+            for provider in qa.get("excluded_providers", [])
+            if provider in UNAVAILABLE_PROVIDER_NOTES
+        ]))
         if not valid_context(context):
             raise ValueError("Invalid normalized context")
         buildings[row["uid"]] = context

@@ -97,6 +97,41 @@ class DemoSceneApiTests(unittest.TestCase):
             self.assertEqual(client.get(manifest["image"]["post_url"]).status_code, 200)
             self.assertEqual(client.get(manifest["buildings"][0]["crops"]["pre_url"]).status_code, 200)
 
+    def test_packaged_gis_context_coverage_and_socal_semantics(self) -> None:
+        expected_context = {
+            "hurricane-harvey_00000177": (76, 76),
+            "hurricane-michael_00000247": (177, 175),
+            "santa-rosa-wildfire_00000014": (49, 48),
+            "hurricane-florence_00000459": (56, 40),
+            "socal-fire_00000663": (48, 47),
+            "hurricane-matthew_00000060": (75, 0),
+            "palu-tsunami_00000065": (129, 0),
+        }
+        with self.client_for(DEPLOYMENT_DEMO_SCENE_ROOT) as client:
+            for scene_id, (building_count, context_count) in expected_context.items():
+                response = client.get(f"/demo-scenes/{scene_id}")
+                self.assertEqual(response.status_code, 200, scene_id)
+                buildings = response.json()["buildings"]
+                self.assertEqual(len(buildings), building_count, scene_id)
+                self.assertEqual(sum("building_context" in row for row in buildings), context_count, scene_id)
+
+            socal = client.get("/demo-scenes/socal-fire_00000663").json()["buildings"]
+            contexts = [row["building_context"] for row in socal if "building_context" in row]
+            claims = [claim for context in contexts for claim in context["claims"]]
+            current_roof = [c for c in claims if c["kind"] == "structure_type"]
+            modeled = [c for c in claims if c["kind"] == "modeled_occupancy"]
+            areas = [c for c in claims if c["kind"] == "area_use"]
+            self.assertTrue(current_roof)
+            self.assertTrue(all(c["source_dataset"] == "osm_current" and c["temporal_relation"] == "current_only" and not c["modeled"] for c in current_roof))
+            self.assertTrue(modeled)
+            self.assertTrue(all(c["source_key"] == "nsi" and c["modeled"] and c["temporal_relation"] == "current_modeled_not_event_aligned" for c in modeled))
+            self.assertTrue(areas)
+            self.assertTrue(all(c["scope"] == "site" and "surrounding_area" in c["qualifications"] for c in areas))
+            self.assertTrue(all(any("Historical OSM was unavailable" in note for note in context["notes"]) for context in contexts))
+            self.assertEqual(sum("building_context" not in row for row in socal), 1)
+            self.assertEqual(sum(c["kind"] == "mapped_name" for c in claims), 0)
+            self.assertEqual(sum(c["kind"] in {"property_use", "structure_use", "parcel_reference"} for c in claims), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
