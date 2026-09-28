@@ -29,11 +29,19 @@ const contextClaims = document.querySelector("#context-claims");
 const contextMore = document.querySelector("#context-more");
 const contextSecondaryClaims = document.querySelector("#context-secondary-claims");
 const contextAttribution = document.querySelector("#context-attribution");
+const contextCategory = document.querySelector("#context-category");
+const contextEvidence = document.querySelector("#context-evidence");
+const contextNotes = document.querySelector("#context-notes");
 
 function clearBuildingContext() {
   buildingContext.hidden = true;
   contextClaims.replaceChildren();
   contextSecondaryClaims.replaceChildren();
+  contextEvidence.replaceChildren();
+  contextCategory.textContent = "";
+  contextNotes.textContent = "";
+  contextNotes.hidden = true;
+  buildingContext.classList.remove("area-only");
   contextMore.hidden = true;
   contextMore.open = false;
   contextAttribution.hidden = true;
@@ -41,34 +49,73 @@ function clearBuildingContext() {
 
 function showBuildingContext(context) {
   clearBuildingContext();
-  const claims = Array.isArray(context?.claims) ? context.claims.filter((claim) =>
-    claim?.displayable === true && ["title", "value", "source", "timing"].every((key) =>
+  if (context?.version !== 2) return;
+  const claims = Array.isArray(context.claims) ? context.claims.filter((claim) =>
+    claim?.displayable === true && ["id", "title", "original_value", "source", "timing"].every((key) =>
       typeof claim[key] === "string" && claim[key].trim())) : [];
   if (!claims.length) return;
-  claims.forEach((claim, index) => {
+  const claimIds = new Set(claims.map((claim) => claim.id));
+  const statements = Array.isArray(context.statements) ? context.statements.filter((statement) =>
+    ["id", "label", "text", "temporal_label"].every((key) => typeof statement?.[key] === "string") &&
+    Array.isArray(statement.supporting_claims) && statement.supporting_claims.length &&
+    statement.supporting_claims.every((id) => claimIds.has(id)) &&
+    Array.isArray(statement.corroborating_claims) && statement.corroborating_claims.every((id) => claimIds.has(id))) : [];
+  const primaryIds = new Set(context.primary_statement_ids || []);
+  if (!statements.some((statement) => primaryIds.has(statement.id))) return;
+  contextCategory.textContent = context.primary_label;
+  buildingContext.classList.toggle("area-only", context.area_only === true);
+  statements.forEach((statement) => {
     const row = document.createElement("li");
     const description = document.createElement("p");
     const label = document.createElement("span");
     label.className = "context-label";
-    label.textContent = claim.title + ": ";
+    label.textContent = statement.label + ": ";
     const value = document.createElement("span");
     value.className = "context-value";
-    value.textContent = claim.value;
+    value.textContent = statement.text;
     description.append(label, value);
-    const provenance = document.createElement("p");
-    provenance.className = "context-provenance";
-    provenance.textContent = claim.timing + " · " + claim.source;
-    row.append(description, provenance);
-    if (typeof claim.qualifier === "string" && claim.qualifier) {
+    const timing = document.createElement("p");
+    timing.className = "context-timing";
+    timing.textContent = statement.temporal_label;
+    row.append(description, timing);
+    if (statement.has_multiple_sources) {
+      const support = document.createElement("p");
+      support.className = "context-support";
+      support.textContent = statement.corroboration_basis === "education_category_only"
+        ? "Education context supported by multiple sources"
+        : "Supported by multiple sources";
+      row.append(support);
+    }
+    (primaryIds.has(statement.id) ? contextClaims : contextSecondaryClaims).append(row);
+  });
+  // Group repetitive source rows for reading; each claim remains in the API.
+  const evidenceGroups = new Map();
+  claims.forEach((claim) => {
+    const key = [claim.source_key, claim.title, claim.timing, claim.qualifier].join("|");
+    if (!evidenceGroups.has(key)) evidenceGroups.set(key, { ...claim, originals: [] });
+    const originals = evidenceGroups.get(key).originals;
+    if (!originals.includes(claim.original_value)) originals.push(claim.original_value);
+  });
+  evidenceGroups.forEach((claim) => {
+    const row = document.createElement("li");
+    const source = document.createElement("p");
+    source.className = "context-source";
+    source.textContent = claim.source + " · " + claim.title;
+    const timing = document.createElement("p");
+    timing.textContent = claim.timing;
+    const original = document.createElement("p");
+    original.textContent = "Source wording: “" + claim.originals.join("”; “") + "”";
+    row.append(source, timing, original);
+    if (claim.qualifier) {
       const qualifier = document.createElement("p");
-      qualifier.className = "context-qualifier";
       qualifier.textContent = claim.qualifier;
       row.append(qualifier);
     }
-    (index < 3 ? contextClaims : contextSecondaryClaims).append(row);
+    contextEvidence.append(row);
   });
-  contextMore.hidden = claims.length <= 3;
-  document.querySelector("#context-more-label").textContent = "More context (" + (claims.length - 3) + ")";
+  contextNotes.textContent = Array.isArray(context.notes) ? context.notes.join(" ") : "";
+  contextNotes.hidden = !contextNotes.textContent;
+  contextMore.hidden = false;
   contextAttribution.hidden = !claims.some((claim) => claim.osm === true);
   buildingContext.hidden = false;
 }

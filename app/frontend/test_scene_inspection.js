@@ -46,7 +46,7 @@ function createDocument() {
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder",
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
-    "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution",
+    "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
@@ -107,6 +107,18 @@ async function main() {
     prediction: { predicted_class: "no-damage", confidence: 0.9, probabilities: { "no-damage": 0.9, "minor-damage": 0.05, "major-damage": 0.03, destroyed: 0.02 } },
   };
 
+  const context = first.building_context;
+  context.version = 2;
+  context.primary_label = "Residential";
+  context.primary_statement_ids = ["statement-0", "statement-1", "statement-2"];
+  context.notes = [];
+  context.claims = context.claims.map((claim, i) => ({ ...claim, id: "claim-" + i,
+    original_value: claim.value, source_key: claim.source }));
+  context.statements = context.claims.map((claim, i) => ({
+    id: "statement-" + i, label: claim.title, text: claim.value, temporal_label: claim.timing,
+    supporting_claims: [claim.id], corroborating_claims: [],
+  }));
+
   const selectSceneBuilding = (building) => {
     const event = {
       type: "scene-building-selected",
@@ -134,7 +146,13 @@ async function main() {
   assert.equal(primary.children.length, 3);
   assert.equal(secondary.children.length, 2);
   assert.match(text(primary), /Modeled use:.*Single-family residential/);
-  assert.match(text(primary), /USACE National Structure Inventory/);
+  assert.equal(document.elements.get("#context-category").textContent, "Residential");
+  assert.doesNotMatch(text(primary), /USACE National Structure Inventory/);
+  assert.match(text(document.elements.get("#context-evidence")), /USACE National Structure Inventory/);
+  assert.equal(document.elements.get("#context-more").hidden, false);
+  assert.equal(document.elements.get("#context-more").open, false);
+  document.elements.get("#context-more").open = true;
+  assert.match(text(document.elements.get("#context-evidence")), /Source wording/);
   assert.match(text(primary), /2017 pre-event property record/);
   assert.match(text(primary), /Within Example School/);
   assert.match(text(primary), /vintage unverified/);
@@ -142,6 +160,27 @@ async function main() {
   assert.match(text(secondary), /Current context/);
   assert.doesNotMatch(text(primary) + text(secondary), /QA-held identity/);
   assert.equal(document.elements.get("#context-attribution").hidden, false);
+  assert.doesNotMatch(text(document.elements.get("#context-evidence")), /QA-held identity/);
+  // Consolidated school presentation consumes the normalized statement, while
+  // keeping the two supporting sources individually available in the disclosure.
+  const schoolContext = { version: 2, primary_label: "Education", primary_statement_ids: ["school"],
+    claims: [context.claims[2], context.claims[3]], notes: [],
+    statements: [{ id: "school", label: "Site", text: "Within Example School campus",
+      temporal_label: "Historical mapping · county vintage unverified", supporting_claims: ["claim-2", "claim-3"],
+      corroborating_claims: [], has_multiple_sources: true, corroboration_basis: "education_category_only" }] };
+  selectSceneBuilding({ ...first, building_context: schoolContext });
+  assert.equal(primary.children.length, 1);
+  assert.match(text(primary), /Within Example School campus/);
+  assert.match(text(primary), /supported by multiple sources/);
+  assert.equal(document.elements.get("#context-evidence").children.length, 2);
+  assert.equal(document.elements.get("#context-more").open, false);
+  const areaContext = { ...schoolContext, primary_label: "Area context", area_only: true,
+    statements: [{ ...schoolContext.statements[0], label: "Area", text: "Residential area", has_multiple_sources: false }] };
+  selectSceneBuilding({ ...first, building_context: areaContext });
+  assert.equal(gis.classList.contains("area-only"), true);
+  assert.match(text(primary), /Area:\s+Residential area/);
+  selectSceneBuilding(first);
+  assert.equal(gis.classList.contains("area-only"), false);
   await document.elements.get("#predict-button").trigger("click");
   assert.equal(fetchCalls, 0);
   assert.equal(gis.hidden, false);
@@ -153,6 +192,7 @@ async function main() {
   assert.equal(gis.hidden, true);
   assert.equal(primary.children.length, 0);
   assert.equal(secondary.children.length, 0);
+  assert.equal(document.elements.get("#context-evidence").children.length, 0);
   assert.equal(document.elements.get("#context-attribution").hidden, true);
 
   selectSceneBuilding(first);

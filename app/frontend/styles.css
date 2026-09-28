@@ -128,15 +128,22 @@ button { cursor: pointer; }
 .probability-fill { height: 100%; border-radius: inherit; background: #7fa5ff; transition: width 360ms ease; }
 .probability-value { color: #fff; font-variant-numeric: tabular-nums; text-align: right; }
 .building-context { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-.building-context h3 { margin: 0 0 12px; color: var(--ink); font-size: 0.94rem; }
-.context-claims { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+.building-context h3 { margin: 0 0 10px; color: var(--ink); font-size: 0.94rem; }
+.context-category { margin: 0 0 9px; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+.context-claims { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .context-claims p { margin: 0; overflow-wrap: anywhere; font-size: 0.83rem; line-height: 1.45; }
 .context-label { color: var(--muted); }
 .context-value { color: var(--ink); font-weight: 600; }
-.context-claims .context-provenance, .context-claims .context-qualifier { margin-top: 3px; color: var(--muted); font-size: 0.73rem; }
+.context-claims .context-timing, .context-claims .context-support { margin-top: 2px; color: var(--muted); font-size: 0.72rem; }
+.context-notes { margin: 10px 0 0; color: var(--muted); font-size: 0.74rem; line-height: 1.45; }
+.area-only .context-value { color: var(--muted); font-weight: 400; }
+.area-only .context-category { display: none; }
 .context-more { margin-top: 12px; color: var(--muted); font-size: 0.78rem; }
 .context-more summary { width: fit-content; padding: 3px 0; cursor: pointer; }
 .context-more[open] summary { margin-bottom: 10px; }
+.context-evidence { display: grid; gap: 12px; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); list-style: none; }
+.context-evidence p { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 0.73rem; line-height: 1.45; }
+.context-evidence .context-source { color: var(--ink); font-weight: 600; }
 .context-attribution { margin: 12px 0 0; font-size: 0.7rem; }
 .context-attribution a { color: var(--muted); text-underline-offset: 2px; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
