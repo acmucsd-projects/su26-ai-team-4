@@ -92,6 +92,7 @@ def valid_context(context: object) -> bool:
         for item in context["statements"]:
             if (item["scope"] not in SCOPE_LABELS or item["category"] not in CATEGORIES
                     or not all(isinstance(item[k], str) for k in ("id", "label", "text", "temporal_label", "corroboration_basis"))
+                    or not isinstance(item.get("support_label", ""), str)
                     or type(item["modeled"]) is not bool or type(item["has_multiple_sources"]) is not bool
                     or not text_list(item["supporting_sources"])
                     or not references(item["context_ids"], contexts)

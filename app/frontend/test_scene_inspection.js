@@ -115,7 +115,8 @@ async function main() {
   context.claims = context.claims.map((claim, i) => ({ ...claim, id: "claim-" + i,
     original_value: claim.value, source_key: claim.source }));
   context.statements = context.claims.map((claim, i) => ({
-    id: "statement-" + i, label: claim.title, text: claim.value, temporal_label: claim.timing,
+    id: "statement-" + i, label: claim.title, text: claim.value,
+    temporal_label: i === 2 ? "School-site record · date uncertain" : claim.timing,
     supporting_claims: [claim.id], corroborating_claims: [],
   }));
 
@@ -155,7 +156,8 @@ async function main() {
   assert.match(text(document.elements.get("#context-evidence")), /Source wording/);
   assert.match(text(primary), /2017 pre-event property record/);
   assert.match(text(primary), /Within Example School/);
-  assert.match(text(primary), /vintage unverified/);
+  assert.doesNotMatch(text(primary), /vintage unverified/);
+  assert.match(text(document.elements.get("#context-evidence")), /vintage unverified/);
   assert.match(text(secondary), /Mapped near disaster date/);
   assert.match(text(secondary), /Current context/);
   assert.doesNotMatch(text(primary) + text(secondary), /QA-held identity/);
@@ -166,12 +168,14 @@ async function main() {
   const schoolContext = { version: 2, primary_label: "Education", primary_statement_ids: ["school"],
     claims: [context.claims[2], context.claims[3]], notes: [],
     statements: [{ id: "school", label: "Site", text: "Within Example School campus",
-      temporal_label: "Historical mapping · county vintage unverified", supporting_claims: ["claim-2", "claim-3"],
-      corroborating_claims: [], has_multiple_sources: true, corroboration_basis: "education_category_only" }] };
+      temporal_label: "Historical map + school-site record", supporting_claims: ["claim-2", "claim-3"],
+      corroborating_claims: [], has_multiple_sources: true, support_label: "Supported by multiple sources" }] };
   selectSceneBuilding({ ...first, building_context: schoolContext });
   assert.equal(primary.children.length, 1);
   assert.match(text(primary), /Within Example School campus/);
-  assert.match(text(primary), /supported by multiple sources/);
+  assert.match(text(primary), /Supported by multiple sources/);
+  assert.doesNotMatch(text(primary), /vintage unverified/);
+  assert.match(text(document.elements.get("#context-evidence")), /vintage unverified/);
   assert.equal(document.elements.get("#context-evidence").children.length, 2);
   assert.equal(document.elements.get("#context-more").open, false);
   const areaContext = { ...schoolContext, primary_label: "Area context", area_only: true,

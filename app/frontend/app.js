@@ -81,9 +81,7 @@ function showBuildingContext(context) {
     if (statement.has_multiple_sources) {
       const support = document.createElement("p");
       support.className = "context-support";
-      support.textContent = statement.corroboration_basis === "education_category_only"
-        ? "Education context supported by multiple sources"
-        : "Supported by multiple sources";
+      support.textContent = statement.support_label || "Supporting evidence from multiple sources";
       row.append(support);
     }
     (primaryIds.has(statement.id) ? contextClaims : contextSecondaryClaims).append(row);

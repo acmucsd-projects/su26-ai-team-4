@@ -31,8 +31,13 @@ TEMPORAL_LABELS = {
     "event_year": "2017 event-year", "pre_event_historical": "2017 pre-event",
     "current_only": "Current", "event_snapshot": "Mapped near disaster date",
     "current_modeled_not_event_aligned": "Current modeled context",
-    "pre_event_reference_vintage_unverified": "2017 advertised · vintage unverified",
+    "pre_event_reference_vintage_unverified": "School-site record · date uncertain",
 }
+CATEGORY_SHORT_LABELS = {**CATEGORIES, "medical": "Healthcare", "professional_services": "Professional services"}
+GENERIC_SUBTYPES = {"education": {"educational_institution"}}
+TEMPORAL_ORDER = {"event_snapshot": 0, "event_year": 1, "pre_event_historical": 2,
+                  "pre_event_reference_vintage_unverified": 3, "current_only": 4,
+                  "current_modeled_not_event_aligned": 4}
 
 
 def key(value: str) -> str:
@@ -50,15 +55,18 @@ def vocabulary(category, subtype, label, *aliases):
 
 
 vocabulary("residential", "single_family", "Single-family residential", "SINGLE FAMILY", "Residential 1 Family",
-           "Residential Single Family", "SINGLE FAMILY DWELLING", "house", "RURAL RES/SINGLE RES")
+           "Residential Single Family", "SINGLE FAMILY DWELLING")
+vocabulary("residential", "house", "House")
+vocabulary("residential", "rural_residential", "Rural residential", "RURAL RES/SINGLE RES")
 vocabulary("residential", "multifamily", "Multifamily residential")
 vocabulary("residential", "multifamily_up_to_10", "Multifamily · Up to 10 units", "MULTI-FAMILY 10 LESS")
-vocabulary("residential", "manufactured_housing", "Manufactured housing", "MOBILE HOME")
+vocabulary("residential", "manufactured_housing", "Manufactured housing")
+vocabulary("residential", "mobile_home", "Mobile home")
 vocabulary("residential", "accessory_dwelling", "Single-family with accessory dwelling", "RURAL RES SFD W/GRANNY UNIT")
 vocabulary("residential", "residential", "Residential", "residential area")
 vocabulary("education", "school", "School", "PAROCHIAL SCHOOL")
 vocabulary("education", "educational_institution", "Educational institution", "educational_institution")
-vocabulary("medical", "dentist", "Dentist")
+vocabulary("medical", "dentist", "Dental office", "dentist")
 vocabulary("medical", "medical_office", "Medical office")
 vocabulary("commercial", "retail", "Retail", "STORES, 1 STORY", "retail area")
 vocabulary("commercial", "shopping_center", "Shopping center", "Strip Shopping Center", "Neighborhood Shopping Ctr")
@@ -66,7 +74,7 @@ vocabulary("commercial", "wholesale", "Wholesale")
 vocabulary("commercial", "personal_repair", "Personal and repair services", "Personal/repair services")
 vocabulary("commercial", "repair", "Repair services", "REPAIR SERVICE")
 vocabulary("commercial", "vehicle_sales_repair", "Vehicle sales and repair", "VEH SALE/REPAIR")
-vocabulary("commercial", "auto_service", "Auto service", "Auto Service Garage")
+vocabulary("commercial", "auto_service", "Auto service garage")
 vocabulary("commercial", "convenience_store", "Convenience store", "convenience")
 vocabulary("commercial", "tobacco_shop", "Tobacco shop", "tobacco")
 vocabulary("professional_services", "office", "Office", "Office Building")
@@ -75,9 +83,10 @@ vocabulary("professional_services", "professional_services", "Professional servi
 vocabulary("professional_services", "bank", "Bank")
 vocabulary("professional_services", "insurance", "Insurance services", "insurance")
 vocabulary("professional_services", "association", "Association")
-vocabulary("warehouse", "warehouse", "Warehouse / storage", "WAREHOUSE-STORAGE", "Warehouse - Metallic", "warehouse")
+vocabulary("warehouse", "warehouse", "Warehouse", "Warehouse - Metallic")
+vocabulary("warehouse", "warehouse_storage", "Warehouse / storage", "WAREHOUSE-STORAGE")
 vocabulary("government", "government_services", "Government services")
-vocabulary("recreation", "recreation", "Recreation", "Entertainment/recreation")
+vocabulary("recreation", "recreation", "Entertainment / recreation")
 vocabulary("recreation", "park", "Park")
 vocabulary("mixed_use", "retail_office_residential", "Retail, office and residential", "STORE/OFFICE/RESID")
 
@@ -140,7 +149,7 @@ def compact_concepts(concepts: list[dict]) -> list[dict]:
             broad_concept = groups.pop((category, broad))
             target = groups[(category, specific)]
             target["supporting_claims"] = sorted(set(target["supporting_claims"] + broad_concept["supporting_claims"]))
-    return list(groups.values())
+    return sorted(groups.values(), key=lambda c: (c["category"], c["subtype"] or ""))
 
 
 def category_for(concepts: list[dict]) -> str:
@@ -151,12 +160,10 @@ def category_for(concepts: list[dict]) -> str:
 def label_for(concepts: list[dict]) -> str:
     if len(concepts) == 1:
         return concepts[0]["label"]
-    words = {"medical": "healthcare", "professional_services": "professional", "commercial": "commercial",
-             "education": "education", "residential": "residential", "warehouse": "warehouse"}
     categories = sorted({c["category"] for c in concepts})
-    labels = [words.get(c, CATEGORIES[c].lower()) for c in categories]
-    joined = " and ".join(labels) if len(labels) <= 2 else ", ".join(labels[:-1]) + " and " + labels[-1]
-    return "Mixed " + joined + " uses"
+    labels = ([c["label"] for c in concepts] if len(categories) == 1
+              else [CATEGORY_SHORT_LABELS[c] for c in categories])
+    return " / ".join(labels)
 
 
 def build_contexts(claims: list[dict]) -> list[dict]:
@@ -183,10 +190,20 @@ def build_contexts(claims: list[dict]) -> list[dict]:
     return contexts
 
 
+def display_name(context: dict) -> str:
+    """Only display punctuation changes; identity and matching use the raw name."""
+    name = context["name"]
+    if context["scope"] == "site" and context["category"] == "education":
+        # School-site records may list several schools in one name field.
+        name = " / ".join(part.strip() for part in name.split(","))
+        name = re.sub(r"\bSt\.?\s+", "St. ", name)
+    return name
+
+
 def statement_text(context: dict) -> str:
     name, scope, category = context["name"], context["scope"], context["category"]
     if name and scope == "site":
-        return "Within " + name + (" campus" if category == "education" else "")
+        return "Within " + display_name(context) + (" campus" if category == "education" else "")
     if name:
         return name + (" · " + context["label"] if category != "unknown" and scope == "place" else "")
     if scope == "site":
@@ -200,14 +217,24 @@ def temporal_summary(contexts: list[dict]) -> str:
     relations = list(dict.fromkeys(c["temporal_relation"] for c in contexts))
     if len(relations) == 1:
         return TEMPORAL_LABELS[relations[0]]
-    labels = []
+    if {"event_snapshot", "current_only"} <= set(relations):
+        return "Historical + current records"
+    # Do not imply that an undated county school record is a verified event-time
+    # observation. Exact dates and the vintage caveat remain in individual claims.
     if "event_snapshot" in relations:
-        labels.append("Historical mapping")
-    if "current_only" in relations:
-        labels.append("current mapping")
-    if "pre_event_reference_vintage_unverified" in relations:
-        labels.append("county vintage unverified")
-    return " · ".join(labels)  # Cross-date consolidation is limited to named sites.
+        return "Historical map + school-site record"
+    return "Current map + school-site record"
+
+
+def statement_priority(statement: dict, claim_by_id: dict) -> float:
+    priority = SCOPE_ORDER[statement["scope"]]
+    if statement["scope"] == "building" and statement["name"]:
+        priority = 0
+    if statement["modeled"] and statement["category"] == "mixed_use":
+        priority = SCOPE_ORDER["property"] + 0.5
+    if statement["corroborating_claims"]:
+        priority = min(priority, *(SCOPE_ORDER[scope_for(claim_by_id[c])] for c in statement["corroborating_claims"]))
+    return priority
 
 
 def build_statements(contexts: list[dict], claims: list[dict]) -> list[dict]:
@@ -228,6 +255,8 @@ def build_statements(contexts: list[dict], claims: list[dict]) -> list[dict]:
             label = "Mapped building"
         elif context["kind"] == "structure_use":
             label = "Parcel-linked structure"
+        elif context["kind"] == "mapped_place" and not context["name"]:
+            label = "Mapped use"
         statements.append({"id": f"statement-{len(statements)}", "scope": context["scope"], "name": context["name"],
                            "category": context["category"], "label": label, "text": statement_text(context),
                            "context_ids": [context["id"]], "supporting_claims": list(context["supporting_claims"]),
@@ -240,7 +269,7 @@ def build_statements(contexts: list[dict], claims: list[dict]) -> list[dict]:
     # records and mixed modeled contexts always retain their own statement.
     school_sites = [s for s in statements if s["scope"] == "site" and s["category"] == "education"]
     if school_sites:
-        anchor = next((s for s in school_sites if s["name"]), school_sites[0])
+        anchor = min(school_sites, key=lambda s: (not bool(s["name"]), key(s["name"] or s["text"])))
         for statement in statements:
             if statement is anchor or statement["scope"] == "area":
                 continue
@@ -283,15 +312,17 @@ def build_statements(contexts: list[dict], claims: list[dict]) -> list[dict]:
         references = statement["supporting_claims"] + statement["corroborating_claims"]
         statement["supporting_sources"] = sorted({claim_by_id[c]["source_family"] for c in references})
         statement["has_multiple_sources"] = len(statement["supporting_sources"]) > 1
+        direct_sources = {claim_by_id[c]["source_family"] for c in statement["supporting_claims"]}
+        statement["support_label"] = ""
+        if statement["has_multiple_sources"]:
+            statement["support_label"] = ("School context supported by multiple sources"
+                                          if len(direct_sources) < 2 and statement["corroboration_basis"] == "education_category_only"
+                                          else "Supported by multiple sources")
         result.append(statement)
 
     def rank(statement):
-        priority = SCOPE_ORDER[statement["scope"]]
-        if statement["scope"] == "building" and statement["name"]:
-            priority = 0
-        if statement["corroborating_claims"]:
-            priority = min(priority, *(SCOPE_ORDER[scope_for(claim_by_id[c])] for c in statement["corroborating_claims"]))
-        return priority, statement["category"] == "mixed_use"
+        date_order = min(TEMPORAL_ORDER[context_by_id[c]["temporal_relation"]] for c in statement["context_ids"])
+        return statement_priority(statement, claim_by_id), date_order, statement["category"], key(statement["text"])
 
     return sorted(result, key=rank)
 
@@ -302,7 +333,26 @@ def normalize_context(claims: list[dict], conflicts: list[dict] = ()) -> dict:
     area_only = bool(statements) and all(s["scope"] == "area" for s in statements)
     candidates = statements if area_only else [s for s in statements if s["scope"] != "area"]
     primary = candidates[:3]
-    category = primary[0]["category"] if primary else "unknown"
+    claim_by_id = {c["id"]: c for c in claims}
+    classified = [s for s in candidates if s["category"] != "unknown"]
+    best_priority = min((statement_priority(s, claim_by_id) for s in classified), default=None)
+    # Equally useful, differently classified evidence has no arbitrary winner.
+    categories = {s["category"] for s in classified if statement_priority(s, claim_by_id) == best_priority}
+    category = (next(iter(categories)) if len(categories) == 1 else "mixed_use") if categories else "unknown"
+    context_by_id = {c["id"]: c for c in contexts}
+    for statement in statements:
+        if statement["scope"] != "place" or not statement["name"]:
+            continue
+        concepts = context_by_id[statement["context_ids"][0]]["concepts"]
+        if len(concepts) == 1:
+            concept = concepts[0]
+            repeats_category = (statement["category"] == category and
+                                (key(concept["label"]) == key(CATEGORIES[category]) or
+                                 concept["subtype"] in GENERIC_SUBTYPES.get(category, set())))
+            repeats_name = any(phrase and f" {phrase} " in f" {key(statement['name'])} "
+                               for phrase in (key(concept["label"]), key(concept["subtype"] or "")))
+            if repeats_category or repeats_name:
+                statement["text"] = statement["name"]
     notes = []
     if conflicts:
         reasons = {c["reason"] for c in conflicts}
