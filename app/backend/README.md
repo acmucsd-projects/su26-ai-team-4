@@ -2,6 +2,10 @@
 
 FastAPI backend for the released paired PRE+POST ResNet-18 plain-cross-entropy xBD checkpoint.
 
+The separate [offline GIS context audit](gis_context/README.md) enriches no runtime
+requests and requires no model checkpoint. Its first Harvey feasibility run is
+currently blocked by missing raw geographic labels; see the linked audit notes.
+
 ## Input contract
 
 POST /predict accepts multipart fields named pre_image and post_image. Each must be a PRE/POST satellite building crop of the same building, aligned as an xBD-style pair. This backend does not detect buildings in full satellite scenes.
