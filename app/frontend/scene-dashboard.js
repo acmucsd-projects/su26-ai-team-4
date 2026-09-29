@@ -5,10 +5,18 @@
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
   const sceneDescription = document.querySelector("#scene-description");
+  const sceneDashboardTitle = document.querySelector("#scene-dashboard-title");
   const sceneEventContext = document.querySelector("#scene-event-context");
   const sceneBuildingCount = document.querySelector("#scene-building-count");
   const sceneStatusMessage = document.querySelector("#scene-status-message");
   const sceneCanvas = document.querySelector("#scene-canvas");
+  const sceneLoading = document.querySelector("#scene-loading");
+  const sceneTooltip = document.querySelector("#scene-tooltip");
+  const sceneLegend = document.querySelector(".scene-legend");
+  const uncertaintyLegend = document.querySelector("#scene-uncertainty-legend");
+  const highlights = document.querySelector("#scene-highlights");
+  const highlightsStatus = document.querySelector("#scene-highlights-status");
+  const highlightsList = document.querySelector("#scene-highlights-list");
   const scenePostImage = document.querySelector("#scene-post-image");
   const sceneOverlay = document.querySelector("#scene-overlay");
   const sceneSelector = document.querySelector("#scene-selector");
@@ -39,6 +47,7 @@
   let imageryMode = "post-predictions";
   let predictionFilter = "all";
   let activeFindingGroup = null;
+  const highlightCache = new Map();
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -66,15 +75,13 @@
       sceneEventContext.hidden = true;
       return;
     }
-    const eventName = typeof context.event_name === "string" && context.event_name.trim()
-      ? titleCase(context.event_name.trim()) : "";
     const location = typeof context.location === "string" && context.location.trim()
       ? context.location.trim() : "";
     const postDate = typeof context.post_acquisition_date === "string"
       && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(context.post_acquisition_date)
       ? "POST · " + context.post_acquisition_date.slice(0, 10) : "";
-    const lines = [eventName, location, postDate].filter(Boolean);
-    sceneEventContext.textContent = lines.join("\n");
+    const lines = [location, postDate].filter(Boolean);
+    sceneEventContext.textContent = lines.join("  /  ");
     sceneEventContext.hidden = lines.length === 0;
   }
 
@@ -96,6 +103,8 @@
       button.setAttribute("aria-pressed", String(isSelected));
       button.disabled = isSceneLoading || isImageLoading || !currentScene;
     });
+    sceneLegend.hidden = imageryMode !== "post-predictions";
+    uncertaintyLegend.hidden = imageryMode !== "uncertainty";
   }
 
   function updatePredictionFilterControls() {
@@ -145,7 +154,7 @@
 
   function updateSceneSummary(buildings) {
     const summary = summarizePredictions(buildings);
-    sceneSummaryTotal.textContent = summary.total + " buildings analyzed";
+    sceneSummaryTotal.textContent = summary.total + (summary.total === 1 ? " building analyzed" : " buildings analyzed");
     DAMAGE_CLASSES.forEach((className) => {
       sceneSummaryCounts[className].textContent = String(summary.counts[className]);
     });
@@ -188,14 +197,16 @@
     sceneOverlay.hidden = false;
     scenePostImage.alt = imageryMode === "pre"
       ? "PRE-disaster satellite scene"
-      : showingPredictions
+      : imageryMode === "uncertainty"
+        ? "POST-disaster satellite scene with relative top-two prediction ambiguity overlay"
+        : showingPredictions
         ? "POST-disaster satellite scene with model-predicted building damage overlay"
         : "POST-disaster satellite scene";
     await loadImage(imageUrlForCurrentMode());
   }
 
   async function setImageryMode(mode) {
-    if (!currentScene || isSceneLoading || isImageLoading || mode === imageryMode) return;
+    if (!["pre", "post", "post-predictions", "uncertainty"].includes(mode) || !currentScene || isSceneLoading || isImageLoading || mode === imageryMode) return;
     imageryMode = mode;
     isImageLoading = true;
     updateImageryControls();
@@ -203,7 +214,7 @@
       renderBuildings(currentScene.buildings);
       await showCurrentSceneImage();
       sceneCanvas.hidden = false;
-      setSceneStatus(isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
+      setSceneStatus(imageryMode === "uncertainty" ? "Showing relative ambiguity from the top-two model probability gap." : isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
     } catch (error) {
       setSceneStatus(error.message || "The selected scene image could not be loaded.", true);
     } finally {
@@ -242,7 +253,10 @@
   document.addEventListener("scene-building-clear", clearSelectedPolygon);
 
   function selectBuilding(building, polygon) {
-    if (activeFindingGroup && !activeFindingGroup.buildingIds.includes(building.id)) clearFindingGroup(false);
+    if (activeFindingGroup && !activeFindingGroup.buildingIds.includes(building.id)) {
+      clearFindingGroup(true);
+      polygon = Array.from(sceneOverlay.children).find((item) => item.dataset.buildingId === building.id) || polygon;
+    }
     setSelectedPolygon(polygon);
     const selection = { scene_id: currentScene.scene_id, building, handled: false };
     const accepted = document.dispatchEvent(new CustomEvent("scene-building-selected", { detail: selection, cancelable: true }));
@@ -251,7 +265,7 @@
       setSceneStatus("The selected building could not be opened for inspection.", true);
       return;
     }
-    setSceneStatus("Selected " + building.id + ". Its precomputed result is shown below.");
+    setSceneStatus("Selected " + building.id + ". Its precomputed result is shown in the inspector.");
   }
 
   function inspectRequestedBuilding(detail) {
@@ -264,7 +278,10 @@
       renderBuildings(currentScene.buildings);
     }
     const polygon = Array.from(sceneOverlay.children).find((item) => item.dataset.buildingId === building.id);
-    if (polygon) selectBuilding(building, polygon);
+    if (polygon) {
+      selectBuilding(building, polygon);
+      sceneCanvas.scrollIntoView?.({ block: "nearest" });
+    }
   }
 
   document.addEventListener("scene-building-inspect-request", (event) => inspectRequestedBuilding(event.detail));
@@ -284,7 +301,6 @@
     activeFindingGroup = null;
     updateFindingGroupControls();
     if (render && currentScene) renderBuildings(currentScene.buildings);
-    document.dispatchEvent(new Event("scene-building-clear"));
   }
 
   function inspectFindingGroupMember(index) {
@@ -319,6 +335,7 @@
     renderBuildings(currentScene.buildings);
     updateFindingGroupControls();
     inspectFindingGroupMember(0);
+    sceneCanvas.scrollIntoView?.({ block: "nearest" });
   }
 
   document.addEventListener("scene-building-group-inspect-request", (event) => inspectRequestedGroup(event.detail));
@@ -331,13 +348,41 @@
   }
 
   function polygonClassForCurrentMode(predictedClass) {
-    return "scene-building " + (isPredictionMode() ? predictedClass : "neutral");
+    return "scene-building " + (imageryMode === "uncertainty" ? "uncertainty" : isPredictionMode() ? predictedClass : "neutral");
+  }
+
+  function topTwoGap(prediction) {
+    const values = DAMAGE_CLASSES.map((name) => Number(prediction?.probabilities?.[name])).filter(Number.isFinite).sort((a, b) => b - a);
+    return values.length < 2 ? 1 : Math.max(0, Math.min(1, values[0] - values[1]));
+  }
+
+  function ambiguityFill(gap) {
+    const blend = 1 - gap;
+    const low = [65, 89, 118], high = [218, 123, 234];
+    return "rgb(" + low.map((start, index) => Math.round(start + (high[index] - start) * blend)).join(", ") + ")";
+  }
+
+  function hideTooltip() {
+    sceneTooltip.hidden = true;
+    sceneTooltip.textContent = "";
+  }
+
+  function showTooltip(building) {
+    const prediction = building.prediction;
+    const shortId = String(building.id).split("_").pop();
+    const confidence = Number(prediction.confidence);
+    const lines = ["Building " + shortId, titleCase(prediction.predicted_class) + (Number.isFinite(confidence) ? " · " + (confidence * 100).toFixed(1) + "% top-class score" : "")];
+    if (imageryMode === "uncertainty") lines.push("Top-two gap: " + (topTwoGap(prediction) * 100).toFixed(1) + " points");
+    else if (building.building_context?.claims?.length) lines.push("Reviewed GIS context available");
+    sceneTooltip.textContent = lines.join("\n");
+    sceneTooltip.hidden = false;
   }
 
   function renderBuildings(buildings) {
     if (!Array.isArray(buildings) || buildings.length === 0) throw new Error("The scene contains no packaged buildings.");
     const selectedBuildingId = selectedPolygon?.dataset.buildingId;
     clearSelectedPolygon();
+    hideTooltip();
     sceneOverlay.replaceChildren();
     buildings.forEach((building) => {
       const predictedClass = building?.prediction?.predicted_class;
@@ -349,18 +394,28 @@
         ? activeFindingGroup.buildingIds.includes(building.id) ? " group-highlight" : " group-muted"
         : "";
       polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass) + groupClass);
+      if (imageryMode === "uncertainty") {
+        const gap = topTwoGap(building.prediction);
+        polygon.setAttribute("style", "--ambiguity-fill: " + ambiguityFill(gap));
+        polygon.dataset.topTwoGap = String(gap);
+      }
       polygon.setAttribute("tabindex", "0");
       polygon.setAttribute("role", "button");
       polygon.setAttribute("aria-pressed", "false");
+      polygon.setAttribute("aria-describedby", "scene-tooltip");
       polygon.setAttribute(
         "aria-label",
-        isPredictionMode()
-          ? "Building " + building.id + ", predicted " + displayName(predictedClass)
-          : "Building " + building.id,
+        "Building " + building.id + ", model predicts " + displayName(predictedClass) +
+          ", " + (Number(building.prediction.confidence) * 100).toFixed(1) + "% top-class score" +
+          (imageryMode === "uncertainty" ? ", top-two gap " + (topTwoGap(building.prediction) * 100).toFixed(1) + " points" : ""),
       );
       polygon.dataset.buildingId = building.id;
       polygon.dataset.predictedClass = predictedClass;
       polygon.addEventListener("click", () => selectBuilding(building, polygon));
+      polygon.addEventListener("pointerenter", () => showTooltip(building));
+      polygon.addEventListener("pointerleave", hideTooltip);
+      polygon.addEventListener("focus", () => showTooltip(building));
+      polygon.addEventListener("blur", hideTooltip);
       polygon.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -372,14 +427,86 @@
     });
   }
 
+  const HIGHLIGHT_TYPES = [
+    { types: ["AMBIGUOUS_CLASS_PAIR"], label: "Most ambiguous", category: "ambiguity" },
+    { types: ["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER"], label: "Local contrast", category: "spatial" },
+    { types: ["SEVERE_PROXIMITY_GROUP"], label: "Severe proximity group", category: "severe" },
+    { types: ["MULTI_BUILDING_SITE"], label: "Reviewed site", category: "gis" },
+    { types: ["CONTEXT_RICH_SEVERE"], label: "GIS-rich example", category: "gis" },
+    { types: ["REPRESENTATIVE_SEVERE"], label: "Representative severe", category: "severe" },
+    { types: ["REPRESENTATIVE_LOW_DAMAGE"], label: "Representative low damage", category: "spatial" },
+  ];
+
+  function highlightMetadata(candidate, ids) {
+    const reason = candidate.reason || {};
+    if (candidate.type === "AMBIGUOUS_CLASS_PAIR" && Number.isInteger(reason.rank)) return "#" + reason.rank + " by top-two gap";
+    if (["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER"].includes(candidate.type) && Number.isInteger(reason.neighbor_count)) return reason.neighbor_count + " nearest predictions";
+    if (candidate.type === "SEVERE_PROXIMITY_GROUP") return ids.length + " nearby severe predictions";
+    if (candidate.type === "MULTI_BUILDING_SITE") return ids.length + " analyzed site buildings";
+    if (candidate.type === "CONTEXT_RICH_SEVERE" && Number.isInteger(reason.reviewed_context_claim_count)) return reason.reviewed_context_claim_count + " reviewed GIS claims";
+    return ids.length > 1 ? ids.length + " buildings" : "Inspect building →";
+  }
+
+  function renderHighlights(sceneId, evidence) {
+    highlightsList.replaceChildren();
+    const ordered = Array.isArray(evidence?.candidate_order) ? evidence.candidate_order : [];
+    const candidates = evidence?.candidate_findings || {};
+    const currentIds = new Set(currentScene?.buildings?.map((building) => building.id) || []);
+    HIGHLIGHT_TYPES.forEach((spec) => {
+      const key = ordered.find((candidateKey) => spec.types.includes(candidates[candidateKey]?.type));
+      const candidate = candidates[key];
+      const ids = Array.isArray(candidate?.building_ids) ? [...new Set(candidate.building_ids)].filter((id) => currentIds.has(id)) : [];
+      if (!ids.length) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "highlight-button";
+      button.dataset.highlightCategory = spec.category;
+      button.dataset.candidateKey = key;
+      const title = document.createElement("span");
+      title.textContent = spec.label;
+      const count = document.createElement("small");
+      count.textContent = highlightMetadata(candidate, ids);
+      button.append(title, count);
+      button.addEventListener("click", () => {
+        if (currentScene?.scene_id !== sceneId) return;
+        if (ids.length === 1) inspectRequestedBuilding({ scene_id: sceneId, building_id: ids[0] });
+        else inspectRequestedGroup({ scene_id: sceneId, building_ids: ids, group_id: key, group_label: spec.label });
+      });
+      highlightsList.append(button);
+    });
+    highlightsStatus.textContent = highlightsList.children.length ? "From deterministic scene evidence" : "No highlights available for this scene.";
+  }
+
+  async function loadHighlights(sceneId) {
+    highlights.hidden = false;
+    highlightsStatus.textContent = "Loading scene highlights…";
+    try {
+      let evidence = highlightCache.get(sceneId);
+      if (!evidence) {
+        const response = await fetch(DEMO_SCENES_URL + "/" + encodeURIComponent(sceneId) + "/assessment-preview");
+        const body = await response.json();
+        if (!response.ok || body?.status !== "preview_only" || !body.scene_evidence) throw new Error("No deterministic highlights available.");
+        evidence = body.scene_evidence;
+        highlightCache.set(sceneId, evidence);
+      }
+      if (currentScene?.scene_id === sceneId) renderHighlights(sceneId, evidence);
+    } catch (_error) {
+      if (currentScene?.scene_id === sceneId) highlightsStatus.textContent = "Scene highlights are unavailable.";
+    }
+  }
+
   function clearSceneForLoad() {
     clearFindingGroup(false);
     clearSelectedPolygon();
     currentScene = null;
     sceneOverlay.replaceChildren();
     sceneOverlay.hidden = true;
+    hideTooltip();
     scenePostImage.removeAttribute("src");
     sceneCanvas.hidden = true;
+    sceneLoading.hidden = false;
+    highlights.hidden = true;
+    highlightsList.replaceChildren();
     sceneEventContext.textContent = "";
     sceneEventContext.hidden = true;
     clearSceneSummary();
@@ -404,22 +531,27 @@
 
       currentSceneIndex = index;
       currentScene = scene;
-      sceneDescription.textContent = sceneLabel(scene);
+      sceneDashboardTitle.textContent = sceneLabel(scene);
+      sceneDescription.textContent = "Paired satellite imagery with model-predicted building damage.";
       renderSceneEvidenceContext(scene);
-      sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + " buildings" : "";
+      sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + (scene.buildings.length === 1 ? " building" : " buildings") : "";
       sceneBuildingCount.hidden = false;
       sceneOverlay.setAttribute("viewBox", "0 0 " + Number(scene.image.width) + " " + Number(scene.image.height));
       updateSceneSummary(scene.buildings);
       renderBuildings(scene.buildings);
       await showCurrentSceneImage();
       sceneCanvas.hidden = false;
-      setSceneStatus(isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
+      sceneLoading.hidden = true;
+      setSceneStatus(imageryMode === "uncertainty" ? "Showing relative ambiguity from the top-two model probability gap." : isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
       document.dispatchEvent(new CustomEvent("scene-loaded", { detail: { scene_id: scene.scene_id, scene } }));
+      loadHighlights(scene.scene_id);
     } catch (error) {
       sceneCanvas.hidden = true;
+      sceneLoading.hidden = true;
       sceneBuildingCount.hidden = true;
       clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
+      sceneDashboardTitle.textContent = "Explore the scene";
       sceneEventContext.textContent = "";
       sceneEventContext.hidden = true;
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
@@ -438,6 +570,8 @@
       if (!listResponse.ok) throw new Error("Available demo scenes could not be loaded.");
       if (!Array.isArray(listBody.scenes) || listBody.scenes.length === 0) {
         sceneDescription.textContent = "No precomputed demo scenes are available locally.";
+        sceneDashboardTitle.textContent = "Explore the scene";
+        sceneLoading.hidden = true;
         setSceneStatus("You can still test a single matched building pair below.");
         return;
       }
@@ -448,9 +582,11 @@
       await loadSceneAt(currentSceneIndex);
     } catch (error) {
       sceneCanvas.hidden = true;
+      sceneLoading.hidden = true;
       sceneBuildingCount.hidden = true;
       clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
+      sceneDashboardTitle.textContent = "Explore the scene";
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
     }
   }

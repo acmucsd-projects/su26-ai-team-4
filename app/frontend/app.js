@@ -25,6 +25,11 @@ const postPreview = document.querySelector("#post-preview");
 const prePlaceholder = document.querySelector("#pre-placeholder");
 const postPlaceholder = document.querySelector("#post-placeholder");
 const selectionLabel = document.querySelector("#selection-label");
+const inspectorEmpty = document.querySelector("#inspector-empty");
+const inspectorContent = document.querySelector("#inspector-content");
+const inspectorContextPill = document.querySelector("#inspector-context-pill");
+const comparison = document.querySelector("#comparison");
+const comparisonRange = document.querySelector("#comparison-range");
 const statusMessage = document.querySelector("#status-message");
 const predictButton = document.querySelector("#predict-button");
 const resultCard = document.querySelector("#result-card");
@@ -72,15 +77,31 @@ const ASSESSMENT_EVIDENCE_LABELS = {
   model: "MODEL",
   spatial: "SPATIAL",
   event: "EVENT",
-  reviewed_gis: "REVIEWED GIS",
+  reviewed_gis: "GIS",
 };
 const SCENE_ASSESSMENT_EVIDENCE_LABELS = {
   model: "MODEL",
   spatial: "SPATIAL",
   event: "EVENT",
-  reviewed_gis: "REVIEWED GIS",
+  reviewed_gis: "GIS",
 };
 const BUILDING_ID_PATTERN = /\b[A-Za-z0-9][A-Za-z0-9_-]*_b\d+\b/;
+
+function renderEvidenceBadges(target, evidence, labels) {
+  const valid = [...new Set(evidence.filter((item) => Object.prototype.hasOwnProperty.call(labels, item)))];
+  target.replaceChildren();
+  valid.forEach((item) => {
+    const badge = document.createElement("span");
+    badge.className = "evidence-badge " + (item === "reviewed_gis" ? "gis" : item);
+    badge.textContent = labels[item];
+    if (item === "reviewed_gis") badge.title = "Reviewed GIS context";
+    target.append(badge);
+  });
+  target.hidden = valid.length === 0;
+  if (valid.length) target.setAttribute("aria-label", "Evidence synthesized: " + valid.map((item) => labels[item]).join(", "));
+  else target.removeAttribute("aria-label");
+  return valid.length;
+}
 
 function clearSceneAssessmentResult() {
   sceneAssessmentModel.textContent = "";
@@ -92,7 +113,7 @@ function clearSceneAssessmentResult() {
   sceneAssessmentReviewBlock.hidden = true;
   sceneAssessmentDetails.open = false;
   sceneAssessmentDetails.hidden = true;
-  sceneAssessmentEvidenceUsed.textContent = "";
+  sceneAssessmentEvidenceUsed.replaceChildren();
   sceneAssessmentEvidenceUsed.hidden = true;
   sceneAssessmentLimitations.replaceChildren();
   sceneAssessmentLimitationsBlock.hidden = true;
@@ -156,11 +177,20 @@ function sceneFindingTypeLabel(type, buildingCount) {
     SEVERE_PROXIMITY_GROUP: "Severe proximity group",
     MULTI_BUILDING_SITE: "Reviewed multi-building site",
     CONTEXT_RICH_SEVERE: "Context-rich building",
+    GIS_SCOPE_CONFLICT: "GIS context qualification",
     REPRESENTATIVE_SEVERE: "Severe prediction",
     REPRESENTATIVE_LOW_DAMAGE: "Lower-damage prediction",
   };
   const label = labels[type] || (typeof type === "string" ? type.replaceAll("_", " ").toLowerCase() : "Scene pattern");
   return buildingCount > 1 ? label + " · " + buildingCount + " buildings" : label;
+}
+
+function sceneFindingCategory(type) {
+  if (type === "AMBIGUOUS_CLASS_PAIR") return "ambiguity";
+  if (["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER", "LOCAL_CLASS_DISAGREEMENT"].includes(type)) return "spatial";
+  if (["SEVERE_PROXIMITY_GROUP", "HIGH_CONFIDENCE_SEVERE", "REPRESENTATIVE_SEVERE"].includes(type)) return "severe";
+  if (["MULTI_BUILDING_SITE", "CONTEXT_RICH_SEVERE", "GIS_SCOPE_CONFLICT"].includes(type)) return "gis";
+  return "event";
 }
 
 function sceneFindingGroupLabel(type, fallbackTitle) {
@@ -177,7 +207,7 @@ function renderSceneAssessment(result) {
   sceneAssessmentOverview.textContent = result.overview;
   const modelLabel = assessmentModelLabel(result.generated_by);
   if (modelLabel) {
-    sceneAssessmentModel.textContent = modelLabel + " Â· Evidence-grounded scene assessment";
+    sceneAssessmentModel.textContent = modelLabel + " · Evidence-grounded scene assessment";
     sceneAssessmentModel.hidden = false;
   }
   result.findings.forEach((finding) => {
@@ -185,6 +215,7 @@ function renderSceneAssessment(result) {
     item.className = "scene-assessment-finding";
     const targetIds = [...new Set(finding.candidate_keys.flatMap((key) => result.candidate_buildings[key] || []))];
     const type = finding.candidate_keys.map((key) => result.candidate_types?.[key]).find((value) => typeof value === "string");
+    item.dataset.findingCategory = sceneFindingCategory(type);
     const typeLabel = document.createElement("span");
     typeLabel.className = "scene-assessment-finding-type";
     typeLabel.textContent = sceneFindingTypeLabel(type, targetIds.length);
@@ -230,14 +261,8 @@ function renderSceneAssessment(result) {
     sceneAssessmentLimitations.append(item);
   });
   sceneAssessmentLimitationsBlock.hidden = result.limitations.length === 0;
-  const evidenceLabels = [...new Set(result.evidence_used
-    .filter((item) => Object.prototype.hasOwnProperty.call(SCENE_ASSESSMENT_EVIDENCE_LABELS, item))
-    .map((item) => SCENE_ASSESSMENT_EVIDENCE_LABELS[item]))];
-  if (evidenceLabels.length) {
-    sceneAssessmentEvidenceUsed.textContent = "Evidence synthesized: " + evidenceLabels.join(" / ");
-    sceneAssessmentEvidenceUsed.hidden = false;
-  }
-  sceneAssessmentDetails.hidden = !evidenceLabels.length && !result.limitations.length;
+  const evidenceCount = renderEvidenceBadges(sceneAssessmentEvidenceUsed, result.evidence_used, SCENE_ASSESSMENT_EVIDENCE_LABELS);
+  sceneAssessmentDetails.hidden = !evidenceCount && !result.limitations.length;
   sceneAssessmentGenerateButton.hidden = true;
   sceneAssessmentStatus.textContent = "";
   sceneAssessmentStatus.classList.remove("error");
@@ -250,7 +275,7 @@ function renderActiveSceneAssessment() {
   const pending = sceneAssessmentRequests.has(activeSceneOverviewId);
   resetSceneAssessmentView();
   sceneAssessmentGenerateButton.disabled = pending;
-  if (pending) sceneAssessmentStatus.textContent = "Generating scene overview…";
+  if (pending) sceneAssessmentStatus.textContent = "Generating scene brief…";
   if (cached) renderSceneAssessment(cached);
 }
 
@@ -260,7 +285,7 @@ async function generateSceneAssessment() {
   sceneAssessmentRequests.set(sceneId, true);
   if (sceneId === activeSceneOverviewId) {
     sceneAssessmentStatus.classList.remove("error");
-    sceneAssessmentStatus.textContent = "Generating scene overview…";
+    sceneAssessmentStatus.textContent = "Generating scene brief…";
     sceneAssessmentGenerateButton.disabled = true;
   }
   let failureMessage = "";
@@ -269,15 +294,15 @@ async function generateSceneAssessment() {
     const body = await response.json().catch(() => null);
     if (!response.ok) {
       failureMessage = body?.detail?.code === "assessment_provider_unavailable"
-        ? "AI scene overview is currently unavailable."
-        : "Scene overview could not be generated. Try again.";
+        ? "AI scene brief is currently unavailable."
+        : "Scene brief could not be generated. Try again.";
     } else {
       const result = normalizeSceneAssessmentResult(body, activeSceneBuildingIdsFor(sceneId));
-      if (!result) failureMessage = "Scene overview could not be generated. Try again.";
+      if (!result) failureMessage = "Scene brief could not be generated. Try again.";
       else sceneAssessmentCache.set(sceneId, result);
     }
   } catch (_error) {
-    failureMessage = "Scene overview could not be generated. Try again.";
+    failureMessage = "Scene brief could not be generated. Try again.";
   } finally {
     sceneAssessmentRequests.delete(sceneId);
     if (sceneId === activeSceneOverviewId) {
@@ -303,7 +328,7 @@ function clearAssessmentResult() {
   assessmentReviewBlock.hidden = true;
   assessmentEvidenceDetails.open = false;
   assessmentEvidenceDetails.hidden = true;
-  assessmentEvidenceUsed.textContent = "";
+  assessmentEvidenceUsed.replaceChildren();
   assessmentEvidenceUsed.hidden = true;
   assessmentSupportingDetails.replaceChildren();
   assessmentSupportingBlock.hidden = true;
@@ -347,14 +372,8 @@ function renderAssessmentResult(result) {
     assessmentModel.textContent = modelLabel + " · Evidence-grounded assessment";
     assessmentModel.hidden = false;
   }
-  const evidenceLabels = result.evidence_used
-    .filter((item) => Object.prototype.hasOwnProperty.call(ASSESSMENT_EVIDENCE_LABELS, item))
-    .map((item) => ASSESSMENT_EVIDENCE_LABELS[item]);
-  if (evidenceLabels.length) {
-    assessmentEvidenceUsed.textContent = "Evidence synthesized: " + evidenceLabels.join(" / ");
-    assessmentEvidenceUsed.hidden = false;
-  }
-  assessmentEvidenceDetails.hidden = !evidenceLabels.length && !result.supporting_details.length && !result.limitations.length;
+  const evidenceCount = renderEvidenceBadges(assessmentEvidenceUsed, result.evidence_used, ASSESSMENT_EVIDENCE_LABELS);
+  assessmentEvidenceDetails.hidden = !evidenceCount && !result.supporting_details.length && !result.limitations.length;
 }
 
 function normalizedAssessmentResult(body) {
@@ -449,6 +468,7 @@ async function generateAssessment() {
 
 function clearBuildingContext() {
   buildingContext.hidden = true;
+  inspectorContextPill.hidden = true;
   contextClaims.replaceChildren();
   contextSecondaryClaims.replaceChildren();
   contextEvidence.replaceChildren();
@@ -530,11 +550,23 @@ function showBuildingContext(context) {
   contextMore.hidden = false;
   contextAttribution.hidden = !claims.some((claim) => claim.osm === true);
   buildingContext.hidden = false;
+  inspectorContextPill.hidden = false;
 }
 
 function setStatus(message = "", isError = false) {
   statusMessage.textContent = message;
   statusMessage.classList.toggle("error", isError);
+}
+
+function updateComparison() {
+  const reveal = Math.max(0, Math.min(100, Number(comparisonRange.value) || 0));
+  comparison.setAttribute("style", "--reveal: " + reveal + "%");
+  comparisonRange.setAttribute("aria-valuetext", reveal + "% PRE visible");
+}
+
+function resetComparison() {
+  comparisonRange.value = "50";
+  updateComparison();
 }
 
 function clearPreview(slot) {
@@ -557,6 +589,8 @@ function showPreview(slot, source, isObjectUrl = false) {
   preview.src = source;
   preview.hidden = false;
   placeholder.hidden = true;
+  inspectorEmpty.hidden = true;
+  inspectorContent.hidden = false;
 }
 
 function clearSceneBuildingSelection() {
@@ -575,6 +609,7 @@ function leaveSceneSelectionForManualInput() {
 
 function setManualFile(slot, file) {
   if (!file) return;
+  resetComparison();
   resetAssessmentView();
   clearBuildingContext();
   leaveSceneSelectionForManualInput();
@@ -590,6 +625,7 @@ function setManualFile(slot, file) {
 
 function selectExample(name) {
   const example = EXAMPLES[name];
+  resetComparison();
   resetAssessmentView();
   clearBuildingContext();
   clearSceneBuildingSelection();
@@ -619,7 +655,7 @@ async function uploadFor(input) {
 
 function showResult(prediction, sourceLabel = "Prediction") {
   resultClass.textContent = prediction.predicted_class.replace("-", " ");
-  resultConfidence.textContent = (prediction.confidence * 100).toFixed(1) + "% confidence";
+  resultConfidence.textContent = (prediction.confidence * 100).toFixed(1) + "% top-class score";
   resultBadge.textContent = sourceLabel;
   probabilityBars.replaceChildren();
   CLASS_ORDER.forEach((className) => {
@@ -649,6 +685,8 @@ function inspectSceneBuilding(building, sceneId) {
   const prediction = building?.prediction;
   if (!preUrl || !postUrl || !prediction?.predicted_class || !prediction?.probabilities) return false;
 
+  resetComparison();
+
   state.pre = { assetUrl: preUrl, name: building.id + "-pre.png" };
   state.post = { assetUrl: postUrl, name: building.id + "-post.png" };
   state.source = "scene";
@@ -658,7 +696,8 @@ function inspectSceneBuilding(building, sceneId) {
   showPreview("pre", preUrl);
   showPreview("post", postUrl);
   document.querySelectorAll(".example-button").forEach((button) => button.classList.remove("selected"));
-  selectionLabel.textContent = "Scene selection";
+  selectionLabel.textContent = "Building " + building.id.split("_").pop();
+  selectionLabel.title = building.id;
   showResult(prediction, "Scene selection");
   showBuildingContext(building.building_context);
   const selectedSceneId = sceneIdForBuilding(building, sceneId);
@@ -713,8 +752,12 @@ function clearSelection() {
   postInput.value = "";
   clearPreview("pre");
   clearPreview("post");
+  resetComparison();
+  inspectorContent.hidden = true;
+  inspectorEmpty.hidden = false;
   document.querySelectorAll(".example-button").forEach((button) => button.classList.remove("selected"));
-  selectionLabel.textContent = "No pair selected";
+  selectionLabel.textContent = "No building selected";
+  selectionLabel.title = "";
   resultCard.hidden = true;
   setStatus("");
 }
@@ -755,6 +798,8 @@ document.querySelectorAll(".example-button").forEach((button) => {
   button.addEventListener("click", () => selectExample(button.dataset.example));
 });
 document.querySelector("#clear-selection").addEventListener("click", clearSelection);
+comparisonRange.addEventListener("input", updateComparison);
+updateComparison();
 predictButton.addEventListener("click", predictDamage);
 assessmentGenerateButton.addEventListener("click", generateAssessment);
 sceneAssessmentGenerateButton.addEventListener("click", generateSceneAssessment);

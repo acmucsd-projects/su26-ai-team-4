@@ -44,6 +44,7 @@ class FakeElement {
 function createDocument() {
   const ids = [
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder",
+    "#inspector-empty", "#inspector-content", "#inspector-context-pill", "#comparison", "#comparison-range",
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
@@ -142,9 +143,16 @@ async function main() {
   assert.equal(selectSceneBuilding(first), true);
   assert.equal(document.elements.get("#pre-preview").src, first.crops.pre_url);
   assert.equal(document.elements.get("#post-preview").src, first.crops.post_url);
-  assert.equal(document.elements.get("#selection-label").textContent, "Scene selection");
+  assert.equal(document.elements.get("#selection-label").textContent, "Building b0001");
+  assert.equal(document.elements.get("#inspector-empty").hidden, true);
+  assert.equal(document.elements.get("#inspector-content").hidden, false);
+  assert.equal(document.elements.get("#comparison-range").value, "50");
+  document.elements.get("#comparison-range").value = "75";
+  document.elements.get("#comparison-range").trigger("input");
+  assert.equal(document.elements.get("#comparison").getAttribute("style"), "--reveal: 75%");
+  assert.equal(document.elements.get("#comparison-range").getAttribute("aria-valuetext"), "75% PRE visible");
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
-  assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
+  assert.equal(document.elements.get("#result-confidence").textContent, "80.0% top-class score");
   assert.equal(document.elements.get("#result-badge").textContent, "Scene selection");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
   assert.equal(document.elements.get("#result-card").hidden, false);
@@ -153,6 +161,7 @@ async function main() {
   const secondary = document.elements.get("#context-secondary-claims");
   const text = (element) => element.textContent + element.children.map(text).join(" ");
   assert.equal(gis.hidden, false);
+  assert.equal(document.elements.get("#inspector-context-pill").hidden, false);
   assert.equal(primary.children.length, 3);
   assert.equal(secondary.children.length, 2);
   assert.match(text(primary), /Modeled use:.*Single-family residential/);
@@ -199,10 +208,12 @@ async function main() {
   assert.equal(gis.hidden, false);
 
   assert.equal(selectSceneBuilding(second), true);
+  assert.equal(document.elements.get("#comparison-range").value, "50");
   assert.equal(document.elements.get("#pre-preview").src, second.crops.pre_url);
   assert.equal(document.elements.get("#result-class").textContent, "no damage");
-  assert.equal(document.elements.get("#result-confidence").textContent, "90.0% confidence");
+  assert.equal(document.elements.get("#result-confidence").textContent, "90.0% top-class score");
   assert.equal(gis.hidden, true);
+  assert.equal(document.elements.get("#inspector-context-pill").hidden, true);
   assert.equal(primary.children.length, 0);
   assert.equal(secondary.children.length, 0);
   assert.equal(document.elements.get("#context-evidence").children.length, 0);
@@ -225,6 +236,8 @@ async function main() {
   selectSceneBuilding(first);
   document.elements.get("#context-more").open = true;
   document.elements.get("#clear-selection").trigger("click");
+  assert.equal(document.elements.get("#inspector-empty").hidden, false);
+  assert.equal(document.elements.get("#inspector-content").hidden, true);
   assert.equal(gis.hidden, true);
   assert.equal(document.elements.get("#context-more").open, false);
   selectSceneBuilding({ ...second, building_context: { claims: first.building_context.claims.filter((c) => !c.displayable) } });

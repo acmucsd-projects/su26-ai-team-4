@@ -3,120 +3,156 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Demo interface for paired satellite building-damage classification.">
-  <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=assessment-input-1">
-  <script src="scene-dashboard.js?v=assessment-input-1" defer></script>
-  <script src="app.js?v=assessment-input-1" defer></script>
+  <meta name="description" content="Explore model-predicted building damage, reviewed GIS context, and evidence-grounded AI assessments across curated satellite scenes.">
+  <title>Damage Atlas | Geospatial AI Workspace</title>
+  <link rel="stylesheet" href="styles.css?v=geo-workspace-1">
+  <script src="scene-dashboard.js?v=geo-workspace-1" defer></script>
+  <script src="app.js?v=geo-workspace-1" defer></script>
 </head>
 <body>
+  <header class="app-chrome">
+    <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="brand-copy"><p class="eyebrow">Geospatial AI analysis</p><h1>Damage Atlas</h1></div>
+    <p class="chrome-caption">Curated xBD scenes <span aria-hidden="true">/</span> Model predictions <span aria-hidden="true">/</span> Reviewed context</p>
+  </header>
   <main class="page-shell">
-    <section class="hero">
-      <p class="eyebrow">xBD building damage classifier</p>
-      <h1>See what changed.</h1>
-      <p class="hero-copy">Compare aligned PRE and POST satellite crops of the same building to estimate damage severity.</p>
-    </section>
-    <section class="scene-dashboard panel" aria-labelledby="scene-dashboard-title">
-      <div class="section-heading scene-heading">
-        <div>
-          <p class="section-kicker">Scene explorer</p>
-          <h2 id="scene-dashboard-title">Model-predicted building damage</h2>
-          <p id="scene-description" class="scene-description">Loading an available demo scene…</p>
+    <section class="scene-dashboard" aria-labelledby="scene-dashboard-title">
+      <div class="scene-heading">
+        <div class="scene-title-block">
+          <p class="section-kicker">Scene workspace</p>
+          <h2 id="scene-dashboard-title">Explore the scene</h2>
+          <p id="scene-description" class="scene-description">Loading an available demo scene&hellip;</p>
           <p id="scene-event-context" class="scene-event-context" hidden></p>
         </div>
-        <span id="scene-building-count" class="selection-label" hidden></span>
+        <div class="scene-heading-aside">
+          <span id="scene-building-count" class="selection-label" hidden></span>
+          <div id="scene-selector" class="scene-selector" aria-label="Demo scene navigation" hidden>
+            <button id="scene-previous" class="scene-nav-button" type="button" aria-label="Previous demo scene">&larr;</button>
+            <p id="scene-current" class="scene-current" aria-live="polite"></p>
+            <button id="scene-next" class="scene-nav-button" type="button" aria-label="Next demo scene">&rarr;</button>
+          </div>
+        </div>
       </div>
-      <div id="scene-selector" class="scene-selector" aria-label="Demo scene navigation" hidden>
-        <button id="scene-previous" class="scene-nav-button" type="button" aria-label="Previous demo scene">&larr; Previous</button>
-        <p id="scene-current" class="scene-current" aria-live="polite"></p>
-        <button id="scene-next" class="scene-nav-button" type="button" aria-label="Next demo scene">Next &rarr;</button>
-      </div>
+
       <section id="scene-summary" class="scene-summary" aria-label="Model-predicted damage summary" hidden>
-        <p id="scene-summary-total" class="scene-summary-total"></p>
-        <div class="scene-summary-metrics">
+        <div class="summary-leading"><span class="summary-label">Analyzed</span><p id="scene-summary-total" class="scene-summary-total"></p></div>
+        <div class="scene-severe-summary" aria-label="Severe damage summary"><span class="summary-label">Severe predictions</span><p class="scene-severe-total"><strong id="scene-summary-severe"></strong> buildings</p><p id="scene-summary-severe-detail" class="scene-severe-detail"></p></div>
+        <div class="scene-summary-metrics" aria-label="Predicted class distribution">
           <span class="scene-summary-metric no-damage"><strong id="scene-summary-no-damage"></strong>No damage</span>
           <span class="scene-summary-metric minor-damage"><strong id="scene-summary-minor-damage"></strong>Minor</span>
           <span class="scene-summary-metric major-damage"><strong id="scene-summary-major-damage"></strong>Major</span>
           <span class="scene-summary-metric destroyed"><strong id="scene-summary-destroyed"></strong>Destroyed</span>
         </div>
-        <div class="scene-severe-summary" aria-label="Severe damage summary">
-          <p class="scene-severe-label">Severe damage summary</p>
-          <p class="scene-severe-total"><strong id="scene-summary-severe"></strong> buildings</p>
-          <p id="scene-summary-severe-detail" class="scene-severe-detail"></p>
-        </div>
       </section>
+
       <section id="scene-assessment" class="scene-assessment" aria-labelledby="scene-assessment-title" hidden>
         <div class="scene-assessment-heading">
-          <h3 id="scene-assessment-title">AI Scene Overview</h3>
-          <button id="scene-assessment-generate-button" class="assessment-generate-button" type="button">Generate scene overview</button>
+          <div><p class="section-kicker ai-kicker">AI synthesis</p><h3 id="scene-assessment-title">Scene Brief</h3></div>
+          <button id="scene-assessment-generate-button" class="assessment-generate-button" type="button">Generate scene brief</button>
         </div>
         <p id="scene-assessment-status" class="scene-assessment-status" role="status"></p>
         <div id="scene-assessment-result" class="scene-assessment-result" hidden>
           <p id="scene-assessment-model" class="assessment-model" hidden></p>
           <p id="scene-assessment-overview" class="scene-assessment-overview"></p>
-          <section id="scene-assessment-findings-block" class="scene-assessment-section" hidden aria-labelledby="scene-assessment-findings-title">
+          <section id="scene-assessment-findings-block" class="scene-assessment-section scene-assessment-findings-block" hidden aria-labelledby="scene-assessment-findings-title">
             <h4 id="scene-assessment-findings-title">Key findings</h4>
             <ul id="scene-assessment-findings" class="scene-assessment-findings"></ul>
           </section>
-          <section id="scene-assessment-review-block" class="scene-assessment-section" hidden aria-labelledby="scene-assessment-review-title">
-            <h4 id="scene-assessment-review-title">Recommended review</h4>
-            <p id="scene-assessment-review"></p>
-          </section>
-          <details id="scene-assessment-details" class="scene-assessment-details" hidden>
-            <summary>Evidence &amp; limitations</summary>
-            <p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p>
-            <section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden>
-              <h4>Limitations</h4>
-              <ul id="scene-assessment-limitations"></ul>
+          <section id="scene-assessment-review-block" class="scene-assessment-section scene-assessment-review" hidden aria-labelledby="scene-assessment-review-title"><h4 id="scene-assessment-review-title">Recommended review</h4><p id="scene-assessment-review"></p></section>
+          <details id="scene-assessment-details" class="scene-assessment-details" hidden><summary>Evidence &amp; limitations</summary><p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p><section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden><h4>Limitations</h4><ul id="scene-assessment-limitations"></ul></section></details>
+        </div>
+      </section>
+
+      <div class="analysis-layout">
+        <section class="scene-workspace" aria-label="Interactive satellite scene">
+          <div class="scene-workspace-heading"><div><p class="section-kicker">Satellite workspace</p><h3>Explore buildings</h3></div><span class="workspace-hint">Select a footprint to inspect</span></div>
+          <div class="scene-toolbar">
+            <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
+              <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
+              <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>
+              <button class="scene-mode-button" type="button" data-imagery-mode="post-predictions" aria-pressed="true">POST + Predictions</button>
+              <button class="scene-mode-button" type="button" data-imagery-mode="uncertainty" aria-pressed="false">Uncertainty</button>
+            </div>
+            <div id="scene-filters" class="scene-filters" role="group" aria-label="Filter footprints by model prediction"><span class="scene-filter-label">Filter</span>
+              <button class="scene-filter-button" type="button" data-scene-filter="all" aria-pressed="true">All</button>
+              <button class="scene-filter-button" type="button" data-scene-filter="severe" aria-pressed="false">Severe</button>
+              <button class="scene-filter-button" type="button" data-scene-filter="no-damage" aria-pressed="false">No damage</button>
+              <button class="scene-filter-button" type="button" data-scene-filter="minor-damage" aria-pressed="false">Minor</button>
+              <button class="scene-filter-button" type="button" data-scene-filter="major-damage" aria-pressed="false">Major</button>
+              <button class="scene-filter-button" type="button" data-scene-filter="destroyed" aria-pressed="false">Destroyed</button>
+            </div>
+          </div>
+          <div class="scene-legend" aria-label="Predicted damage severity legend"><span class="legend-title">Predicted class</span><span><i class="legend-dot no-damage" aria-hidden="true"></i>No damage</span><span><i class="legend-dot minor-damage" aria-hidden="true"></i>Minor</span><span><i class="legend-dot major-damage" aria-hidden="true"></i>Major</span><span><i class="legend-dot destroyed" aria-hidden="true"></i>Destroyed</span></div>
+          <div id="scene-uncertainty-legend" class="scene-uncertainty-legend" hidden><span class="ambiguity-scale" aria-hidden="true"></span><span>Smaller top-two probability gap <strong>more ambiguous</strong></span><span class="legend-caveat">Relative model ranking, not calibrated uncertainty.</span></div>
+          <section id="scene-highlights" class="scene-highlights" aria-labelledby="scene-highlights-title" hidden><div class="highlights-heading"><div><p class="section-kicker">Guided exploration</p><h4 id="scene-highlights-title">Explore highlights</h4></div><p id="scene-highlights-status" role="status"></p></div><div id="scene-highlights-list" class="scene-highlights-list"></div></section>
+          <p id="scene-status-message" class="scene-status-message" aria-live="polite"></p>
+          <div id="scene-loading" class="scene-loading" role="status"><span class="scene-loading-icon" aria-hidden="true"></span>Loading scene imagery and predictions&hellip;</div>
+          <div id="scene-canvas" class="scene-canvas" hidden>
+            <img id="scene-post-image" alt="POST-disaster satellite scene with model-predicted building damage overlay">
+            <svg id="scene-overlay" class="scene-overlay" viewBox="0 0 1024 1024" role="group" aria-label="Model-predicted building footprints"></svg>
+            <div id="scene-tooltip" class="scene-tooltip" role="tooltip" hidden></div>
+            <span class="canvas-corner-label">xBD / Curated scene</span>
+          </div>
+          <section id="scene-group-inspection" class="scene-group-inspection" aria-label="Finding building group" aria-live="polite" hidden><p id="scene-group-inspection-status"></p><div class="scene-group-actions"><button id="scene-group-previous" class="scene-nav-button" type="button">Previous</button><button id="scene-group-next" class="scene-nav-button" type="button">Next</button><button id="scene-group-clear" class="scene-nav-button" type="button">Return to scene</button></div></section>
+        </section>
+
+        <aside id="building-inspector" class="inspector-panel" aria-labelledby="inspector-title">
+          <div class="inspector-heading"><div><p class="section-kicker">Building inspector</p><h3 id="inspector-title">Selected building</h3></div><span id="selection-label" class="selection-label">No building selected</span></div>
+          <div id="inspector-empty" class="inspector-empty"><span class="inspector-empty-symbol" aria-hidden="true">+</span><h4>Choose a footprint</h4><p>Select a building on the scene or an Explore highlight to compare imagery, read its model result, and inspect reviewed context.</p></div>
+          <div id="inspector-content" class="inspector-content" hidden>
+            <div class="comparison-heading"><div><p class="section-kicker">Imagery comparison</p><h4>Before / after</h4></div><span id="inspector-context-pill" class="context-pill" hidden>GIS context</span></div>
+            <div id="comparison" class="comparison" style="--reveal: 50%">
+              <img id="post-preview" class="comparison-image" alt="Selected POST-disaster building crop" hidden><span id="post-placeholder" class="comparison-placeholder">POST image</span>
+              <img id="pre-preview" class="comparison-image comparison-pre" alt="Selected PRE-disaster building crop" hidden><span id="pre-placeholder" class="comparison-placeholder comparison-pre">PRE image</span>
+              <span class="comparison-tag pre-tag">PRE</span><span class="comparison-tag post-tag">POST</span>
+              <input id="comparison-range" class="comparison-range" type="range" min="0" max="100" value="50" aria-label="Reveal PRE image" aria-valuetext="50% PRE visible">
+              <span class="comparison-divider" aria-hidden="true"><span class="comparison-handle">&#8592; &#8594;</span></span>
+            </div>
+            <p class="comparison-instruction">Drag the divider or use the arrow keys to compare paired crops.</p>
+            <section id="result-card" class="result-card" hidden aria-live="polite">
+              <div class="result-card-heading"><p class="section-kicker">Model prediction</p><span id="result-badge" class="result-badge">Prediction</span></div>
+              <div class="result-summary"><p id="result-class" class="result-class">&mdash;</p><p id="result-confidence" class="result-confidence">&mdash;</p></div>
+              <div id="probability-bars" class="probability-bars"></div>
+              <p class="model-caveat">Top-class score is not a calibrated probability of real-world damage.</p>
             </section>
-          </details>
-        </div>
-      </section>
-      <div id="scene-filters" class="scene-filters" role="group" aria-label="Filter footprints by model prediction">
-        <span class="scene-filter-label">Show</span>
-        <button class="scene-filter-button" type="button" data-scene-filter="all" aria-pressed="true">All</button>
-        <button class="scene-filter-button" type="button" data-scene-filter="severe" aria-pressed="false">Severe</button>
-        <button class="scene-filter-button" type="button" data-scene-filter="no-damage" aria-pressed="false">No damage</button>
-        <button class="scene-filter-button" type="button" data-scene-filter="minor-damage" aria-pressed="false">Minor</button>
-        <button class="scene-filter-button" type="button" data-scene-filter="major-damage" aria-pressed="false">Major</button>
-        <button class="scene-filter-button" type="button" data-scene-filter="destroyed" aria-pressed="false">Destroyed</button>
+            <section id="building-assessment" class="building-assessment" hidden aria-labelledby="building-assessment-title" aria-live="polite">
+              <div class="assessment-heading">
+                <div><p class="section-kicker ai-kicker">Evidence-grounded AI</p><h3 id="building-assessment-title">AI-Assisted Assessment</h3></div>
+                <button id="assessment-generate-button" class="assessment-generate-button" type="button">Generate assessment</button>
+              </div>
+              <p id="assessment-status" class="assessment-status" role="status"></p>
+              <div id="assessment-result" class="assessment-result" hidden>
+                <p id="assessment-model" class="assessment-model" hidden></p>
+                <p id="assessment-text" class="assessment-text"></p>
+                <section id="assessment-review-block" class="assessment-review" hidden aria-labelledby="assessment-review-title"><h4 id="assessment-review-title">Recommended review</h4><p id="assessment-review-text" class="assessment-section-text"></p></section>
+                <details id="assessment-evidence-details" class="assessment-evidence-details" hidden>
+                  <summary>Evidence &amp; limitations</summary>
+                  <p id="assessment-evidence-used" class="assessment-evidence-used" hidden></p>
+                  <section id="assessment-supporting-block" class="assessment-evidence-section" hidden><h4>Supporting details</h4><ul id="assessment-supporting-details"></ul></section>
+                  <section id="assessment-limitations-block" class="assessment-evidence-section" hidden><h4>Limitations</h4><ul id="assessment-limitations"></ul></section>
+                </details>
+              </div>
+            </section>
+            <section id="building-context" class="building-context" hidden aria-labelledby="building-context-title" aria-live="polite">
+              <div class="context-heading"><p class="section-kicker">Reviewed GIS</p><h3 id="building-context-title">Building Context</h3></div>
+              <p id="context-category" class="context-category"></p>
+              <ul id="context-claims" class="context-claims"></ul>
+              <p id="context-notes" class="context-notes" hidden></p>
+              <details id="context-more" class="context-more" hidden><summary id="context-more-label">Sources, scope &amp; limitations</summary><ul id="context-secondary-claims" class="context-claims"></ul><ul id="context-evidence" class="context-evidence"></ul></details>
+              <p id="context-attribution" class="context-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">&copy; OpenStreetMap contributors &middot; ODbL</a></p>
+            </section>
+          </div>
+        </aside>
       </div>
-      <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
-        <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
-        <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>
-        <button class="scene-mode-button" type="button" data-imagery-mode="post-predictions" aria-pressed="true">POST + Predictions</button>
-      </div>
-      <div class="scene-legend" aria-label="Predicted damage severity legend">
-        <span class="legend-title">Model prediction</span>
-        <span><i class="legend-dot no-damage" aria-hidden="true"></i>No damage</span>
-        <span><i class="legend-dot minor-damage" aria-hidden="true"></i>Minor damage</span>
-        <span><i class="legend-dot major-damage" aria-hidden="true"></i>Major damage</span>
-        <span><i class="legend-dot destroyed" aria-hidden="true"></i>Destroyed</span>
-      </div>
-      <p id="scene-status-message" class="scene-status-message" aria-live="polite"></p>
-      <div id="scene-canvas" class="scene-canvas" hidden>
-        <img id="scene-post-image" alt="POST-disaster satellite scene with model-predicted building damage overlay">
-        <svg id="scene-overlay" class="scene-overlay" viewBox="0 0 1024 1024" role="group" aria-label="Model-predicted building damage overlay"></svg>
-      </div>
-      <section id="scene-group-inspection" class="scene-group-inspection" aria-label="Finding building group" aria-live="polite" hidden>
-        <p id="scene-group-inspection-status"></p>
-        <button id="scene-group-previous" class="scene-nav-button" type="button">Previous building</button>
-        <button id="scene-group-next" class="scene-nav-button" type="button">Next building</button>
-        <button id="scene-group-clear" class="scene-nav-button" type="button">Return to normal scene</button>
-      </section>
     </section>
-    <section class="notice" aria-label="Input guidance">
-      <span class="notice-icon" aria-hidden="true">i</span>
-      <p><strong>Use a matched pair:</strong> upload PRE and POST satellite building crops for the same building to run a direct classifier prediction.</p>
-    </section>
-    <section class="workspace" aria-label="Damage analysis workspace">
-      <div class="panel input-panel">
-        <div class="section-heading">
-          <div><p class="section-kicker">1. Choose imagery</p><h2>Test a building pair</h2></div>
-          <button id="clear-selection" class="text-button" type="button">Clear</button>
-        </div>
+
+    <details class="manual-lab">
+      <summary><span><strong>Test a matched image pair</strong><small>Optional direct classifier input</small></span><span class="manual-lab-indicator" aria-hidden="true">+</span></summary>
+      <div class="manual-lab-content">
+        <div class="manual-lab-heading"><p class="section-kicker">Optional workflow</p><h2>Choose paired building crops</h2><button id="clear-selection" class="text-button" type="button">Clear selection</button></div>
+        <p class="manual-lab-copy">Use a built-in xBD pair or upload aligned PRE and POST crops of the same building when direct inference is configured.</p>
         <div class="example-section">
-          <p class="field-label">Try a built-in xBD example</p>
+          <p class="field-label">Built-in examples</p>
           <div class="example-grid" role="group" aria-label="Built-in examples">
             <button class="example-button" type="button" data-example="no-damage"><span class="example-dot no-damage"></span>No damage</button>
             <button class="example-button" type="button" data-example="minor-damage"><span class="example-dot minor-damage"></span>Minor damage</button>
@@ -124,67 +160,15 @@
             <button class="example-button" type="button" data-example="destroyed"><span class="example-dot destroyed"></span>Destroyed</button>
           </div>
         </div>
-        <div class="divider"><span>or upload your own pair</span></div>
         <div class="upload-grid">
           <label class="upload-card" for="pre-image"><span class="upload-label">PRE-disaster</span><span class="upload-detail">Choose an image crop</span><input id="pre-image" type="file" accept="image/*"></label>
           <label class="upload-card" for="post-image"><span class="upload-label">POST-disaster</span><span class="upload-detail">Choose an image crop</span><input id="post-image" type="file" accept="image/*"></label>
         </div>
-        <button id="predict-button" class="predict-button" type="button"><span>Predict damage</span><span aria-hidden="true">→</span></button>
+        <button id="predict-button" class="predict-button" type="button"><span>Predict damage</span><span aria-hidden="true">&rarr;</span></button>
         <p id="status-message" class="status-message" aria-live="polite"></p>
       </div>
-      <div class="panel preview-panel">
-        <div class="section-heading">
-          <div><p class="section-kicker">2. Review pair</p><h2>Image preview</h2></div>
-          <span id="selection-label" class="selection-label">No pair selected</span>
-        </div>
-        <div class="preview-grid">
-          <figure class="image-preview"><figcaption>PRE</figcaption><div class="image-frame"><img id="pre-preview" alt="Selected PRE-disaster building crop" hidden><span id="pre-placeholder">PRE image</span></div></figure>
-          <figure class="image-preview"><figcaption>POST</figcaption><div class="image-frame"><img id="post-preview" alt="Selected POST-disaster building crop" hidden><span id="post-placeholder">POST image</span></div></figure>
-        </div>
-        <section id="result-card" class="result-card" hidden aria-live="polite">
-          <p class="section-kicker">Model result</p>
-          <div class="result-summary"><div><p id="result-class" class="result-class">—</p><p id="result-confidence" class="result-confidence">—</p></div><span id="result-badge" class="result-badge">Prediction</span></div>
-          <div id="probability-bars" class="probability-bars"></div>
-        </section>
-        <section id="building-context" class="building-context" hidden aria-labelledby="building-context-title" aria-live="polite">
-          <h3 id="building-context-title">Building Context</h3>
-          <p id="context-category" class="context-category"></p>
-          <ul id="context-claims" class="context-claims"></ul>
-          <p id="context-notes" class="context-notes" hidden></p>
-          <details id="context-more" class="context-more" hidden>
-            <summary id="context-more-label">Data sources &amp; limitations</summary>
-            <ul id="context-secondary-claims" class="context-claims"></ul>
-            <ul id="context-evidence" class="context-evidence"></ul>
-          </details>
-          <p id="context-attribution" class="context-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a></p>
-        </section>
-        <section id="building-assessment" class="building-assessment" hidden aria-labelledby="building-assessment-title" aria-live="polite">
-          <h3 id="building-assessment-title">AI-Assisted Assessment</h3>
-          <button id="assessment-generate-button" class="assessment-generate-button" type="button">Generate assessment</button>
-          <p id="assessment-status" class="assessment-status" role="status"></p>
-          <div id="assessment-result" class="assessment-result" hidden>
-            <p id="assessment-model" class="assessment-model" hidden></p>
-            <p id="assessment-text" class="assessment-text"></p>
-            <section id="assessment-review-block" class="assessment-review" hidden aria-labelledby="assessment-review-title">
-              <h4 id="assessment-review-title">Recommended review</h4>
-              <p id="assessment-review-text" class="assessment-section-text"></p>
-            </section>
-            <details id="assessment-evidence-details" class="assessment-evidence-details" hidden>
-              <summary>Evidence &amp; limitations</summary>
-              <p id="assessment-evidence-used" class="assessment-evidence-used" hidden></p>
-              <section id="assessment-supporting-block" class="assessment-evidence-section" hidden>
-                <h4>Supporting details</h4>
-                <ul id="assessment-supporting-details"></ul>
-              </section>
-              <section id="assessment-limitations-block" class="assessment-evidence-section" hidden>
-                <h4>Limitations</h4>
-                <ul id="assessment-limitations"></ul>
-              </section>
-            </details>
-          </div>
-        </section>
-      </div>
-    </section>
+    </details>
+    <footer class="app-footer"><p>Predictions support visual review; they are not ground truth. GIS claims retain source, scope, and timing qualifications. AI assessments use structured evidence and have not inspected imagery pixels.</p></footer>
   </main>
 </body>
 </html>

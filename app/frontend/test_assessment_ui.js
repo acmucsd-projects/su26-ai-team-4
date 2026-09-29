@@ -41,6 +41,7 @@ class FakeElement {
 function createDocument() {
   const ids = [
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder",
+    "#inspector-empty", "#inspector-content", "#inspector-context-pill", "#comparison", "#comparison-range",
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims",
@@ -156,7 +157,7 @@ async function main() {
     supporting_details: ["The GIS occupancy value is modeled and current."],
     limitations: ["Prediction is not verified ground truth."],
     generated_by: "openai/gpt-6-luna",
-    evidence_used: ["model", "spatial", "event", "reviewed_gis"],
+    evidence_used: ["model", "spatial", "event", "reviewed_gis", "image"],
   }));
   await firstClick;
   assert.equal(el("#assessment-result").hidden, false);
@@ -166,7 +167,8 @@ async function main() {
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
   assert.equal(el("#assessment-evidence-details").hidden, false);
   assert.equal(el("#assessment-evidence-details").open, false);
-  assert.equal(el("#assessment-evidence-used").textContent, "Evidence synthesized: MODEL / SPATIAL / EVENT / REVIEWED GIS");
+  assert.deepEqual(el("#assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "SPATIAL", "EVENT", "GIS"]);
+  assert.doesNotMatch(el("#assessment-evidence-used").getAttribute("aria-label"), /IMAGE/);
   assert.equal(el("#assessment-supporting-block").hidden, false);
   assert.equal(el("#assessment-supporting-details").children.length, 1);
   assert.equal(el("#assessment-limitations-block").hidden, false);
@@ -188,7 +190,7 @@ async function main() {
   assert.equal(el("#assessment-text").textContent, "The classifier favors Major Damage, with Minor Damage as the next interpretation. Current modeled residential occupancy describes context but does not verify event-time building use.");
   assert.match(el("#assessment-review-text").textContent, /distinguish Major from Minor/);
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
-  assert.match(el("#assessment-evidence-used").textContent, /REVIEWED GIS/);
+  assert.deepEqual(el("#assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "SPATIAL", "EVENT", "GIS"]);
   assert.equal(requests.length, 1);
 
   // F: A successful empty limitations array omits that subsection.
@@ -203,7 +205,7 @@ async function main() {
   assert.equal(el("#assessment-text").textContent, "The model predicts no damage.");
   assert.equal(el("#assessment-review-block").hidden, true);
   assert.equal(el("#assessment-model").textContent, "Alternate Model V2 · Evidence-grounded assessment");
-  assert.equal(el("#assessment-evidence-used").textContent, "Evidence synthesized: MODEL / SPATIAL / EVENT");
+  assert.deepEqual(el("#assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "SPATIAL", "EVENT"]);
   assert.equal(el("#assessment-limitations-block").hidden, true);
   assert.equal(el("#assessment-limitations").children.length, 0);
   assert.equal(el("#assessment-evidence-details").open, false);

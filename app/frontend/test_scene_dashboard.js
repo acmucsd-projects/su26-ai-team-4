@@ -45,8 +45,8 @@ class FakeElement {
     this.children = [];
   }
 
-  append(child) {
-    this.children.push(child);
+  append(...children) {
+    this.children.push(...children);
   }
 
   addEventListener(type, listener) {
@@ -55,6 +55,10 @@ class FakeElement {
 
   trigger(type, event = {}) {
     return this.listeners.get(type)?.({ preventDefault() {}, ...event });
+  }
+
+  scrollIntoView(options) {
+    this.scrollOptions = options;
   }
 
   set src(value) {
@@ -72,10 +76,18 @@ class FakeElement {
 function createDocument() {
   const elements = new Map([
     ["#scene-description", new FakeElement()],
+    ["#scene-dashboard-title", new FakeElement()],
     ["#scene-event-context", new FakeElement()],
     ["#scene-building-count", new FakeElement()],
     ["#scene-status-message", new FakeElement()],
     ["#scene-canvas", new FakeElement()],
+    ["#scene-loading", new FakeElement()],
+    ["#scene-tooltip", new FakeElement()],
+    [".scene-legend", new FakeElement()],
+    ["#scene-uncertainty-legend", new FakeElement()],
+    ["#scene-highlights", new FakeElement()],
+    ["#scene-highlights-status", new FakeElement()],
+    ["#scene-highlights-list", new FakeElement()],
     ["#scene-post-image", new FakeElement()],
     ["#scene-overlay", new FakeElement()],
     ["#scene-selector", new FakeElement()],
@@ -96,7 +108,7 @@ function createDocument() {
     ["#scene-group-next", new FakeElement()],
     ["#scene-group-clear", new FakeElement()],
   ]);
-  const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
+  const imageryButtons = ["pre", "post", "post-predictions", "uncertainty"].map((mode) => {
     const button = new FakeElement();
     button.dataset.imageryMode = mode;
     return button;
@@ -112,6 +124,7 @@ function createDocument() {
     querySelector(selector) {
       return elements.get(selector);
     },
+    createElement() { return new FakeElement(); },
     createElementNS() {
       return new FakeElement();
     },
@@ -169,8 +182,27 @@ async function main() {
   }));
   const firstScene = scenes.get(sceneSummaries[0].scene_id);
   const secondScene = scenes.get(sceneSummaries[1].scene_id);
+  for (const scene of scenes.values()) {
+    scene.buildings[0].prediction.confidence = 0.45;
+    scene.buildings[0].prediction.probabilities = { "no-damage": 0.45, "minor-damage": 0.43, "major-damage": 0.07, destroyed: 0.05 };
+  }
   const fetchCalls = [];
+  const previewCalls = [];
   const fetch = async (url) => {
+    if (url.endsWith("/assessment-preview")) {
+      previewCalls.push(url);
+      const sceneId = url.slice("/demo-scenes/".length, -"/assessment-preview".length);
+      const buildings = scenes.get(sceneId)?.buildings || [];
+      return { ok: true, json: async () => ({ status: "preview_only", scene_evidence: {
+        candidate_order: ["ambiguous_1", "local_contrast_1", "severe_group_1", "representative_severe"],
+        candidate_findings: {
+          ambiguous_1: { type: "AMBIGUOUS_CLASS_PAIR", reason: { rank: 1 }, building_ids: [buildings[0]?.id] },
+          local_contrast_1: { type: "LOCAL_LOW_DAMAGE_OUTLIER", reason: { neighbor_count: 5 }, building_ids: [buildings[0]?.id] },
+          severe_group_1: { type: "SEVERE_PROXIMITY_GROUP", building_ids: [buildings[2]?.id, buildings[3]?.id] },
+          representative_severe: { type: "REPRESENTATIVE_SEVERE", building_ids: [buildings[2]?.id] },
+        },
+      } }) };
+    }
     fetchCalls.push(url);
     if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: sceneSummaries }) };
     const sceneId = url.replace("/demo-scenes/", "");
@@ -200,6 +232,8 @@ async function main() {
   assert.equal(overlay.children.length, 177);
   assert.equal(document.elements.get("#scene-selector").hidden, false);
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Michael — Scene 247");
+  assert.equal(document.elements.get("#scene-dashboard-title").textContent, "Hurricane Michael — Scene 247");
+  assert.equal(document.elements.get("#scene-event-context").hidden, true);
   assert.equal(document.elements.get("#scene-previous").disabled, true);
   assert.equal(document.elements.get("#scene-next").disabled, false);
   assert.equal(document.elements.get("#scene-summary").hidden, false);
@@ -318,6 +352,13 @@ async function main() {
   assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
   assert.deepEqual(overlay.children.filter((polygon) => polygon.classList.contains("group-highlight")).map((polygon) => polygon.dataset.buildingId), groupIds);
   assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[0]).classList.contains("selected"), true);
+  overlay.children.find((polygon) => polygon.dataset.buildingId.endsWith("b0000")).trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-muted")), false);
+  assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId.endsWith("b0000")).classList.contains("selected"), true);
+  document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", { detail: {
+    scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
+  } }));
   document.elements.get("#scene-group-next").trigger("click");
   assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group · 3 buildings · building 2 of 3");
   assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[1]).classList.contains("selected"), true);
@@ -332,6 +373,41 @@ async function main() {
   await document.elements.get("#scene-previous").trigger("click");
   assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(previewCalls.length, 7);
+  assert.equal(document.elements.get("#scene-loading").hidden, true);
+  const highlightButtons = document.elements.get("#scene-highlights-list").children;
+  assert.equal(highlightButtons.length, 4);
+  assert.equal(highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").children[1].textContent, "#1 by top-two gap");
+  highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").trigger("click");
+  assert.equal(selections.at(-1).id, scenes.get("santa-rosa-wildfire_00000014").buildings[0].id);
+  assert.equal(document.elements.get("#scene-canvas").scrollOptions.block, "nearest");
+  document.elements.get("#scene-canvas").scrollOptions = null;
+  highlightButtons.find((button) => button.dataset.candidateKey === "severe_group_1").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
+  assert.equal(document.elements.get("#scene-canvas").scrollOptions.block, "nearest");
+  assert.equal(overlay.children.filter((polygon) => polygon.classList.contains("group-highlight")).length, 2);
+  document.elements.get("#scene-group-next").trigger("click");
+  assert.match(document.elements.get("#scene-group-inspection-status").textContent, /building 2 of 2/);
+  document.elements.get("#scene-group-clear").trigger("click");
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-muted")), false);
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("selected")), true);
+  await imageryButtons[3].trigger("click");
+  assert.equal(document.elements.get(".scene-legend").hidden, true);
+  assert.equal(document.elements.get("#scene-uncertainty-legend").hidden, false);
+  const ambiguousPolygon = overlay.children.find((polygon) => polygon.dataset.buildingId.endsWith("b0000"));
+  const decisivePolygon = overlay.children.find((polygon) => polygon.dataset.buildingId.endsWith("b0001"));
+  assert.equal(ambiguousPolygon.getAttribute("class"), "scene-building uncertainty");
+  assert.ok(Number(ambiguousPolygon.dataset.topTwoGap) < Number(decisivePolygon.dataset.topTwoGap));
+  assert.notEqual(ambiguousPolygon.getAttribute("style"), decisivePolygon.getAttribute("style"));
+  ambiguousPolygon.trigger("pointerenter");
+  assert.match(document.elements.get("#scene-tooltip").textContent, /Building b0000[\s\S]*45\.0% top-class score[\s\S]*Top-two gap/);
+  ambiguousPolygon.trigger("pointerleave");
+  assert.equal(document.elements.get("#scene-tooltip").hidden, true);
+  ambiguousPolygon.trigger("focus");
+  assert.equal(document.elements.get("#scene-tooltip").hidden, false);
+  ambiguousPolygon.trigger("blur");
+  assert.equal(document.elements.get("#scene-tooltip").hidden, true);
   console.log("scene_dashboard_render=passed");
 }
 

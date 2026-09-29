@@ -53,7 +53,8 @@ class FakeElement {
 
 function createDocument() {
   const ids = [
-    "#scene-description", "#scene-event-context", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
+    "#scene-description", "#scene-dashboard-title", "#scene-event-context", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
+    "#scene-loading", "#scene-tooltip", ".scene-legend", "#scene-uncertainty-legend", "#scene-highlights", "#scene-highlights-status", "#scene-highlights-list",
     "#scene-selector", "#scene-previous", "#scene-current", "#scene-next", "#scene-filters",
     "#scene-assessment", "#scene-assessment-generate-button", "#scene-assessment-status", "#scene-assessment-result",
     "#scene-assessment-model", "#scene-assessment-overview", "#scene-assessment-findings-block", "#scene-assessment-findings",
@@ -62,6 +63,7 @@ function createDocument() {
     "#scene-summary", "#scene-summary-total", "#scene-summary-no-damage", "#scene-summary-minor-damage", "#scene-summary-major-damage", "#scene-summary-destroyed", "#scene-summary-severe", "#scene-summary-severe-detail",
     "#scene-group-inspection", "#scene-group-inspection-status", "#scene-group-previous", "#scene-group-next", "#scene-group-clear",
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
+    "#inspector-empty", "#inspector-content", "#inspector-context-pill", "#comparison", "#comparison-range",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
     "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result",
@@ -71,13 +73,13 @@ function createDocument() {
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";
-  elements.get("#scene-assessment-generate-button").textContent = "Generate scene overview";
+  elements.get("#scene-assessment-generate-button").textContent = "Generate scene brief";
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
     const button = new FakeElement();
     button.dataset.example = name;
     return button;
   });
-  const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
+  const imageryButtons = ["pre", "post", "post-predictions", "uncertainty"].map((mode) => {
     const button = new FakeElement();
     button.dataset.imageryMode = mode;
     return button;
@@ -122,14 +124,17 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=assessment-input-1"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=assessment-input-1"') < html.indexOf('src="app.js?v=assessment-input-1"'));
-  assert.match(styles, /\.context-more summary:focus-visible\s*\{[^}]*outline: 2px solid var\(--blue\)/);
-  assert.match(styles, /\.context-more summary:focus:not\(:focus-visible\)\s*\{\s*outline: none/);
+  assert.match(html, /href="styles\.css\?v=geo-workspace-1"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-1"') < html.indexOf('src="app.js?v=geo-workspace-1"'));
+  assert.match(styles, /button:focus-visible, input:focus-visible, summary:focus-visible/);
+  assert.match(styles, /prefers-reduced-motion: reduce/);
+  assert.match(styles, /@media \(max-width: 920px\)/);
+  assert.match(styles, /@media \(max-width: 650px\)/);
+  assert.match(styles, /\.inspector-panel \{ position: sticky/);
   assert.match(html, /openstreetmap.org\/copyright/);
   assert.match(html, /ODbL/);
   assert.match(html, /<details id="context-more"/);
-  assert.match(html, /Data sources &amp; limitations/);
+  assert.match(html, /Sources, scope &amp; limitations/);
   assert.match(styles, /\.scene-canvas img, \.scene-overlay \{ position: absolute/);
   assert.match(styles, /\.scene-building\.neutral/);
   assert.match(styles, /\.scene-imagery-mode/);
@@ -138,16 +143,19 @@ async function main() {
   assert.match(styles, /\.scene-filters/);
   assert.equal((html.match(/class="scene-summary-metric /g) || []).length, 4);
   assert.doesNotMatch(html, /scene-summary-metric severe/);
-  assert.match(html, /Severe damage summary/);
+  assert.match(html, /Severe predictions/);
   assert.match(html, /AI-Assisted Assessment/);
-  assert.match(html, /AI Scene Overview/);
-  assert.match(html, /Generate scene overview/);
+  assert.match(html, /Scene Brief/);
+  assert.match(html, /Generate scene brief/);
+  assert.match(html, /id="comparison-range"/);
+  assert.match(html, /id="scene-highlights"/);
+  assert.match(html, /data-imagery-mode="uncertainty"/);
   assert.match(html, /Key findings/);
   assert.match(html, /scene-assessment-details/);
   assert.match(html, /<h4 id="assessment-review-title">Recommended review<\/h4>/);
   assert.match(html, /<details id="assessment-evidence-details"/);
   assert.match(html, /Evidence &amp; limitations/);
-  assert.doesNotMatch(html, /What stands out|Uncertainty|Context interpretation|Evidence gaps/);
+  assert.doesNotMatch(html, /What stands out|Context interpretation|Evidence gaps/);
   assert.doesNotMatch(html, /priority|emergency|likely needs help/i);
 
   const document = createDocument();
@@ -184,12 +192,25 @@ async function main() {
   };
   const nextScene = { scene_id: "hurricane-harvey_00000177", event_name: "hurricane-harvey", scene_evidence_context: { event_name: "hurricane-harvey", location: "Harris County, Texas", post_acquisition_date: "2017-08-31T17:38:50.685Z" }, image: { width: 1024, height: 1024, pre_url: "/demo-scenes/hurricane-harvey_00000177/pre.png", post_url: "/demo-scenes/hurricane-harvey_00000177/post.png" }, buildings: [nextBuilding] };
   let predictRequests = 0;
+  let previewRequests = 0;
   const assessmentRequests = [];
   const assessmentResponses = [];
   const fetch = async (url, options = {}) => {
     if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id, event_name: scene.event_name }, { scene_id: nextScene.scene_id, event_name: nextScene.event_name }] }) };
     if (url === "/demo-scenes/hurricane-michael_00000247") return { ok: true, json: async () => scene };
     if (url === "/demo-scenes/hurricane-harvey_00000177") return { ok: true, json: async () => nextScene };
+    if (url.endsWith("/assessment-preview")) {
+      previewRequests += 1;
+      const michael = url.includes("hurricane-michael_00000247");
+      return { ok: true, json: async () => ({ status: "preview_only", scene_evidence: michael ? {
+        candidate_order: ["ambiguous_1", "severe_group_1", "context_rich_severe_1"],
+        candidate_findings: {
+          ambiguous_1: { type: "AMBIGUOUS_CLASS_PAIR", building_ids: [lowBuilding.id] },
+          severe_group_1: { type: "SEVERE_PROXIMITY_GROUP", building_ids: [building.id, groupBuilding.id] },
+          context_rich_severe_1: { type: "CONTEXT_RICH_SEVERE", building_ids: [building.id] },
+        },
+      } : { candidate_order: [], candidate_findings: {} } }) };
+    }
     if (options.method === "POST") {
       assessmentRequests.push({ url, options });
       const next = assessmentResponses.shift();
@@ -213,7 +234,7 @@ async function main() {
   const filterButtons = document.querySelectorAll("[data-scene-filter]");
   const filterButton = (filter) => filterButtons.find((button) => button.dataset.sceneFilter === filter);
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
-  assert.equal(document.elements.get("#scene-event-context").textContent, "Hurricane Michael\nBay County, Florida\nPOST · 2018-10-13");
+  assert.equal(document.elements.get("#scene-event-context").textContent, "Bay County, Florida  /  POST · 2018-10-13");
   assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
   assert.equal(document.elements.get("#scene-summary-total").textContent, "3 buildings analyzed");
   assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "1");
@@ -223,9 +244,11 @@ async function main() {
   const sceneAssessment = document.elements.get("#scene-assessment");
   const sceneGenerate = document.elements.get("#scene-assessment-generate-button");
   assert.equal(sceneAssessment.hidden, false);
-  assert.equal(sceneGenerate.textContent, "Generate scene overview");
+  assert.equal(sceneGenerate.textContent, "Generate scene brief");
   assert.equal(document.elements.get("#scene-assessment-result").hidden, true);
   assert.equal(assessmentRequests.length, 0);
+  assert.equal(previewRequests, 1);
+  assert.equal(document.elements.get("#scene-highlights-list").children.length, 3);
 
   // The overview is explicit, deduplicated, grounded in returned candidate keys, and interactive.
   let resolveOverview;
@@ -236,7 +259,7 @@ async function main() {
   assert.equal(assessmentRequests[0].url, "/demo-scenes/hurricane-michael_00000247/assessment");
   assert.equal(assessmentRequests[0].options.method, "POST");
   assert.equal(sceneGenerate.disabled, true);
-  assert.equal(document.elements.get("#scene-assessment-status").textContent, "Generating scene overview…");
+  assert.equal(document.elements.get("#scene-assessment-status").textContent, "Generating scene brief…");
   resolveOverview({
     ok: true,
     json: async () => ({
@@ -252,14 +275,14 @@ async function main() {
       limitations: ["Model output is not verified damage."],
       candidate_buildings: { representative: [building.id, groupBuilding.id], same_building_alias: [building.id], single_building: [lowBuilding.id], invalid_scene_id: ["hurricane-harvey_00000177_b0000"] },
       candidate_types: { representative: "SEVERE_PROXIMITY_GROUP", same_building_alias: "REPRESENTATIVE_SEVERE", single_building: "REPRESENTATIVE_SEVERE", invalid_scene_id: "REPRESENTATIVE_SEVERE" },
-      generated_by: "openai/gpt-6-luna",
+      generated_by: "openai/gpt-6-sol",
       evidence_used: ["model", "spatial", "event", "reviewed_gis", "image", "unknown"],
     }),
   });
   await generating;
   assert.equal(document.elements.get("#scene-assessment-result").hidden, false);
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "The packaged scene predictions are mostly severe.");
-  assert.equal(document.elements.get("#scene-assessment-model").textContent, "GPT-6 Luna Â· Evidence-grounded scene assessment");
+  assert.equal(document.elements.get("#scene-assessment-model").textContent, "GPT-6 Sol · Evidence-grounded scene assessment");
   assert.equal(document.elements.get("#scene-assessment-findings").children.length, 2);
   assert.equal(document.elements.get("#scene-assessment-findings").children[0].children[0].textContent, "Severe proximity group · 2 buildings");
   assert.equal(document.elements.get("#scene-assessment-findings").children[0].children[3].textContent, "Show group →");
@@ -267,7 +290,7 @@ async function main() {
   assert.equal(document.elements.get("#scene-assessment-findings").children[1].children[3].textContent, "Inspect building →");
   assert.equal(document.elements.get("#scene-assessment-review").textContent, "Can the imagery distinguish the leading model classes?");
   assert.equal(document.elements.get("#scene-assessment-details").open, false);
-  assert.equal(document.elements.get("#scene-assessment-evidence-used").textContent, "Evidence synthesized: MODEL / SPATIAL / EVENT / REVIEWED GIS");
+  assert.deepEqual(document.elements.get("#scene-assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "SPATIAL", "EVENT", "GIS"]);
   const inspectButton = document.elements.get("#scene-assessment-findings").children[0].children[3];
   inspectButton.trigger("click");
   assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
@@ -282,7 +305,7 @@ async function main() {
   assert.equal(overlay.children.some((item) => item.classList.contains("group-highlight")), false);
   assert.equal(overlay.children.some((item) => item.classList.contains("group-muted")), false);
   overlay.children.find((item) => item.dataset.buildingId === building.id).trigger("click");
-  assert.equal(document.elements.get("#selection-label").textContent, "Scene selection");
+  assert.equal(document.elements.get("#selection-label").textContent, "Building b0000");
   assert.equal(document.elements.get("#pre-preview").src, building.crops.pre_url);
   await imageryButtons[0].trigger("click");
   assert.equal(image.src, scene.image.pre_url);
@@ -301,10 +324,10 @@ async function main() {
   assert.equal(polygon.classList.contains("selected"), true);
   assert.equal(document.elements.get("#pre-preview").src, building.crops.pre_url);
   assert.equal(document.elements.get("#post-preview").src, building.crops.post_url);
-  assert.equal(document.elements.get("#selection-label").textContent, "Scene selection");
+  assert.equal(document.elements.get("#selection-label").textContent, "Building b0000");
   assert.equal(document.elements.get("#result-card").hidden, false);
   assert.equal(document.elements.get("#result-class").textContent, "major damage");
-  assert.equal(document.elements.get("#result-confidence").textContent, "80.0% confidence");
+  assert.equal(document.elements.get("#result-confidence").textContent, "80.0% top-class score");
   assert.equal(document.elements.get("#probability-bars").children.length, 4);
   assert.equal(document.elements.get("#building-context").hidden, false);
   await filterButton("severe").trigger("click");
@@ -322,7 +345,7 @@ async function main() {
   assert.equal(overlay.children.length, 1);
   assert.equal(document.elements.get("#pre-preview").src, undefined);
   assert.equal(document.elements.get("#post-preview").src, undefined);
-  assert.equal(document.elements.get("#selection-label").textContent, "No pair selected");
+  assert.equal(document.elements.get("#selection-label").textContent, "No building selected");
   assert.equal(document.elements.get("#result-card").hidden, true);
   await filterButton("all").trigger("click");
   assert.equal(overlay.children.length, 3);
@@ -330,18 +353,18 @@ async function main() {
   assert.equal(document.elements.get("#building-context").hidden, false);
   await document.elements.get("#scene-next").trigger("click");
   assert.equal(sceneAssessment.hidden, false);
-  assert.equal(document.elements.get("#scene-event-context").textContent, "Hurricane Harvey\nHarris County, Texas\nPOST · 2017-08-31");
+  assert.equal(document.elements.get("#scene-event-context").textContent, "Harris County, Texas  /  POST · 2017-08-31");
   assert.equal(document.elements.get("#scene-assessment-result").hidden, true);
   assert.equal(sceneGenerate.hidden, false);
   assert.equal(document.elements.get("#building-context").hidden, true);
-  assert.equal(document.elements.get("#scene-summary-total").textContent, "1 buildings analyzed");
+  assert.equal(document.elements.get("#scene-summary-total").textContent, "1 building analyzed");
   assert.equal(document.elements.get("#scene-summary-no-damage").textContent, "1");
   assert.equal(document.elements.get("#scene-summary-major-damage").textContent, "0");
   assert.equal(document.elements.get("#scene-summary-severe").textContent, "0");
   assert.equal(document.elements.get("#scene-summary-severe-detail").textContent, "0 Major + 0 Destroyed");
   assert.equal(document.elements.get("#pre-preview").src, undefined);
   assert.equal(document.elements.get("#post-preview").src, undefined);
-  assert.equal(document.elements.get("#selection-label").textContent, "No pair selected");
+  assert.equal(document.elements.get("#selection-label").textContent, "No building selected");
   assert.equal(document.elements.get("#result-card").hidden, true);
   const nextPolygon = document.elements.get("#scene-overlay").children[0];
   nextPolygon.trigger("click");
@@ -352,7 +375,7 @@ async function main() {
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "");
   assessmentResponses.push({ ok: false, status: 503, json: async () => ({ detail: { code: "assessment_provider_unavailable" } }) });
   await sceneGenerate.trigger("click");
-  assert.equal(document.elements.get("#scene-assessment-status").textContent, "AI scene overview is currently unavailable.");
+  assert.equal(document.elements.get("#scene-assessment-status").textContent, "AI scene brief is currently unavailable.");
   assert.equal(sceneGenerate.disabled, false);
   assessmentResponses.push({ ok: true, json: async () => ({
     overview: "A concise Harvey scene overview.", findings: [], recommended_review: null, limitations: [],
@@ -362,13 +385,23 @@ async function main() {
   assert.equal(assessmentRequests.length, 3);
   assert.equal(assessmentRequests[2].url, "/demo-scenes/hurricane-harvey_00000177/assessment");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "A concise Harvey scene overview.");
-  assert.equal(document.elements.get("#scene-assessment-model").textContent, "Alternate Model V2 Â· Evidence-grounded scene assessment");
+  assert.equal(document.elements.get("#scene-assessment-model").textContent, "Alternate Model V2 · Evidence-grounded scene assessment");
   assert.equal(document.elements.get("#scene-assessment-findings-block").hidden, true);
   assert.equal(document.elements.get("#scene-assessment-review-block").hidden, true);
   assert.equal(document.elements.get("#scene-assessment-limitations-block").hidden, true);
-  assert.equal(document.elements.get("#scene-assessment-evidence-used").textContent, "Evidence synthesized: MODEL / EVENT");
+  assert.deepEqual(document.elements.get("#scene-assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "EVENT"]);
   await document.elements.get("#scene-previous").trigger("click");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "The packaged scene predictions are mostly severe.");
+  assert.equal(previewRequests, 2);
+  const highlights = document.elements.get("#scene-highlights-list").children;
+  highlights.find((item) => item.dataset.candidateKey === "ambiguous_1").trigger("click");
+  assert.equal(document.elements.get("#selection-label").textContent, "Building b0002");
+  assert.equal(document.elements.get("#building-context").hidden, true);
+  highlights.find((item) => item.dataset.candidateKey === "severe_group_1").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
+  assert.equal(document.elements.get("#scene-overlay").children.filter((item) => item.classList.contains("group-highlight")).length, 2);
+  document.elements.get("#scene-group-clear").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(assessmentRequests.length, 3);
   assert.equal(predictRequests, 0);
   console.log("scene_page_integration=passed");
