@@ -65,6 +65,7 @@ def fastapi_app():
     os.environ["MODEL_PATH"] = REMOTE_CHECKPOINT_PATH
     os.environ["FRONTEND_PATH"] = "/app/frontend"
     os.environ["DEMO_SCENE_ROOT"] = "/app/demo_scenes"
+    os.environ["GIS_CONTEXT_ROOT"] = "/app/demo_gis_context"
 
     from app.backend.api import create_app
 

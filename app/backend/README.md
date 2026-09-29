@@ -108,7 +108,7 @@ pip install modal
 modal setup
 ~~~
 
-Download the released 128x128 checkpoint locally, set MODEL_PATH to that file, then deploy from the repository root. The wrapper copies that checkpoint, the frontend, the seven versioned `app/demo_scenes/` packs, and the reviewed `app/demo_gis_context/` overlays into the Modal image. It includes the OpenAI SDK for assessment generation; a staging OpenAI secret must be configured separately. It sets `DEMO_SCENE_ROOT=/app/demo_scenes` inside the container.
+Download the released 128x128 checkpoint locally, set MODEL_PATH to that file, then deploy from the repository root. The wrapper copies that checkpoint, the frontend, the seven versioned `app/demo_scenes/` packs, and the reviewed `app/demo_gis_context/` overlays into the Modal image. It includes the OpenAI SDK for assessment generation; a staging OpenAI secret must be configured separately. It sets `DEMO_SCENE_ROOT=/app/demo_scenes` and `GIS_CONTEXT_ROOT=/app/demo_gis_context` inside the container.
 
 ~~~powershell
 $env:MODEL_PATH = "C:\\path\\to\\resnet18_prepost_plaince_xbd_128_seed17.pt"
