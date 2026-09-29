@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore model-predicted building damage, reviewed GIS context, and evidence-grounded AI assessments across curated satellite scenes.">
   <title>Damage Atlas | Geospatial AI Workspace</title>
-  <link rel="stylesheet" href="styles.css?v=geo-workspace-1">
-  <script src="scene-dashboard.js?v=geo-workspace-1" defer></script>
-  <script src="app.js?v=geo-workspace-1" defer></script>
+  <link rel="stylesheet" href="styles.css?v=geo-workspace-2">
+  <script src="scene-dashboard.js?v=geo-workspace-2" defer></script>
+  <script src="app.js?v=geo-workspace-2" defer></script>
 </head>
 <body>
   <header class="app-chrome">
@@ -45,32 +45,37 @@
         </div>
       </section>
 
-      <section id="scene-assessment" class="scene-assessment" aria-labelledby="scene-assessment-title" hidden>
-        <div class="scene-assessment-heading">
-          <div><p class="section-kicker ai-kicker">AI synthesis</p><h3 id="scene-assessment-title">Scene Brief</h3></div>
-          <button id="scene-assessment-generate-button" class="assessment-generate-button" type="button">Generate scene brief</button>
-        </div>
-        <p id="scene-assessment-status" class="scene-assessment-status" role="status"></p>
-        <div id="scene-assessment-result" class="scene-assessment-result" hidden>
-          <p id="scene-assessment-model" class="assessment-model" hidden></p>
-          <p id="scene-assessment-overview" class="scene-assessment-overview"></p>
-          <section id="scene-assessment-findings-block" class="scene-assessment-section scene-assessment-findings-block" hidden aria-labelledby="scene-assessment-findings-title">
-            <h4 id="scene-assessment-findings-title">Key findings</h4>
-            <ul id="scene-assessment-findings" class="scene-assessment-findings"></ul>
-          </section>
-          <section id="scene-assessment-review-block" class="scene-assessment-section scene-assessment-review" hidden aria-labelledby="scene-assessment-review-title"><h4 id="scene-assessment-review-title">Recommended review</h4><p id="scene-assessment-review"></p></section>
-          <details id="scene-assessment-details" class="scene-assessment-details" hidden><summary>Evidence &amp; limitations</summary><p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p><section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden><h4>Limitations</h4><ul id="scene-assessment-limitations"></ul></section></details>
-        </div>
-      </section>
-
       <div class="analysis-layout">
+        <aside id="scene-analysis" class="scene-analysis" aria-labelledby="scene-analysis-title">
+          <div class="scene-analysis-heading"><p class="section-kicker ai-kicker">Scene intelligence</p><h3 id="scene-analysis-title">Scene Analysis</h3></div>
+          <p id="scene-analysis-locked" class="scene-analysis-locked">Reveal the packaged damage assessment to explore scene findings and review the AI analysis.</p>
+          <div id="scene-analysis-content" hidden>
+            <section id="scene-assessment" class="scene-assessment" aria-labelledby="scene-assessment-title" hidden>
+              <div class="scene-assessment-heading">
+                <h4 id="scene-assessment-title">AI Scene Analysis</h4>
+                <button id="scene-assessment-generate-button" class="assessment-generate-button" type="button">Generate analysis</button>
+              </div>
+              <p id="scene-assessment-status" class="scene-assessment-status" role="status"></p>
+              <div id="scene-assessment-result" class="scene-assessment-result" hidden>
+                <p id="scene-assessment-overview" class="scene-assessment-overview"></p>
+                <section id="scene-assessment-findings-block" class="scene-assessment-section scene-assessment-findings-block" hidden aria-labelledby="scene-assessment-findings-title">
+                  <h4 id="scene-assessment-findings-title">Key findings</h4>
+                  <ul id="scene-assessment-findings" class="scene-assessment-findings"></ul>
+                </section>
+                <section id="scene-assessment-review-block" class="scene-assessment-section scene-assessment-review" hidden aria-labelledby="scene-assessment-review-title"><h4 id="scene-assessment-review-title">Recommended review</h4><p id="scene-assessment-review"></p></section>
+                <details id="scene-assessment-details" class="scene-assessment-details" hidden><summary>Evidence &amp; limitations</summary><p id="scene-assessment-model" class="assessment-model" hidden></p><p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p><section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden><h4>Limitations</h4><ul id="scene-assessment-limitations"></ul></section></details>
+              </div>
+            </section>
+            <section id="scene-highlights" class="scene-highlights" aria-labelledby="scene-highlights-title" hidden><div class="highlights-heading"><h4 id="scene-highlights-title">Explore highlights</h4><p id="scene-highlights-status" role="status"></p></div><div id="scene-highlights-list" class="scene-highlights-list"></div></section>
+          </div>
+        </aside>
         <section class="scene-workspace" aria-label="Interactive satellite scene">
           <div class="scene-workspace-heading"><div><p class="section-kicker">Satellite workspace</p><h3>Explore buildings</h3></div><span class="workspace-hint">Select a footprint to inspect</span></div>
           <div class="scene-toolbar">
             <div id="scene-imagery-mode" class="scene-imagery-mode" role="group" aria-label="Scene imagery mode">
               <button class="scene-mode-button" type="button" data-imagery-mode="pre" aria-pressed="false">PRE</button>
-              <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="false">POST</button>
-              <button class="scene-mode-button" type="button" data-imagery-mode="post-predictions" aria-pressed="true">POST + Predictions</button>
+              <button class="scene-mode-button" type="button" data-imagery-mode="post" aria-pressed="true">POST</button>
+              <button class="scene-mode-button" type="button" data-imagery-mode="post-predictions" aria-pressed="false">Predictions</button>
               <button class="scene-mode-button" type="button" data-imagery-mode="uncertainty" aria-pressed="false">Uncertainty</button>
             </div>
             <div id="scene-filters" class="scene-filters" role="group" aria-label="Filter footprints by model prediction"><span class="scene-filter-label">Filter</span>
@@ -84,12 +89,12 @@
           </div>
           <div class="scene-legend" aria-label="Predicted damage severity legend"><span class="legend-title">Predicted class</span><span><i class="legend-dot no-damage" aria-hidden="true"></i>No damage</span><span><i class="legend-dot minor-damage" aria-hidden="true"></i>Minor</span><span><i class="legend-dot major-damage" aria-hidden="true"></i>Major</span><span><i class="legend-dot destroyed" aria-hidden="true"></i>Destroyed</span></div>
           <div id="scene-uncertainty-legend" class="scene-uncertainty-legend" hidden><span class="ambiguity-scale" aria-hidden="true"></span><span>Smaller top-two probability gap <strong>more ambiguous</strong></span><span class="legend-caveat">Relative model ranking, not calibrated uncertainty.</span></div>
-          <section id="scene-highlights" class="scene-highlights" aria-labelledby="scene-highlights-title" hidden><div class="highlights-heading"><div><p class="section-kicker">Guided exploration</p><h4 id="scene-highlights-title">Explore highlights</h4></div><p id="scene-highlights-status" role="status"></p></div><div id="scene-highlights-list" class="scene-highlights-list"></div></section>
           <p id="scene-status-message" class="scene-status-message" aria-live="polite"></p>
-          <div id="scene-loading" class="scene-loading" role="status"><span class="scene-loading-icon" aria-hidden="true"></span>Loading scene imagery and predictions&hellip;</div>
+          <div id="scene-loading" class="scene-loading" role="status"><span class="scene-loading-icon" aria-hidden="true"></span>Loading scene imagery&hellip;</div>
           <div id="scene-canvas" class="scene-canvas" hidden>
-            <img id="scene-post-image" alt="POST-disaster satellite scene with model-predicted building damage overlay">
+            <img id="scene-post-image" alt="POST-disaster satellite scene">
             <svg id="scene-overlay" class="scene-overlay" viewBox="0 0 1024 1024" role="group" aria-label="Model-predicted building footprints"></svg>
+            <div id="scene-reveal" class="scene-reveal" hidden><p class="scene-reveal-title">Explore the satellite scene</p><p>Damage predictions are packaged for this scene and ready to display.</p><button id="scene-reveal-button" class="scene-reveal-button" type="button">Reveal damage assessment</button><p id="scene-reveal-status" role="status"></p></div>
             <div id="scene-tooltip" class="scene-tooltip" role="tooltip" hidden></div>
             <span class="canvas-corner-label">xBD / Curated scene</span>
           </div>
@@ -122,11 +127,11 @@
               </div>
               <p id="assessment-status" class="assessment-status" role="status"></p>
               <div id="assessment-result" class="assessment-result" hidden>
-                <p id="assessment-model" class="assessment-model" hidden></p>
                 <p id="assessment-text" class="assessment-text"></p>
                 <section id="assessment-review-block" class="assessment-review" hidden aria-labelledby="assessment-review-title"><h4 id="assessment-review-title">Recommended review</h4><p id="assessment-review-text" class="assessment-section-text"></p></section>
                 <details id="assessment-evidence-details" class="assessment-evidence-details" hidden>
                   <summary>Evidence &amp; limitations</summary>
+                  <p id="assessment-model" class="assessment-model" hidden></p>
                   <p id="assessment-evidence-used" class="assessment-evidence-used" hidden></p>
                   <section id="assessment-supporting-block" class="assessment-evidence-section" hidden><h4>Supporting details</h4><ul id="assessment-supporting-details"></ul></section>
                   <section id="assessment-limitations-block" class="assessment-evidence-section" hidden><h4>Limitations</h4><ul id="assessment-limitations"></ul></section>

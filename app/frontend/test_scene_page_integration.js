@@ -56,6 +56,7 @@ function createDocument() {
     "#scene-description", "#scene-dashboard-title", "#scene-event-context", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
     "#scene-loading", "#scene-tooltip", ".scene-legend", "#scene-uncertainty-legend", "#scene-highlights", "#scene-highlights-status", "#scene-highlights-list",
     "#scene-selector", "#scene-previous", "#scene-current", "#scene-next", "#scene-filters",
+    "#scene-analysis-content", "#scene-analysis-locked", "#scene-reveal", "#scene-reveal-button", "#scene-reveal-status", ".workspace-hint",
     "#scene-assessment", "#scene-assessment-generate-button", "#scene-assessment-status", "#scene-assessment-result",
     "#scene-assessment-model", "#scene-assessment-overview", "#scene-assessment-findings-block", "#scene-assessment-findings",
     "#scene-assessment-review-block", "#scene-assessment-review", "#scene-assessment-details", "#scene-assessment-evidence-used",
@@ -73,7 +74,7 @@ function createDocument() {
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";
-  elements.get("#scene-assessment-generate-button").textContent = "Generate scene brief";
+  elements.get("#scene-assessment-generate-button").textContent = "Generate analysis";
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
     const button = new FakeElement();
     button.dataset.example = name;
@@ -124,8 +125,8 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=geo-workspace-1"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-1"') < html.indexOf('src="app.js?v=geo-workspace-1"'));
+  assert.match(html, /href="styles\.css\?v=geo-workspace-2"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-2"') < html.indexOf('src="app.js?v=geo-workspace-2"'));
   assert.match(styles, /button:focus-visible, input:focus-visible, summary:focus-visible/);
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 920px\)/);
@@ -145,8 +146,15 @@ async function main() {
   assert.doesNotMatch(html, /scene-summary-metric severe/);
   assert.match(html, /Severe predictions/);
   assert.match(html, /AI-Assisted Assessment/);
-  assert.match(html, /Scene Brief/);
-  assert.match(html, /Generate scene brief/);
+  assert.match(html, /AI Scene Analysis/);
+  assert.match(html, /Generate analysis/);
+  assert.match(html, /Reveal damage assessment/);
+  assert.match(styles, /@media \(min-width: 1600px\)/);
+  assert.doesNotMatch(html, /GPT-6 Sol/);
+  assert.ok(html.indexOf('id="scene-analysis"') < html.indexOf('class="scene-workspace"'));
+  assert.ok(html.indexOf('class="scene-workspace"') < html.indexOf('id="building-inspector"'));
+  assert.ok(html.indexOf('id="scene-assessment-details"') < html.indexOf('id="scene-assessment-model"'));
+  assert.ok(html.indexOf('id="assessment-evidence-details"') < html.indexOf('id="assessment-model"'));
   assert.match(html, /id="comparison-range"/);
   assert.match(html, /id="scene-highlights"/);
   assert.match(html, /data-imagery-mode="uncertainty"/);
@@ -223,6 +231,7 @@ async function main() {
   const context = {
     Array, CustomEvent: PageEvent, Error, Event: PageEvent, FormData: class {}, Math, Number, Promise,
     URL: { createObjectURL() { return "blob:manual"; }, revokeObjectURL() {} }, document, fetch,
+    setTimeout: (callback) => callback(), matchMedia: () => ({ matches: true }),
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "scene-dashboard.js"), "utf8"), context);
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "app.js"), "utf8"), context);
@@ -233,6 +242,15 @@ async function main() {
   const imageryButtons = document.querySelectorAll("[data-imagery-mode]");
   const filterButtons = document.querySelectorAll("[data-scene-filter]");
   const filterButton = (filter) => filterButtons.find((button) => button.dataset.sceneFilter === filter);
+  assert.equal(overlay.hidden, true);
+  assert.equal(overlay.children.length, 0);
+  assert.equal(document.elements.get("#scene-summary").hidden, true);
+  assert.equal(document.elements.get("#scene-analysis-content").hidden, true);
+  assert.equal(document.elements.get("#scene-reveal").hidden, false);
+  assert.equal(assessmentRequests.length, 0);
+  assert.equal(previewRequests, 0);
+  await document.elements.get("#scene-reveal-button").trigger("click");
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
   assert.equal(document.elements.get("#scene-event-context").textContent, "Bay County, Florida  /  POST · 2018-10-13");
   assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
@@ -244,7 +262,7 @@ async function main() {
   const sceneAssessment = document.elements.get("#scene-assessment");
   const sceneGenerate = document.elements.get("#scene-assessment-generate-button");
   assert.equal(sceneAssessment.hidden, false);
-  assert.equal(sceneGenerate.textContent, "Generate scene brief");
+  assert.equal(sceneGenerate.textContent, "Generate analysis");
   assert.equal(document.elements.get("#scene-assessment-result").hidden, true);
   assert.equal(assessmentRequests.length, 0);
   assert.equal(previewRequests, 1);
@@ -282,7 +300,7 @@ async function main() {
   await generating;
   assert.equal(document.elements.get("#scene-assessment-result").hidden, false);
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "The packaged scene predictions are mostly severe.");
-  assert.equal(document.elements.get("#scene-assessment-model").textContent, "GPT-6 Sol · Evidence-grounded scene assessment");
+  assert.equal(document.elements.get("#scene-assessment-model").textContent, "Generated by GPT-6 Sol");
   assert.equal(document.elements.get("#scene-assessment-findings").children.length, 2);
   assert.equal(document.elements.get("#scene-assessment-findings").children[0].children[0].textContent, "Severe proximity group · 2 buildings");
   assert.equal(document.elements.get("#scene-assessment-findings").children[0].children[3].textContent, "Show group →");
@@ -352,6 +370,9 @@ async function main() {
   overlay.children[0].trigger("click");
   assert.equal(document.elements.get("#building-context").hidden, false);
   await document.elements.get("#scene-next").trigger("click");
+  assert.equal(overlay.hidden, true);
+  assert.equal(document.elements.get("#scene-analysis-content").hidden, true);
+  await document.elements.get("#scene-reveal-button").trigger("click");
   assert.equal(sceneAssessment.hidden, false);
   assert.equal(document.elements.get("#scene-event-context").textContent, "Harris County, Texas  /  POST · 2017-08-31");
   assert.equal(document.elements.get("#scene-assessment-result").hidden, true);
@@ -385,12 +406,14 @@ async function main() {
   assert.equal(assessmentRequests.length, 3);
   assert.equal(assessmentRequests[2].url, "/demo-scenes/hurricane-harvey_00000177/assessment");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "A concise Harvey scene overview.");
-  assert.equal(document.elements.get("#scene-assessment-model").textContent, "Alternate Model V2 · Evidence-grounded scene assessment");
+  assert.equal(document.elements.get("#scene-assessment-model").textContent, "Generated by Alternate Model V2");
   assert.equal(document.elements.get("#scene-assessment-findings-block").hidden, true);
   assert.equal(document.elements.get("#scene-assessment-review-block").hidden, true);
   assert.equal(document.elements.get("#scene-assessment-limitations-block").hidden, true);
   assert.deepEqual(document.elements.get("#scene-assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "EVENT"]);
   await document.elements.get("#scene-previous").trigger("click");
+  assert.equal(overlay.hidden, true);
+  await document.elements.get("#scene-reveal-button").trigger("click");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "The packaged scene predictions are mostly severe.");
   assert.equal(previewRequests, 2);
   const highlights = document.elements.get("#scene-highlights-list").children;

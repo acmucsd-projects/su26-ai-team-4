@@ -102,6 +102,13 @@ function createDocument() {
     ["#scene-summary-destroyed", new FakeElement()],
     ["#scene-summary-severe", new FakeElement()],
     ["#scene-summary-severe-detail", new FakeElement()],
+    ["#scene-analysis-content", new FakeElement()],
+    ["#scene-analysis-locked", new FakeElement()],
+    ["#scene-reveal", new FakeElement()],
+    ["#scene-reveal-button", new FakeElement()],
+    ["#scene-reveal-status", new FakeElement()],
+    ["#scene-filters", new FakeElement()],
+    [".workspace-hint", new FakeElement()],
     ["#scene-group-inspection", new FakeElement()],
     ["#scene-group-inspection-status", new FakeElement()],
     ["#scene-group-previous", new FakeElement()],
@@ -188,6 +195,8 @@ async function main() {
   }
   const fetchCalls = [];
   const previewCalls = [];
+  const revealDelays = [];
+  let reduceMotion = false;
   const fetch = async (url) => {
     if (url.endsWith("/assessment-preview")) {
       previewCalls.push(url);
@@ -219,7 +228,8 @@ async function main() {
     }
     preventDefault() { if (this.cancelable) this.defaultPrevented = true; }
   }
-  vm.runInNewContext(source, { Array, CustomEvent, Error, Event: class { constructor(type) { this.type = type; } }, Number, Promise, document, fetch });
+  vm.runInNewContext(source, { Array, CustomEvent, Error, Event: class { constructor(type) { this.type = type; } }, Number, Promise, document, fetch,
+    setTimeout: (callback, delay) => { revealDelays.push(delay); callback(); }, matchMedia: () => ({ matches: reduceMotion }) });
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   const canvas = document.elements.get("#scene-canvas");
@@ -229,6 +239,25 @@ async function main() {
   assert.equal(canvas.hidden, false);
   assert.equal(image.src, firstScene.image.post_url);
   assert.equal(overlay.getAttribute("viewBox"), "0 0 1024 1024");
+  assert.equal(overlay.children.length, 0);
+  assert.equal(overlay.hidden, true);
+  assert.equal(document.elements.get("#scene-summary").hidden, true);
+  assert.equal(document.elements.get("#scene-analysis-content").hidden, true);
+  assert.equal(document.elements.get("#scene-reveal").hidden, false);
+  assert.equal(document.elements.get("#scene-filters").hidden, true);
+  assert.equal(document.querySelectorAll("[data-imagery-mode]")[2].disabled, true);
+  assert.equal(previewCalls.length, 0);
+  await document.querySelectorAll("[data-imagery-mode]")[0].trigger("click");
+  assert.equal(image.src, firstScene.image.pre_url);
+  assert.equal(overlay.hidden, true);
+  const reveal = document.elements.get("#scene-reveal-button").trigger("click");
+  assert.equal(document.elements.get("#scene-reveal-status").textContent, "Preparing precomputed model predictions…");
+  await reveal;
+  assert.deepEqual(revealDelays, [650]);
+  assert.equal(document.elements.get("#scene-reveal").hidden, true);
+  assert.equal(document.elements.get("#scene-analysis-content").hidden, false);
+  assert.equal(document.elements.get("#scene-filters").hidden, false);
+  assert.equal(image.src, firstScene.image.post_url);
   assert.equal(overlay.children.length, 177);
   assert.equal(document.elements.get("#scene-selector").hidden, false);
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Michael — Scene 247");
@@ -299,10 +328,16 @@ async function main() {
   assert.equal(overlay.children[0].getAttribute("points"), "100,10 101,10 101,11");
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
   await document.elements.get("#scene-next").trigger("click");
-  assert.equal(image.src, secondScene.image.pre_url);
-  assert.equal(overlay.hidden, false);
-  assert.equal(overlay.children[0].getAttribute("points"), "100,10 101,10 101,11");
-  assert.equal(overlay.children[0].getAttribute("class"), "scene-building neutral");
+  assert.equal(image.src, secondScene.image.post_url);
+  assert.equal(overlay.hidden, true);
+  assert.equal(overlay.children.length, 0);
+  assert.equal(document.elements.get("#scene-summary").hidden, true);
+  assert.equal(document.elements.get("#scene-analysis-content").hidden, true);
+  assert.equal(imageryButtons[2].disabled, true);
+  reduceMotion = true;
+  await document.elements.get("#scene-reveal-button").trigger("click");
+  assert.equal(revealDelays.at(-1), 0);
+  assert.equal(overlay.children[0].getAttribute("class"), "scene-building no-damage");
   assert.equal(document.elements.get("#scene-current").textContent, "Hurricane Harvey — Scene 177");
 
   assert.equal(document.elements.get("#scene-summary-total").textContent, "76 buildings analyzed");
@@ -340,8 +375,9 @@ async function main() {
   assert.equal(fetchCalls.length, sceneSummaries.length + 1);
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
   assert.equal(image.src, "/demo-scenes/socal-fire_00000663/post.png");
-  assert.equal(overlay.hidden, false);
+  assert.equal(overlay.hidden, true);
   assert.equal(document.elements.get("#scene-next").disabled, true);
+  await document.elements.get("#scene-reveal-button").trigger("click");
   const groupIds = ["socal-fire_00000663_b0001", "socal-fire_00000663_b0002", "socal-fire_00000663_b0003"];
   document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", { detail: {
     scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
@@ -371,10 +407,12 @@ async function main() {
     scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
   } }));
   await document.elements.get("#scene-previous").trigger("click");
+  assert.equal(overlay.hidden, true);
+  await document.elements.get("#scene-reveal-button").trigger("click");
   assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(previewCalls.length, 7);
+  assert.equal(previewCalls.length, 4);
   assert.equal(document.elements.get("#scene-loading").hidden, true);
   const highlightButtons = document.elements.get("#scene-highlights-list").children;
   assert.equal(highlightButtons.length, 4);

@@ -31,6 +31,13 @@
   ]));
   const sceneSummarySevere = document.querySelector("#scene-summary-severe");
   const sceneSummarySevereDetail = document.querySelector("#scene-summary-severe-detail");
+  const sceneAnalysisContent = document.querySelector("#scene-analysis-content");
+  const sceneAnalysisLocked = document.querySelector("#scene-analysis-locked");
+  const sceneReveal = document.querySelector("#scene-reveal");
+  const sceneRevealButton = document.querySelector("#scene-reveal-button");
+  const sceneRevealStatus = document.querySelector("#scene-reveal-status");
+  const sceneFilters = document.querySelector("#scene-filters");
+  const workspaceHint = document.querySelector(".workspace-hint");
   const groupInspection = document.querySelector("#scene-group-inspection");
   const groupInspectionStatus = document.querySelector("#scene-group-inspection-status");
   const groupPrevious = document.querySelector("#scene-group-previous");
@@ -44,9 +51,12 @@
   let currentScene = null;
   let isSceneLoading = false;
   let isImageLoading = false;
-  let imageryMode = "post-predictions";
+  let imageryMode = "post";
   let predictionFilter = "all";
   let activeFindingGroup = null;
+  let isRevealed = false;
+  let isRevealing = false;
+  let revealSequence = 0;
   const highlightCache = new Map();
 
   function setSceneStatus(message = "", isError = false) {
@@ -101,18 +111,20 @@
     imageryModeButtons.forEach((button) => {
       const isSelected = button.dataset.imageryMode === imageryMode;
       button.setAttribute("aria-pressed", String(isSelected));
-      button.disabled = isSceneLoading || isImageLoading || !currentScene;
+      const isPredictionControl = ["post-predictions", "uncertainty"].includes(button.dataset.imageryMode);
+      button.disabled = isSceneLoading || isImageLoading || isRevealing || !currentScene || (isPredictionControl && !isRevealed);
     });
-    sceneLegend.hidden = imageryMode !== "post-predictions";
-    uncertaintyLegend.hidden = imageryMode !== "uncertainty";
+    sceneLegend.hidden = !isRevealed || imageryMode !== "post-predictions";
+    uncertaintyLegend.hidden = !isRevealed || imageryMode !== "uncertainty";
   }
 
   function updatePredictionFilterControls() {
     predictionFilterButtons.forEach((button) => {
       const isSelected = button.dataset.sceneFilter === predictionFilter;
       button.setAttribute("aria-pressed", String(isSelected));
-      button.disabled = isSceneLoading || !currentScene;
+      button.disabled = isSceneLoading || isRevealing || !currentScene || !isRevealed;
     });
+    sceneFilters.hidden = !isRevealed;
   }
 
   function isPredictionMode() {
@@ -126,7 +138,7 @@
   }
 
   function setPredictionFilter(filter) {
-    if (!PREDICTION_FILTERS.includes(filter) || !currentScene || isSceneLoading || filter === predictionFilter) return;
+    if (!PREDICTION_FILTERS.includes(filter) || !currentScene || isSceneLoading || !isRevealed || filter === predictionFilter) return;
     if (activeFindingGroup) clearFindingGroup(false);
     const selectedPredictedClass = selectedPolygon?.dataset.predictedClass;
     predictionFilter = filter;
@@ -160,7 +172,7 @@
     });
     sceneSummarySevere.textContent = String(summary.severe);
     sceneSummarySevereDetail.textContent = summary.counts["major-damage"] + " Major + " + summary.counts.destroyed + " Destroyed";
-    sceneSummary.hidden = false;
+    sceneSummary.hidden = !isRevealed;
   }
 
   function clearSceneSummary() {
@@ -191,10 +203,9 @@
 
   async function showCurrentSceneImage() {
     const showingPredictions = isPredictionMode();
-    // Footprints remain available in every imagery mode. Their geometry and
-    // styling are selected explicitly in renderBuildings rather than relying
-    // on a hidden overlay whose previous damage classes could remain visible.
-    sceneOverlay.hidden = false;
+    // The overlay is withheld until the packaged assessment is revealed.
+    // After reveal, neutral footprints remain interactive in PRE and POST.
+    sceneOverlay.hidden = !isRevealed;
     scenePostImage.alt = imageryMode === "pre"
       ? "PRE-disaster satellite scene"
       : imageryMode === "uncertainty"
@@ -206,7 +217,7 @@
   }
 
   async function setImageryMode(mode) {
-    if (!["pre", "post", "post-predictions", "uncertainty"].includes(mode) || !currentScene || isSceneLoading || isImageLoading || mode === imageryMode) return;
+    if (!["pre", "post", "post-predictions", "uncertainty"].includes(mode) || !currentScene || isSceneLoading || isImageLoading || isRevealing || (!isRevealed && ["post-predictions", "uncertainty"].includes(mode)) || mode === imageryMode) return;
     imageryMode = mode;
     isImageLoading = true;
     updateImageryControls();
@@ -269,7 +280,7 @@
   }
 
   function inspectRequestedBuilding(detail) {
-    if (!detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(currentScene?.buildings)) return;
+    if (!isRevealed || !detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(currentScene?.buildings)) return;
     const building = currentScene.buildings.find((item) => item?.id === detail.building_id);
     if (!building) return;
     if (!matchesPredictionFilter(building?.prediction?.predicted_class)) {
@@ -314,7 +325,7 @@
   }
 
   function inspectRequestedGroup(detail) {
-    if (!detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(detail.building_ids)) return;
+    if (!isRevealed || !detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(detail.building_ids)) return;
     const validIds = [...new Set(detail.building_ids)].filter((id) => currentScene.buildings.some((item) => item?.id === id));
     if (!validIds.length) return;
     if (validIds.length === 1) return inspectRequestedBuilding({ scene_id: detail.scene_id, building_id: validIds[0] });
@@ -368,6 +379,7 @@
   }
 
   function showTooltip(building) {
+    if (!isRevealed) return;
     const prediction = building.prediction;
     const shortId = String(building.id).split("_").pop();
     const confidence = Number(prediction.confidence);
@@ -384,6 +396,7 @@
     clearSelectedPolygon();
     hideTooltip();
     sceneOverlay.replaceChildren();
+    if (!isRevealed) return;
     buildings.forEach((building) => {
       const predictedClass = building?.prediction?.predicted_class;
       if (!DAMAGE_CLASSES.includes(predictedClass)) throw new Error("A building prediction is invalid.");
@@ -496,6 +509,11 @@
   }
 
   function clearSceneForLoad() {
+    revealSequence += 1;
+    isRevealing = false;
+    isRevealed = false;
+    imageryMode = "post";
+    predictionFilter = "all";
     clearFindingGroup(false);
     clearSelectedPolygon();
     currentScene = null;
@@ -504,6 +522,13 @@
     hideTooltip();
     scenePostImage.removeAttribute("src");
     sceneCanvas.hidden = true;
+    sceneCanvas.classList.remove("assessment-revealed");
+    sceneReveal.hidden = true;
+    sceneRevealButton.disabled = false;
+    sceneRevealStatus.textContent = "";
+    sceneAnalysisContent.hidden = true;
+    sceneAnalysisLocked.hidden = false;
+    workspaceHint.textContent = "Reveal the assessment to inspect buildings";
     sceneLoading.hidden = false;
     highlights.hidden = true;
     highlightsList.replaceChildren();
@@ -532,7 +557,7 @@
       currentSceneIndex = index;
       currentScene = scene;
       sceneDashboardTitle.textContent = sceneLabel(scene);
-      sceneDescription.textContent = "Paired satellite imagery with model-predicted building damage.";
+      sceneDescription.textContent = "Curated PRE and POST satellite imagery.";
       renderSceneEvidenceContext(scene);
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + (scene.buildings.length === 1 ? " building" : " buildings") : "";
       sceneBuildingCount.hidden = false;
@@ -542,9 +567,9 @@
       await showCurrentSceneImage();
       sceneCanvas.hidden = false;
       sceneLoading.hidden = true;
-      setSceneStatus(imageryMode === "uncertainty" ? "Showing relative ambiguity from the top-two model probability gap." : isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
+      sceneReveal.hidden = false;
+      setSceneStatus("");
       document.dispatchEvent(new CustomEvent("scene-loaded", { detail: { scene_id: scene.scene_id, scene } }));
-      loadHighlights(scene.scene_id);
     } catch (error) {
       sceneCanvas.hidden = true;
       sceneLoading.hidden = true;
@@ -561,6 +586,51 @@
       updateImageryControls();
       updatePredictionFilterControls();
     }
+  }
+
+  async function revealDamageAssessment() {
+    if (!currentScene || isSceneLoading || isRevealed || isRevealing) return;
+    const scene = currentScene;
+    const sequence = ++revealSequence;
+    const previousMode = imageryMode;
+    isRevealing = true;
+    sceneRevealButton.disabled = true;
+    sceneRevealStatus.textContent = "Preparing precomputed model predictions…";
+    updateImageryControls();
+    updatePredictionFilterControls();
+    const reduceMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : 650));
+      if (sequence !== revealSequence || scene !== currentScene) return;
+      imageryMode = "post-predictions";
+      await showCurrentSceneImage();
+    } catch (error) {
+      if (sequence !== revealSequence || scene !== currentScene) return;
+      imageryMode = previousMode;
+      isRevealing = false;
+      sceneRevealButton.disabled = false;
+      sceneRevealStatus.textContent = "";
+      updateImageryControls();
+      updatePredictionFilterControls();
+      setSceneStatus(error.message || "The POST scene image could not be loaded.", true);
+      return;
+    }
+    if (sequence !== revealSequence || scene !== currentScene) return;
+    isRevealing = false;
+    isRevealed = true;
+    sceneReveal.hidden = true;
+    sceneRevealStatus.textContent = "";
+    sceneAnalysisLocked.hidden = true;
+    sceneAnalysisContent.hidden = false;
+    workspaceHint.textContent = "Select a footprint to inspect";
+    sceneSummary.hidden = false;
+    sceneCanvas.classList.add("assessment-revealed");
+    renderBuildings(scene.buildings);
+    sceneOverlay.hidden = false;
+    updateImageryControls();
+    updatePredictionFilterControls();
+    setSceneStatus("Showing packaged model predictions. Select a footprint to inspect its result.");
+    loadHighlights(scene.scene_id);
   }
 
   async function loadSceneDashboard() {
@@ -593,6 +663,7 @@
 
   scenePrevious.addEventListener("click", () => loadSceneAt(currentSceneIndex - 1));
   sceneNext.addEventListener("click", () => loadSceneAt(currentSceneIndex + 1));
+  sceneRevealButton.addEventListener("click", revealDamageAssessment);
   predictionFilterButtons.forEach((button) => button.addEventListener("click", () => setPredictionFilter(button.dataset.sceneFilter)));
   imageryModeButtons.forEach((button) => button.addEventListener("click", () => setImageryMode(button.dataset.imageryMode)));
   updateImageryControls();
