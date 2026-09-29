@@ -19,6 +19,18 @@ packet uses schema version 3. If the provider is not configured, the endpoint
 returns HTTP 503 with `assessment_provider_unavailable`; it never substitutes
 mock text.
 
+`GET /demo-scenes/{scene_id}/assessment-preview` returns deterministic
+`SceneEvidence`, the exact scene prompt, and its output contract without a
+provider call. `POST /demo-scenes/{scene_id}/assessment` generates a scene
+overview using prompt version `scene-assessment-v1`. It returns `overview`, up
+to four `findings`, optional `recommended_review`, `limitations`,
+`prompt_version`, and `generated_by`. Findings refer only through
+application-selected `candidate_keys`. The API drops findings with unknown
+keys or building IDs in prose and supplies an application-generated
+`candidate_buildings` map for valid interactive references. Scene previews work
+without an API key or OpenAI SDK; generation returns the same safe unavailable
+response as the building endpoint.
+
 The optional provider uses the OpenAI Responses API with Structured Outputs.
 Set `OPENAI_API_KEY` in the process environment or the repo-root `.env`;
 `python-dotenv` loads that file at backend startup without replacing values set
@@ -36,24 +48,37 @@ from model-authored output. Refusals, incomplete output, invalid output,
 timeouts, and provider errors produce clean application errors without exposing
 raw provider details.
 
-The packet includes explicit event context, deterministic scene prediction
-counts, the selected damage prediction, confidence, all four probabilities,
-deterministic top-two classes/probabilities/gap when all values are valid, and
-only displayable normalized GIS claims with their scope, source, temporal
-relation, modeled/mapped status, qualifications, and conflicts. Event hazard
-categories use an allowlisted mapping from each packaged manifest's
-`event_name`. A scene `location` or PRE/POST acquisition date is included only
-when explicitly present in the manifest; current manifests contain none, so
-those fields are omitted. The packet omits raw GIS payloads.
+Both assessment levels derive from the same deterministic `SceneEvidence`
+builder. Its versioned JSON structure includes damage counts and percentages,
+severe share, stable probability rankings, reviewed GIS coverage, and a bounded
+set of keyed candidate buildings. Scene prompts receive a compact projection
+of those facts and candidates; building prompts receive scene distribution and
+the selected building's deterministic scene-relative ranks, not other
+candidates or scene-model prose. Neither assessment consumes the other's
+generated text.
 
-The assessment is a concise analyst briefing that synthesizes classifier,
-scene, and normalized GIS evidence. Recommended review uses the deterministic
-hazard type and evidence ambiguity to suggest a specific analytical check. It
-does not inspect imagery directly or produce field-verified damage
-determinations. The prompt prohibits visual-observation claims without supplied
-observations, preserves GIS scope and timing, treats modeled occupancy as
-unverified, and bars unsupported critical-facility claims and operational
-decisions. Missing GIS context remains missing.
+Scene metadata comes from one curated registry. Event names are checked
+against each manifest. County-level locations are included only where tracked
+reviewed GIS audits/overlays identify the jurisdiction: Harris, Bay, Sonoma,
+and Duplin counties. POST xBD acquisition timestamps are included for Harvey,
+Michael, and Santa Rosa from their tracked audit records. PRE timestamps and
+remaining locations/dates stay null where repository evidence does not verify
+them. No values are guessed from event names, provider coverage, or the web.
+The building packet also contains the selected damage prediction, confidence,
+all four probabilities, deterministic top-two classes/probabilities/gap, and
+only displayable normalized GIS claims with scope, source, temporal relation,
+modeled/mapped status, qualifications, and conflicts. Raw GIS payloads are
+omitted.
+
+The scene overview explains the model-derived damage picture and may surface
+notable distribution, ambiguity, or context patterns. Building assessments
+remain concise drill-downs from the same scene facts. Recommended review is
+framed around the question or ambiguity an analyst can resolve. Neither prompt
+supports spatial concentration claims, inspects imagery directly, or produces
+field-verified damage determinations. Both prohibit visual-observation claims,
+preserve GIS scope and timing, treat modeled occupancy as unverified, and bar
+unsupported critical-facility claims and operational decisions. Missing GIS
+context remains missing.
 
 API secrets must stay in environment configuration and must never be committed
 to the repository or placed in tests. Automated provider tests use fake

@@ -22,6 +22,11 @@ from .building_context import load_context_overlay
 from .assessment import build_assessment_preview, build_evidence_packet, build_prompt
 from .assessment_openai import AssessmentProviderError, configured_assessment_provider
 from .local_env import load_repo_dotenv
+from .scene_assessment import (
+    build_scene_assessment_preview,
+    build_scene_assessment_prompt,
+)
+from .scene_evidence import build_scene_evidence
 
 
 load_repo_dotenv()
@@ -184,6 +189,15 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         context = overlay.get(uid) if isinstance(uid, str) else None
         return manifest, building, context
 
+    def scene_assessment_target(scene_id: str):
+        """Resolve one packaged manifest and its reviewed optional overlay."""
+
+        scene_directory = demo_scene_directory(demo_scene_root, scene_id)
+        manifest_path = scene_directory / "scene.json"
+        manifest = load_demo_scene_manifest(scene_directory, scene_id)
+        overlay = load_context_overlay(context_root, scene_id, manifest_path, manifest)
+        return manifest, overlay
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.classifier = None if scenes_only else load_classifier(selected_model_path)
@@ -259,6 +273,13 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         manifest, building, context = assessment_target(scene_id, building_id)
         return build_assessment_preview(manifest, building, context)
 
+    @app.get("/demo-scenes/{scene_id}/assessment-preview")
+    async def preview_scene_assessment(scene_id: str) -> dict[str, object]:
+        """Return shared scene evidence and exact prompt without provider work."""
+
+        manifest, contexts = scene_assessment_target(scene_id)
+        return build_scene_assessment_preview(manifest, contexts)
+
     @app.post("/demo-scenes/{scene_id}/buildings/{building_id}/assessment")
     def generate_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
         """Generate one paid, structured assessment from the canonical evidence packet."""
@@ -305,6 +326,51 @@ def create_app(model_path: Path | None = None) -> FastAPI:
                 },
             ) from None
 
+    @app.post("/demo-scenes/{scene_id}/assessment")
+    def generate_scene_assessment(scene_id: str) -> dict[str, object]:
+        """Generate one scene overview from deterministic evidence only."""
+
+        manifest, contexts = scene_assessment_target(scene_id)
+        provider = getattr(app.state, "assessment_provider", None)
+        if provider is None:
+            provider = configured_assessment_provider()
+            if provider is not None:
+                app.state.assessment_provider = provider
+        if provider is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "assessment_provider_unavailable",
+                    "message": "Assessment generation is not configured.",
+                },
+            )
+
+        scene_evidence = build_scene_evidence(manifest, contexts)
+        prompt = build_scene_assessment_prompt(scene_evidence)
+        try:
+            result = provider.generate_scene(prompt)
+            from .assessment_openai import normalize_scene_assessment_result
+
+            normalized = normalize_scene_assessment_result(result, scene_evidence)
+            evidence_used = ["scene_damage_distribution"]
+            if scene_evidence["model_uncertainty"]["ranked_building_count"]:
+                evidence_used.append("model_uncertainty")
+            if scene_evidence["context_summary"]["buildings_with_reviewed_context"]:
+                evidence_used.append("reviewed_context")
+            return {**normalized, "evidence_used": evidence_used}
+        except AssessmentProviderError as error:
+            raise HTTPException(
+                status_code=error.status_code,
+                detail={"code": error.code, "message": error.message},
+            ) from None
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "code": "assessment_provider_failed",
+                    "message": "Assessment generation failed. Please try again later.",
+                },
+            ) from None
     @app.get("/demo-scenes/{scene_id}/{asset_path:path}")
     async def get_demo_scene_asset(scene_id: str, asset_path: str) -> FileResponse:
         """Serve a packaged scene image or crop via a validated relative path."""

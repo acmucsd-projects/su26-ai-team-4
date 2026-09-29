@@ -10,6 +10,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from app.backend.assessment import PROMPT_VERSION
+from app.backend.scene_assessment import SCENE_ASSESSMENT_PROMPT_VERSION
 from app.backend.assessment_openai import (
     AssessmentOutput,
     AssessmentProviderError,
@@ -20,8 +21,14 @@ from app.backend.assessment_openai import (
     MAX_SUPPORTING_DETAILS,
     MAX_SUPPORTING_DETAIL_LENGTH,
     MAX_SECTION_LENGTH,
+    MAX_SCENE_FINDINGS,
+    MAX_SCENE_FINDING_EXPLANATION_LENGTH,
+    MAX_SCENE_FINDING_TITLE_LENGTH,
+    MAX_SCENE_OVERVIEW_LENGTH,
     OpenAIAssessmentProvider,
+    SceneAssessmentOutput,
     configured_assessment_provider,
+    normalize_scene_assessment_result,
 )
 
 
@@ -48,6 +55,15 @@ def prompt():
         "version": PROMPT_VERSION,
         "system": "Use only supplied evidence.",
         "user": "Summarize this evidence packet.",
+        "output_contract": {},
+    }
+
+
+def scene_prompt():
+    return {
+        "version": SCENE_ASSESSMENT_PROMPT_VERSION,
+        "system": "Use only supplied deterministic scene evidence.",
+        "user": "Summarize this scene evidence packet.",
         "output_contract": {},
     }
 
@@ -87,6 +103,14 @@ class AssessmentProviderConfigurationTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "assessment_prompt_version_unsupported")
         self.assertIsNone(client.responses.arguments)
 
+    def test_invalid_scene_prompt_version_is_rejected_before_provider_call(self):
+        client = FakeClient(response({"overview": "Fine."}))
+        bad_prompt = {**scene_prompt(), "version": "unknown"}
+        with self.assertRaises(AssessmentProviderError) as caught:
+            OpenAIAssessmentProvider(client=client).generate_scene(bad_prompt)
+        self.assertEqual(caught.exception.code, "assessment_prompt_version_unsupported")
+        self.assertIsNone(client.responses.arguments)
+
 
 class OpenAIResponsesAdapterTests(unittest.TestCase):
     def test_success_uses_small_nonpersistent_structured_responses_request(self):
@@ -120,6 +144,68 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             {"role": "user", "content": prompt()["user"]},
         ])
         self.assertFalse({"tools", "previous_response_id", "image"} & set(arguments))
+
+    def test_scene_generation_reuses_nonpersistent_structured_responses_path(self):
+        client = FakeClient(response({
+            "overview": "Severe predictions make up a meaningful share of this scene, while several leading classes are closely separated.",
+            "findings": [{
+                "title": "Classification ambiguity",
+                "explanation": "The leading classes are close, so the selected examples are useful for review.",
+                "candidate_keys": ["most_ambiguous_1"],
+            }],
+            "recommended_review": "Can PRE/POST comparison distinguish the leading classes for the most ambiguous candidates?",
+            "limitations": ["Predictions are not verified ground truth."],
+        }))
+        result = OpenAIAssessmentProvider("gpt-6-luna", client=client).generate_scene(scene_prompt())
+        self.assertEqual(result["overview"].split()[0], "Severe")
+        self.assertEqual(result["findings"][0]["candidate_keys"], ["most_ambiguous_1"])
+        self.assertEqual(result["prompt_version"], SCENE_ASSESSMENT_PROMPT_VERSION)
+        self.assertEqual(result["generated_by"], "openai/gpt-6-luna")
+        self.assertEqual(client.responses.arguments["text_format"], SceneAssessmentOutput)
+        self.assertFalse(client.responses.arguments["store"])
+        self.assertEqual(client.responses.arguments["input"], [
+            {"role": "system", "content": scene_prompt()["system"]},
+            {"role": "user", "content": scene_prompt()["user"]},
+        ])
+        self.assertFalse({"tools", "previous_response_id", "image"} & set(client.responses.arguments))
+
+    def test_scene_output_bounds_and_candidate_references_are_structured(self):
+        invalid_outputs = (
+            {"overview": ""},
+            {"overview": "x" * (MAX_SCENE_OVERVIEW_LENGTH + 1)},
+            {"overview": "Valid.", "findings": [{"title": "x" * (MAX_SCENE_FINDING_TITLE_LENGTH + 1), "explanation": "Text."}]},
+            {"overview": "Valid.", "findings": [{"title": "Title", "explanation": "x" * (MAX_SCENE_FINDING_EXPLANATION_LENGTH + 1)}]},
+            {"overview": "Valid.", "findings": [{"title": "Title", "explanation": "Text."}] * (MAX_SCENE_FINDINGS + 1)},
+            {"overview": "Valid.", "candidate_building_ids": ["invented"]},
+        )
+        for output in invalid_outputs:
+            with self.subTest(output=type(output).__name__):
+                with self.assertRaises(AssessmentProviderError) as caught:
+                    OpenAIAssessmentProvider(client=FakeClient(response(output))).generate_scene(scene_prompt())
+                self.assertEqual(caught.exception.code, "assessment_provider_invalid_output")
+
+        with self.assertRaises(ValidationError):
+            SceneAssessmentOutput.model_validate({"overview": "Valid.", "findings": [{
+                "title": "Title", "explanation": "Text.", "candidate_keys": ["x"] * 4,
+            }]}, strict=True)
+
+    def test_scene_normalizer_ignores_unknown_candidate_keys_and_identifier_prose(self):
+        scene_evidence = {"candidates": {"most_ambiguous_1": {"building_id": "scene_000001_b0001"}}}
+        result = normalize_scene_assessment_result({
+            "overview": "A concise scene overview.",
+            "findings": [
+                {"title": "Ambiguity", "explanation": "The leading classes are close.", "candidate_keys": ["most_ambiguous_1"]},
+                {"title": "Unknown", "explanation": "This refers to no supplied candidate.", "candidate_keys": ["invented_key"]},
+                {"title": "Untrusted identifier", "explanation": "Inspect scene_000001_b9999 next.", "candidate_keys": []},
+                {"title": "Scene-wide pattern", "explanation": "The class distribution is uneven.", "candidate_keys": []},
+            ],
+            "recommended_review": None,
+            "limitations": [],
+            "prompt_version": SCENE_ASSESSMENT_PROMPT_VERSION,
+            "generated_by": "openai/gpt-6-luna",
+        }, scene_evidence)
+        self.assertEqual([finding["title"] for finding in result["findings"]], ["Ambiguity", "Scene-wide pattern"])
+        self.assertEqual(result["candidate_buildings"], {"most_ambiguous_1": "scene_000001_b0001"})
 
     def test_model_cannot_supply_application_metadata_or_extra_fields(self):
         client = FakeClient(response({

@@ -172,7 +172,7 @@ class DemoSceneApiTests(unittest.TestCase):
 
 
 class FakeAssessmentProvider:
-    def __init__(self, result=None, error=None):
+    def __init__(self, result=None, error=None, scene_result=None):
         self.result = result or {
             "assessment": "The model predicts minor damage; the site association does not confirm this building's individual use.",
             "recommended_review": "Verify the building against an event-time record if use matters.",
@@ -183,6 +183,15 @@ class FakeAssessmentProvider:
         }
         self.error = error
         self.prompts = []
+        self.scene_result = scene_result or {
+            "overview": "The scene contains varied model predictions that warrant selective analytical review.",
+            "findings": [],
+            "recommended_review": None,
+            "limitations": [],
+            "prompt_version": "scene-assessment-v1",
+            "generated_by": "fake-provider-for-test",
+        }
+        self.scene_prompts = []
 
     def generate(self, prompt):
         self.prompts.append(prompt)
@@ -190,8 +199,93 @@ class FakeAssessmentProvider:
             raise self.error
         return self.result
 
+    def generate_scene(self, prompt):
+        self.scene_prompts.append(prompt)
+        if self.error:
+            raise self.error
+        return self.scene_result
+
 
 class AssessmentGenerationApiTests(unittest.TestCase):
+    def test_scene_preview_and_generation_share_evidence_and_only_return_known_candidates(self) -> None:
+        scene_id = "hurricane-harvey_00000177"
+        candidate_key = "most_ambiguous_1"
+        provider = FakeAssessmentProvider(scene_result={
+            "overview": "The model-derived scene picture includes several close class comparisons.",
+            "findings": [
+                {"title": "Classification ambiguity", "explanation": "The selected candidate has close leading classes.", "candidate_keys": [candidate_key]},
+                {"title": "Unknown candidate", "explanation": "This model-authored reference is not in SceneEvidence.", "candidate_keys": ["invented_candidate"]},
+                {"title": "Invented identifier", "explanation": "Inspect hurricane-harvey_00000177_b9999.", "candidate_keys": []},
+            ],
+            "recommended_review": "Can PRE/POST comparison resolve the leading classes for the most ambiguous candidate?",
+            "limitations": ["Model predictions are not verified ground truth."],
+            "prompt_version": "scene-assessment-v1",
+            "generated_by": "openai/gpt-6-luna",
+        })
+        environment = {
+            "DEMO_SCENE_ROOT": str(DEPLOYMENT_DEMO_SCENE_ROOT),
+            "GIS_CONTEXT_ROOT": "",
+            "DEMO_SCENES_ONLY": "1",
+            "OPENAI_API_KEY": "",
+        }
+        with patch.dict(os.environ, environment, clear=False):
+            with patch("app.backend.api.configured_assessment_provider", return_value=provider):
+                with TestClient(create_app()) as client:
+                    preview = client.get(f"/demo-scenes/{scene_id}/assessment-preview")
+                    self.assertEqual(preview.status_code, 200)
+                    preview_body = preview.json()
+                    self.assertEqual(preview_body["status"], "preview_only")
+                    self.assertEqual(preview_body["provider_status"], "disabled")
+                    self.assertNotIn("overview", preview_body)
+                    self.assertEqual(provider.scene_prompts, [])
+
+                    generated = client.post(f"/demo-scenes/{scene_id}/assessment")
+                    self.assertEqual(generated.status_code, 200)
+                    body = generated.json()
+
+        self.assertEqual(len(provider.scene_prompts), 1)
+        prompt_packet = json.loads(provider.scene_prompts[0]["user"].split("\n", 1)[1])
+        self.assertEqual(prompt_packet["damage_distribution"], preview_body["scene_evidence"]["damage_distribution"])
+        self.assertEqual([item["title"] for item in body["findings"]], ["Classification ambiguity"])
+        expected_building_id = preview_body["scene_evidence"]["candidates"][candidate_key]["building_id"]
+        self.assertEqual(body["candidate_buildings"], {candidate_key: expected_building_id})
+        self.assertEqual(body["evidence_used"], ["scene_damage_distribution", "model_uncertainty", "reviewed_context"])
+        self.assertEqual(body["generated_by"], "openai/gpt-6-luna")
+        self.assertEqual(body["prompt_version"], "scene-assessment-v1")
+
+    def test_scene_overview_handles_no_gis_and_unavailable_provider(self) -> None:
+        scene_id = "palu-tsunami_00000065"
+        provider = FakeAssessmentProvider()
+        environment = {
+            "DEMO_SCENE_ROOT": str(DEPLOYMENT_DEMO_SCENE_ROOT),
+            "GIS_CONTEXT_ROOT": "",
+            "DEMO_SCENES_ONLY": "1",
+            "OPENAI_API_KEY": "",
+        }
+        with patch.dict(os.environ, environment, clear=False):
+            with patch("app.backend.api.configured_assessment_provider", return_value=provider):
+                with TestClient(create_app()) as client:
+                    preview = client.get(f"/demo-scenes/{scene_id}/assessment-preview")
+                    generated = client.post(f"/demo-scenes/{scene_id}/assessment")
+                    self.assertEqual(preview.status_code, 200)
+                    self.assertEqual(generated.status_code, 200)
+                    self.assertEqual(generated.json()["evidence_used"], ["scene_damage_distribution", "model_uncertainty"])
+                    self.assertEqual(preview.json()["scene_evidence"]["context_summary"]["buildings_with_reviewed_context"], 0)
+
+            with patch("app.backend.api.configured_assessment_provider", return_value=None):
+                with TestClient(create_app()) as client:
+                    response = client.post(f"/demo-scenes/{scene_id}/assessment")
+                    self.assertEqual(response.status_code, 503)
+                    self.assertEqual(response.json()["detail"]["code"], "assessment_provider_unavailable")
+
+            failing_provider = FakeAssessmentProvider(error=RuntimeError("scene provider internals"))
+            with patch("app.backend.api.configured_assessment_provider", return_value=failing_provider):
+                with TestClient(create_app()) as client:
+                    response = client.post(f"/demo-scenes/{scene_id}/assessment")
+                    self.assertEqual(response.status_code, 502)
+                    self.assertEqual(response.json()["detail"]["code"], "assessment_provider_failed")
+                    self.assertNotIn("provider internals", response.text)
+
     def test_generation_endpoint_uses_normalized_florence_and_missing_context_packets(self) -> None:
         provider = FakeAssessmentProvider()
         environment = {
@@ -264,14 +358,31 @@ class AssessmentGenerationApiTests(unittest.TestCase):
         packets = [json.loads(prompt["user"].split("\n", 1)[1]) for prompt in provider.prompts]
         florence, michael, santa_rosa, matthew, palu = packets
         expected_hazards = ("hurricane", "hurricane", "wildfire", "hurricane", "tsunami")
-        for packet, (scene_id, _building_id, _has_context), hazard_type in zip(packets, cases, expected_hazards, strict=True):
+        expected_locations = (
+            "Duplin County, North Carolina",
+            "Bay County, Florida",
+            "Sonoma County, California",
+            None,
+            None,
+        )
+        expected_post_dates = (
+            None,
+            "2018-10-13T16:48:15.000Z",
+            "2017-10-11T19:19:41.000Z",
+            None,
+            None,
+        )
+        for packet, (scene_id, _building_id, _has_context), hazard_type, location, post_date in zip(
+            packets, cases, expected_hazards, expected_locations, expected_post_dates, strict=True
+        ):
             self.assertEqual(packet["schema_version"], 3)
             self.assertEqual(packet["event_context"]["hazard_type"], hazard_type)
+            self.assertEqual(packet["event_context"]["location"], location)
+            self.assertEqual(packet["event_context"]["post_acquisition_date"], post_date)
+            self.assertIsNone(packet["event_context"]["pre_acquisition_date"])
             self.assertEqual(packet["scene_context"]["scene_id"], scene_id)
             self.assertGreater(packet["scene_context"]["building_count"], 0)
             self.assertEqual(packet["scene_context"]["classified_building_count"], packet["scene_context"]["building_count"])
-            for unavailable in ("location", "pre_acquisition_date", "post_acquisition_date"):
-                self.assertNotIn(unavailable, packet["event_context"])
         self.assertEqual(florence["damage_prediction"]["probability_ranking"]["most_likely_class"], "major-damage")
         self.assertTrue(florence["context"]["claims"][0]["modeled"])
         self.assertEqual(florence["context"]["claims"][0]["temporal_relation"], "current_modeled_not_event_aligned")
