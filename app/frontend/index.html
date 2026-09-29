@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=building-context-3">
-  <script src="scene-dashboard.js?v=scene-filters-1" defer></script>
-  <script src="app.js?v=building-context-3" defer></script>
+  <link rel="stylesheet" href="styles.css?v=ai-assessment-1">
+  <script src="scene-dashboard.js?v=assessment-selection-1" defer></script>
+  <script src="app.js?v=ai-assessment-1" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -123,6 +123,19 @@
             <ul id="context-evidence" class="context-evidence"></ul>
           </details>
           <p id="context-attribution" class="context-attribution" hidden><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a></p>
+        </section>
+        <section id="building-assessment" class="building-assessment" hidden aria-labelledby="building-assessment-title" aria-live="polite">
+          <h3 id="building-assessment-title">AI-Assisted Assessment</h3>
+          <button id="assessment-generate-button" class="assessment-generate-button" type="button">Generate assessment</button>
+          <p id="assessment-status" class="assessment-status" role="status"></p>
+          <div id="assessment-result" class="assessment-result" hidden>
+            <p id="assessment-text" class="assessment-text"></p>
+            <section id="assessment-limitations-block" class="assessment-limitations" hidden aria-labelledby="assessment-limitations-title">
+              <h4 id="assessment-limitations-title">Limitations</h4>
+              <ul id="assessment-limitations"></ul>
+            </section>
+            <p class="assessment-disclosure">AI-generated analyst-assist summary</p>
+          </div>
         </section>
       </div>
     </section>

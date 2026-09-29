@@ -216,7 +216,7 @@
 
   function selectBuilding(building, polygon) {
     setSelectedPolygon(polygon);
-    const selection = { building, handled: false };
+    const selection = { scene_id: currentScene.scene_id, building, handled: false };
     const accepted = document.dispatchEvent(new CustomEvent("scene-building-selected", { detail: selection, cancelable: true }));
     if (!selection.handled || !accepted) {
       clearSelectedPolygon();

@@ -10,6 +10,9 @@ const EXAMPLES = {
 };
 
 const state = { pre: null, post: null, previewUrls: { pre: null, post: null }, source: null, scenePrediction: null };
+const assessmentCache = new Map();
+const assessmentRequests = new Map();
+let selectedAssessmentIdentity = null;
 const preInput = document.querySelector("#pre-image");
 const postInput = document.querySelector("#post-image");
 const prePreview = document.querySelector("#pre-preview");
@@ -32,6 +35,101 @@ const contextAttribution = document.querySelector("#context-attribution");
 const contextCategory = document.querySelector("#context-category");
 const contextEvidence = document.querySelector("#context-evidence");
 const contextNotes = document.querySelector("#context-notes");
+const buildingAssessment = document.querySelector("#building-assessment");
+const assessmentGenerateButton = document.querySelector("#assessment-generate-button");
+const assessmentStatus = document.querySelector("#assessment-status");
+const assessmentResult = document.querySelector("#assessment-result");
+const assessmentText = document.querySelector("#assessment-text");
+const assessmentLimitationsBlock = document.querySelector("#assessment-limitations-block");
+const assessmentLimitations = document.querySelector("#assessment-limitations");
+
+function assessmentIdentity(sceneId, buildingId) {
+  return JSON.stringify([sceneId, buildingId]);
+}
+
+function resetAssessmentView() {
+  selectedAssessmentIdentity = null;
+  buildingAssessment.hidden = true;
+  assessmentGenerateButton.disabled = false;
+  assessmentGenerateButton.hidden = false;
+  assessmentStatus.textContent = "";
+  assessmentStatus.classList.remove("error");
+  assessmentResult.hidden = true;
+  assessmentText.textContent = "";
+  assessmentLimitations.replaceChildren();
+  assessmentLimitationsBlock.hidden = true;
+}
+
+function renderAssessment(identity) {
+  const cached = assessmentCache.get(identity);
+  const pending = assessmentRequests.has(identity);
+  buildingAssessment.hidden = false;
+  assessmentStatus.classList.remove("error");
+  assessmentStatus.textContent = "";
+  assessmentResult.hidden = true;
+  assessmentText.textContent = "";
+  assessmentLimitations.replaceChildren();
+  assessmentLimitationsBlock.hidden = true;
+  if (cached) {
+    assessmentGenerateButton.hidden = true;
+    assessmentGenerateButton.disabled = false;
+    assessmentResult.hidden = false;
+    assessmentText.textContent = cached.assessment;
+    cached.limitations.forEach((limitation) => {
+      const item = document.createElement("li");
+      item.textContent = limitation;
+      assessmentLimitations.append(item);
+    });
+    assessmentLimitationsBlock.hidden = cached.limitations.length === 0;
+    return;
+  }
+  assessmentGenerateButton.hidden = false;
+  assessmentGenerateButton.disabled = pending;
+  if (pending) assessmentStatus.textContent = "Generating assessment…";
+}
+
+function sceneIdForBuilding(building, sceneId) {
+  if (typeof sceneId === "string" && sceneId.trim()) return sceneId;
+  const match = typeof building?.id === "string" ? building.id.match(/^(.*)_b\d+$/) : null;
+  return match?.[1] || "";
+}
+
+async function generateAssessment() {
+  const identity = selectedAssessmentIdentity;
+  if (!identity || assessmentCache.has(identity) || assessmentRequests.has(identity)) return;
+  const [sceneId, buildingId] = JSON.parse(identity);
+  assessmentRequests.set(identity, true);
+  renderAssessment(identity);
+  let failureMessage = "";
+  try {
+    const url = "/demo-scenes/" + encodeURIComponent(sceneId) + "/buildings/" + encodeURIComponent(buildingId) + "/assessment";
+    const response = await fetch(url, { method: "POST" });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      failureMessage = body?.detail?.code === "assessment_provider_unavailable"
+        ? "AI assessment is currently unavailable."
+        : "Assessment could not be generated. Try again.";
+    } else if (typeof body?.assessment !== "string" || !body.assessment.trim()) {
+      failureMessage = "Assessment could not be generated. Try again.";
+    } else {
+      const limitations = Array.isArray(body.limitations)
+        ? body.limitations.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+        : [];
+      assessmentCache.set(identity, { assessment: body.assessment.trim(), limitations });
+    }
+  } catch (_error) {
+    failureMessage = "Assessment could not be generated. Try again.";
+  } finally {
+    assessmentRequests.delete(identity);
+    if (selectedAssessmentIdentity === identity) {
+      renderAssessment(identity);
+      if (failureMessage) {
+        assessmentStatus.textContent = failureMessage;
+        assessmentStatus.classList.add("error");
+      }
+    }
+  }
+}
 
 function clearBuildingContext() {
   buildingContext.hidden = true;
@@ -161,6 +259,7 @@ function leaveSceneSelectionForManualInput() {
 
 function setManualFile(slot, file) {
   if (!file) return;
+  resetAssessmentView();
   clearBuildingContext();
   leaveSceneSelectionForManualInput();
   state[slot] = { file, name: file.name };
@@ -175,6 +274,7 @@ function setManualFile(slot, file) {
 
 function selectExample(name) {
   const example = EXAMPLES[name];
+  resetAssessmentView();
   clearBuildingContext();
   clearSceneBuildingSelection();
   state.pre = { assetUrl: example.pre, name: name + "-pre.png" };
@@ -227,7 +327,7 @@ function showResult(prediction, sourceLabel = "Prediction") {
   resultCard.hidden = false;
 }
 
-function inspectSceneBuilding(building) {
+function inspectSceneBuilding(building, sceneId) {
   const preUrl = building?.crops?.pre_url;
   const postUrl = building?.crops?.post_url;
   const prediction = building?.prediction;
@@ -245,6 +345,10 @@ function inspectSceneBuilding(building) {
   selectionLabel.textContent = "Scene selection";
   showResult(prediction, "Scene selection");
   showBuildingContext(building.building_context);
+  const selectedSceneId = sceneIdForBuilding(building, sceneId);
+  selectedAssessmentIdentity = selectedSceneId ? assessmentIdentity(selectedSceneId, building.id) : null;
+  if (selectedAssessmentIdentity) renderAssessment(selectedAssessmentIdentity);
+  else resetAssessmentView();
   setStatus("Viewing precomputed scene result for " + building.id + ".");
   return true;
 }
@@ -282,6 +386,7 @@ async function predictDamage() {
 }
 
 function clearSelection() {
+  resetAssessmentView();
   clearBuildingContext();
   clearSceneBuildingSelection();
   state.pre = null;
@@ -302,7 +407,7 @@ document.addEventListener("scene-building-selected", (event) => {
   const selection = event.detail;
   if (!selection || typeof selection !== "object") return;
   selection.handled = true;
-  if (!inspectSceneBuilding(selection.building)) event.preventDefault();
+  if (!inspectSceneBuilding(selection.building, selection.scene_id)) event.preventDefault();
 });
 
 document.addEventListener("scene-changed", () => {
@@ -320,3 +425,4 @@ document.querySelectorAll(".example-button").forEach((button) => {
 });
 document.querySelector("#clear-selection").addEventListener("click", clearSelection);
 predictButton.addEventListener("click", predictDamage);
+assessmentGenerateButton.addEventListener("click", generateAssessment);

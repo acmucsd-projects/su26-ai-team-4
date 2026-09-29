@@ -148,5 +148,18 @@ button { cursor: pointer; }
 .context-evidence .context-source { color: var(--ink); font-weight: 600; }
 .context-attribution { margin: 12px 0 0; font-size: 0.7rem; }
 .context-attribution a { color: var(--muted); text-underline-offset: 2px; }
+.building-assessment { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.building-assessment h3 { margin: 0 0 10px; color: var(--ink); font-size: 0.94rem; }
+.assessment-generate-button { min-height: 36px; padding: 8px 12px; border: 1px solid var(--blue); border-radius: 9px; background: var(--blue); color: #fff; font-size: 0.8rem; font-weight: 800; transition: background 150ms ease, transform 150ms ease; }
+.assessment-generate-button:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
+.assessment-generate-button:disabled { cursor: wait; opacity: 0.68; }
+.assessment-status { min-height: 1.15rem; margin: 9px 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+.assessment-status.error { color: #b02e3f; }
+.assessment-result { margin-top: 10px; }
+.assessment-text { margin: 0; color: var(--ink); font-size: 0.88rem; line-height: 1.55; }
+.assessment-limitations { margin-top: 10px; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
+.assessment-limitations h4 { margin: 0 0 4px; color: var(--muted); font-size: 0.74rem; font-weight: 800; }
+.assessment-limitations ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; }
+.assessment-disclosure { margin: 10px 0 0; color: var(--muted); font-size: 0.69rem; font-style: italic; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
 @media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-selector { gap: 6px; padding: 6px; } .scene-nav-button { padding: 7px; font-size: 0.72rem; } .scene-current { font-size: 0.76rem; } .scene-summary-metrics { gap: 6px; } .scene-summary-metric { padding: 4px 6px; font-size: 0.69rem; } .scene-filters { gap: 6px; } .scene-filter-button { min-height: 28px; padding: 4px 7px; font-size: 0.69rem; } .scene-mode-button { padding: 6px 8px; font-size: 0.69rem; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }
