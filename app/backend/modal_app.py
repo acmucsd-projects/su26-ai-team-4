@@ -16,12 +16,16 @@ import modal
 APP_NAME = os.environ.get("MODAL_APP_NAME", "building-damage-classifier-128")
 OPENAI_SECRET_NAME = os.environ.get("MODAL_OPENAI_SECRET_NAME")
 ASSESSMENT_SECRETS = [modal.Secret.from_name(OPENAI_SECRET_NAME)] if OPENAI_SECRET_NAME else []
+DEPLOYMENT_ENV = {"MODAL_APP_NAME": APP_NAME}
+if OPENAI_SECRET_NAME:
+    DEPLOYMENT_ENV["MODAL_OPENAI_SECRET_NAME"] = OPENAI_SECRET_NAME
 CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_SOURCE_CHECKPOINT_PATH = Path("checkpoints") / CHECKPOINT_NAME
 REMOTE_CHECKPOINT_PATH = f"/models/{CHECKPOINT_NAME}"
 
 base_image = (
     modal.Image.debian_slim(python_version="3.12")
+    .env(DEPLOYMENT_ENV)
     .pip_install(
         "fastapi==0.141.1",
         "python-multipart==0.0.32",
