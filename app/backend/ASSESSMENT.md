@@ -118,10 +118,12 @@ against each manifest. Reviewed GIS records support scene-level locations in
 Harris, Bay, Sonoma, Duplin, and Los Angeles counties. The local xBD POST labels
 already in the checkout provide `metadata.capture_date` for all seven demo
 scenes; those raw labels are not versioned, so their exact values and source
-paths are recorded in the registry. Matthew and Palu locations and all PRE
-timestamps remain null. A future event-level location must retain event scope
+paths are recorded in the registry. Matthew and Palu now have scene-level
+locations derived from their geographic POST footprints and reviewed OSM
+administrative reverse lookup, even though semantic GIS context may be empty.
+All PRE timestamps remain null. An event-level location must retain event scope
 and display as an event region rather than a precise scene location. No values
-are guessed from event names, provider coverage, or the web.
+are guessed from event names or provider coverage.
 The building packet also contains the selected damage prediction, confidence,
 all four probabilities, deterministic top-two classes/probabilities/gap, and
 only displayable normalized GIS claims with scope, source, temporal relation,

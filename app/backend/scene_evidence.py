@@ -43,9 +43,9 @@ class SceneEvidence(TypedDict):
     provenance: dict
 
 
-# Locations come from reviewed GIS records; POST dates come from the matching
-# local xBD POST labels (metadata.capture_date). Raw labels are not versioned.
-# Unknown locations intentionally remain null.
+# Locations come from reviewed GIS records or geographic POST coordinates;
+# semantic GIS coverage is not required for scene geolocation. POST dates come
+# from the matching local xBD POST labels (metadata.capture_date).
 SCENE_METADATA_BY_ID = {
     "hurricane-harvey_00000177": {
         "event_name": "hurricane-harvey",
@@ -77,10 +77,10 @@ SCENE_METADATA_BY_ID = {
         "event_name": "hurricane-matthew",
         "hazard_type": "hurricane",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
-        "location": None,
-        "location_scope": None,
-        "location_basis": None,
-        "location_source": None,
+        "location": "Les Cayes, Sud, Haiti",
+        "location_scope": "scene",
+        "location_basis": "raw POST lng_lat footprints centered near 18.1911 N, 73.7823 W; OSM Nominatim administrative reverse lookup identifies Commune Les Cayes, Sud",
+        "location_source": "data/tier1/labels/hurricane-matthew_00000060_post_disaster.json; https://nominatim.openstreetmap.org/reverse",
         "pre_acquisition_date": None,
         "post_acquisition_date": "2016-10-09T15:32:03.000Z",
         "acquisition_date_basis": "POST xBD metadata.capture_date",
@@ -103,10 +103,10 @@ SCENE_METADATA_BY_ID = {
         "event_name": "palu-tsunami",
         "hazard_type": "tsunami",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
-        "location": None,
-        "location_scope": None,
-        "location_basis": None,
-        "location_source": None,
+        "location": "Palu, Central Sulawesi, Indonesia",
+        "location_scope": "scene",
+        "location_basis": "raw POST lng_lat footprints centered near 0.8677 S, 119.8767 E; OSM Nominatim administrative reverse lookup identifies Palu city (Mantikulore district)",
+        "location_source": "data/tier1/labels/palu-tsunami_00000065_post_disaster.json; https://nominatim.openstreetmap.org/reverse",
         "pre_acquisition_date": None,
         "post_acquisition_date": "2018-10-01T02:26:02.000Z",
         "acquisition_date_basis": "POST xBD metadata.capture_date",

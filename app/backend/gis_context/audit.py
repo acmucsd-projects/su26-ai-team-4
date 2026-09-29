@@ -240,8 +240,11 @@ def run_audit(manifest_path: Path, label_path: Path, cache_root: Path, snapshot:
     statuses, all_matches, all_features = {}, {}, {}
     for provider in providers:
         if provider in optional_providers:
+            reason = ("Unavailable — event-date requests to two public Overpass endpoints timed out."
+                      if scene_id == "hurricane-matthew_00000060" else
+                      "Unavailable — event-date provider requests timed out; historical OSM was not retried per instruction.")
             statuses[provider] = {"status": "unavailable", "optional": True,
-                                  "reason": "Unavailable — event-date provider requests timed out; historical OSM was not retried per instruction."}
+                                  "reason": reason}
             all_matches[provider], all_features[provider] = {}, {}
             continue
         try:

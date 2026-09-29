@@ -1,7 +1,16 @@
 # Offline GIS building context v2
 
-This module audits **Harvey (76), Michael (177), Santa Rosa (49), and Florence
-(56)**. Florence is a reviewed partial dashboard scene: 40 buildings have
+This module audits the seven curated scenes, including global-only Palu and
+Matthew. Matthew's raw POST geometry joins all 75 packaged buildings near
+18.1911 N, 73.7823 W in Commune Les Cayes, Sud, Haiti. Current OSM returned
+89 generic `building=yes` footprints; 19 passed geometric association, but
+none supplied defensible names or building-use semantics. All 75 rows were
+reviewed. Historical OSM timed out through two bounded public endpoints, so
+event-time mapped semantics remain unknown. Matthew has scene-level location
+metadata but no packaged semantic GIS overlay. Palu similarly retains its
+coordinate-supported Palu city location without semantic GIS context.
+
+Florence is a reviewed partial dashboard scene: 40 buildings have
 strongly matched NSI modeled occupancy; it has no strong direct mapped
 building/place evidence or documented Duplin property-use semantics. NSI is
 current modeled context, not evidence aligned to the 2018 event. The invalid

@@ -122,6 +122,13 @@ class DemoSceneApiTests(unittest.TestCase):
                 buildings = response.json()["buildings"]
                 self.assertEqual(len(buildings), building_count, scene_id)
                 self.assertEqual(sum("building_context" in row for row in buildings), context_count, scene_id)
+                if scene_id in {"hurricane-matthew_00000060", "palu-tsunami_00000065"}:
+                    event = response.json()["scene_evidence_context"]
+                    self.assertEqual(event["location_scope"], "scene")
+                    self.assertEqual(event["location"], {
+                        "hurricane-matthew_00000060": "Les Cayes, Sud, Haiti",
+                        "palu-tsunami_00000065": "Palu, Central Sulawesi, Indonesia",
+                    }[scene_id])
 
             socal = client.get("/demo-scenes/socal-fire_00000663").json()["buildings"]
             contexts = [row["building_context"] for row in socal if "building_context" in row]
@@ -368,8 +375,8 @@ class AssessmentGenerationApiTests(unittest.TestCase):
             "Duplin County, North Carolina",
             "Bay County, Florida",
             "Sonoma County, California",
-            None,
-            None,
+            "Les Cayes, Sud, Haiti",
+            "Palu, Central Sulawesi, Indonesia",
         )
         expected_post_dates = (
             "2018-09-20T16:04:41.000Z",

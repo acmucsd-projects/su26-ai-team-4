@@ -515,6 +515,17 @@ class ReportingTests(unittest.TestCase):
         report = empty_report({"scene_id": scene_id, "buildings": [{"id": "a", "uid": "a"}]}, "fixture")
         self.assertFalse(any(key.startswith("nsi_") for key in report["buildings"][0]["flags"]))
 
+    def test_matthew_uses_global_osm_with_unavailable_event_snapshot_optional(self):
+        scene_id = "hurricane-matthew_00000060"
+        self.assertEqual(SCENE_COUNTS[scene_id], 75)
+        self.assertEqual(SCENE_PROVIDERS[scene_id], ("osm_historical", "osm_current"))
+        self.assertEqual(OPTIONAL_PROVIDERS[scene_id], {"osm_historical"})
+        statuses = {"osm_historical": {"status": "unavailable", "optional": True},
+                    "osm_current": {"status": "complete"}}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertTrue(row["flags"]["no_context"])
+        self.assertFalse(any(key.startswith(("nsi_", "hcad_", "local_")) for key in row["flags"]))
+
     def test_unavailable_optional_provider_does_not_block_completed_baseline_coverage(self):
         statuses = {"osm_historical": {"status": "unavailable", "optional": True},
                     "osm_current": {"status": "complete"}, "nsi": {"status": "complete"}}

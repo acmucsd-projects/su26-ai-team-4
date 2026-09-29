@@ -7,6 +7,7 @@ SCENE_COUNTS = {
     "hurricane-florence_00000459": 56,
     "socal-fire_00000663": 48,
     "palu-tsunami_00000065": 129,
+    "hurricane-matthew_00000060": 75,
 }
 SCENE_PROVIDERS = {
     "hurricane-harvey_00000177": ("hcad", "nsi", "osm_historical", "osm_current"),
@@ -17,6 +18,11 @@ SCENE_PROVIDERS = {
     # Indonesia: use only the existing global OSM sources; U.S.-specific NSI
     # and assessor/parcel adapters do not apply.
     "palu-tsunami_00000065": ("osm_historical", "osm_current"),
+    # Matthew's geographic label is in Haiti; U.S. NSI/assessor sources do not apply.
+    "hurricane-matthew_00000060": ("osm_historical", "osm_current"),
 }
-OPTIONAL_PROVIDERS = {"socal-fire_00000663": {"osm_historical"}}
+OPTIONAL_PROVIDERS = {
+    "socal-fire_00000663": {"osm_historical"},
+    "hurricane-matthew_00000060": {"osm_historical"},
+}
 LOCAL_PARCELS = {"hcad", "bay_2017", "sonoma_parcels", "duplin_parcels"}

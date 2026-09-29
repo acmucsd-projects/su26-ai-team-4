@@ -12,6 +12,10 @@ context on 47 buildings; event-time and Los Angeles County parcel evidence were
 unavailable, and surrounding-area evidence remains area-scoped. See the
 [milestone 2 findings](gis_context/MILESTONE_2_FEASIBILITY.md) for coverage,
 withheld claims, county licensing constraints and the frontend recommendation.
+Matthew's newly available geographic POST label places its 75 packaged buildings
+in Les Cayes, Haiti. Its reviewed current OSM pass found 19 geometry-only roof
+associations and zero displayable semantic claims; historical OSM timed out.
+Palu also has a coordinate-supported scene location but zero semantic GIS context.
 
 The reviewed [GIS demo overlays](../demo_gis_context/README.md) are versioned and
 loaded automatically for these five scenes. `GIS_CONTEXT_ROOT` overrides that

@@ -76,13 +76,14 @@ class SceneAssessmentPromptTests(unittest.TestCase):
         self.assertNotIn("overview", first)
         self.assertEqual(first["scene_evidence"]["gis_summary"]["buildings_with_reviewed_context"], len(contexts))
 
-    def test_no_gis_scene_has_zero_context_and_unknown_location_remains_null(self):
+    def test_no_gis_scene_retains_coordinate_supported_location(self):
         scene, contexts = load_scene("palu-tsunami_00000065")
         preview = build_scene_assessment_preview(scene, contexts)
         evidence = preview["scene_evidence"]
         self.assertEqual(evidence["gis_summary"]["buildings_with_reviewed_context"], 0)
         self.assertEqual(evidence["gis_summary"]["buildings_without_reviewed_context"], len(scene["buildings"]))
-        self.assertIsNone(evidence["event"]["location"])
+        self.assertEqual(evidence["event"]["location"], "Palu, Central Sulawesi, Indonesia")
+        self.assertEqual(evidence["event"]["location_scope"], "scene")
         self.assertEqual(evidence["event"]["hazard_type"], "tsunami")
 
 

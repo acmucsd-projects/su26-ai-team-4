@@ -94,9 +94,9 @@ class SceneEvidenceTests(unittest.TestCase):
         expected = {
             "hurricane-harvey_00000177": ("Harris County, Texas", "2017-08-31T17:38:50.685Z"),
             "hurricane-michael_00000247": ("Bay County, Florida", "2018-10-13T16:48:15.000Z"),
-            "hurricane-matthew_00000060": (None, "2016-10-09T15:32:03.000Z"),
+            "hurricane-matthew_00000060": ("Les Cayes, Sud, Haiti", "2016-10-09T15:32:03.000Z"),
             "hurricane-florence_00000459": ("Duplin County, North Carolina", "2018-09-20T16:04:41.000Z"),
-            "palu-tsunami_00000065": (None, "2018-10-01T02:26:02.000Z"),
+            "palu-tsunami_00000065": ("Palu, Central Sulawesi, Indonesia", "2018-10-01T02:26:02.000Z"),
             "santa-rosa-wildfire_00000014": ("Sonoma County, California", "2017-10-11T19:19:41.000Z"),
             "socal-fire_00000663": ("Los Angeles County, California", "2018-11-14T18:42:58.000Z"),
         }
