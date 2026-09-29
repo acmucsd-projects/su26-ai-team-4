@@ -27,6 +27,7 @@ base_image = (
         "torch",
         "torchvision",
         "pydantic==2.13.5",
+        "openai>=1.68.0",
     )
 )
 
@@ -44,6 +45,7 @@ if modal.is_local():
         .add_local_python_source("app.backend", copy=True)
         .add_local_dir("app/frontend", "/app/frontend", copy=True)
         .add_local_dir("app/demo_scenes", "/app/demo_scenes", copy=True)
+        .add_local_dir("app/demo_gis_context", "/app/demo_gis_context", copy=True)
     )
 else:
     # The checkpoint was packaged during local deployment. Set the canonical
