@@ -119,8 +119,13 @@ To deploy a separate staging app without changing the canonical deployment name,
 
 ~~~powershell
 $env:MODAL_APP_NAME = "building-damage-classifier-dashboard-staging"
+$env:MODAL_OPENAI_SECRET_NAME = "openai-secret"
 modal deploy app/backend/modal_app.py
 ~~~
+
+`MODAL_OPENAI_SECRET_NAME` attaches an existing Modal secret for this deployment only;
+the secret must provide `OPENAI_API_KEY`. Do not set it for a deployment that
+should not have assessment generation access.
 
 Modal prints the web-function URL. Test it with:
 

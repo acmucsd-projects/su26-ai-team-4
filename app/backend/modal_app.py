@@ -14,6 +14,8 @@ import modal
 
 
 APP_NAME = os.environ.get("MODAL_APP_NAME", "building-damage-classifier-128")
+OPENAI_SECRET_NAME = os.environ.get("MODAL_OPENAI_SECRET_NAME")
+ASSESSMENT_SECRETS = [modal.Secret.from_name(OPENAI_SECRET_NAME)] if OPENAI_SECRET_NAME else []
 CHECKPOINT_NAME = "resnet18_prepost_plaince_xbd_128_seed17.pt"
 DEFAULT_SOURCE_CHECKPOINT_PATH = Path("checkpoints") / CHECKPOINT_NAME
 REMOTE_CHECKPOINT_PATH = f"/models/{CHECKPOINT_NAME}"
@@ -56,7 +58,7 @@ else:
 app = modal.App(APP_NAME)
 
 
-@app.function(image=image, min_containers=0, scaledown_window=300)
+@app.function(image=image, secrets=ASSESSMENT_SECRETS, min_containers=0, scaledown_window=300)
 @modal.concurrent(max_inputs=10)
 @modal.asgi_app()
 def fastapi_app():
