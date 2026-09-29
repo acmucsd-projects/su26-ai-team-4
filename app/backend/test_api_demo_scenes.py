@@ -174,14 +174,11 @@ class DemoSceneApiTests(unittest.TestCase):
 class FakeAssessmentProvider:
     def __init__(self, result=None, error=None):
         self.result = result or {
-            "assessment": "The model predicts minor damage.",
-            "what_stands_out": None,
-            "uncertainty": None,
-            "context_interpretation": None,
-            "suggested_review": None,
-            "evidence_gaps": None,
-            "limitations": ["GIS context does not establish individual identity."],
-            "prompt_version": "building-assessment-v2",
+            "assessment": "The model predicts minor damage; the site association does not confirm this building's individual use.",
+            "recommended_review": "Verify the building against an event-time record if use matters.",
+            "supporting_details": [],
+            "limitations": [],
+            "prompt_version": "building-assessment-v2.1",
             "generated_by": "fake-provider-for-test",
         }
         self.error = error
@@ -266,6 +263,15 @@ class AssessmentGenerationApiTests(unittest.TestCase):
 
         packets = [json.loads(prompt["user"].split("\n", 1)[1]) for prompt in provider.prompts]
         florence, michael, santa_rosa, matthew, palu = packets
+        expected_hazards = ("hurricane", "hurricane", "wildfire", "hurricane", "tsunami")
+        for packet, (scene_id, _building_id, _has_context), hazard_type in zip(packets, cases, expected_hazards, strict=True):
+            self.assertEqual(packet["schema_version"], 3)
+            self.assertEqual(packet["event_context"]["hazard_type"], hazard_type)
+            self.assertEqual(packet["scene_context"]["scene_id"], scene_id)
+            self.assertGreater(packet["scene_context"]["building_count"], 0)
+            self.assertEqual(packet["scene_context"]["classified_building_count"], packet["scene_context"]["building_count"])
+            for unavailable in ("location", "pre_acquisition_date", "post_acquisition_date"):
+                self.assertNotIn(unavailable, packet["event_context"])
         self.assertEqual(florence["damage_prediction"]["probability_ranking"]["most_likely_class"], "major-damage")
         self.assertTrue(florence["context"]["claims"][0]["modeled"])
         self.assertEqual(florence["context"]["claims"][0]["temporal_relation"], "current_modeled_not_event_aligned")

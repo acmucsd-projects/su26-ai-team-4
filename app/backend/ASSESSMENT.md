@@ -11,12 +11,11 @@ remains `disabled` because the preview does not generate text.
 
 `POST /demo-scenes/{scene_id}/buildings/{building_id}/assessment` generates one
 assessment from that same packet. The v2 response requires `assessment` and may
-populate `what_stands_out`, `uncertainty`, `context_interpretation`,
-`suggested_review`, and `evidence_gaps`; empty optional sections are returned as
-`null`. It also returns `limitations`, `prompt_version`, `generated_by`, and an
-application-generated `evidence_used` list. Prompt version is
-`building-assessment-v2`; its deterministic evidence packet uses schema version
-2. If the provider is not configured, the endpoint
+populate `recommended_review`, `supporting_details`, and `limitations`. Empty
+optional sections are returned as `null` or empty arrays. It also returns
+`prompt_version`, `generated_by`, and an application-generated `evidence_used`
+list. Prompt version is `building-assessment-v2.1`; its deterministic evidence
+packet uses schema version 3. If the provider is not configured, the endpoint
 returns HTTP 503 with `assessment_provider_unavailable`; it never substitutes
 mock text.
 
@@ -37,18 +36,24 @@ from model-authored output. Refusals, incomplete output, invalid output,
 timeouts, and provider errors produce clean application errors without exposing
 raw provider details.
 
-The packet includes the predicted damage class, confidence, all four
-probabilities, deterministic top-two classes/probabilities/gap when all values
-are valid, and only displayable normalized GIS claims with their scope, source,
-temporal relation, modeled/mapped status, qualifications, and conflicts. It
-omits raw GIS payloads. The assessment synthesizes classifier and normalized GIS
-evidence; it does not inspect imagery directly and does not produce
-field-verified damage determinations. It may suggest analytical review steps,
-but does not provide emergency or other operational decisions. The versioned
-prompt preserves uncertainty and evidence scope, treats modeled occupancy as
-unverified, qualifies current GIS, prohibits visual-observation claims without
-supplied observations, and bars unsupported critical-facility claims and
-operational instructions. Missing GIS context remains missing.
+The packet includes explicit event context, deterministic scene prediction
+counts, the selected damage prediction, confidence, all four probabilities,
+deterministic top-two classes/probabilities/gap when all values are valid, and
+only displayable normalized GIS claims with their scope, source, temporal
+relation, modeled/mapped status, qualifications, and conflicts. Event hazard
+categories use an allowlisted mapping from each packaged manifest's
+`event_name`. A scene `location` or PRE/POST acquisition date is included only
+when explicitly present in the manifest; current manifests contain none, so
+those fields are omitted. The packet omits raw GIS payloads.
+
+The assessment is a concise analyst briefing that synthesizes classifier,
+scene, and normalized GIS evidence. Recommended review uses the deterministic
+hazard type and evidence ambiguity to suggest a specific analytical check. It
+does not inspect imagery directly or produce field-verified damage
+determinations. The prompt prohibits visual-observation claims without supplied
+observations, preserves GIS scope and timing, treats modeled occupancy as
+unverified, and bars unsupported critical-facility claims and operational
+decisions. Missing GIS context remains missing.
 
 API secrets must stay in environment configuration and must never be committed
 to the repository or placed in tests. Automated provider tests use fake

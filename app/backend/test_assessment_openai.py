@@ -17,6 +17,8 @@ from app.backend.assessment_openai import (
     MAX_LIMITATION_LENGTH,
     MAX_LIMITATIONS,
     MAX_OUTPUT_TOKENS,
+    MAX_SUPPORTING_DETAILS,
+    MAX_SUPPORTING_DETAIL_LENGTH,
     MAX_SECTION_LENGTH,
     OpenAIAssessmentProvider,
     configured_assessment_provider,
@@ -89,26 +91,20 @@ class AssessmentProviderConfigurationTests(unittest.TestCase):
 class OpenAIResponsesAdapterTests(unittest.TestCase):
     def test_success_uses_small_nonpersistent_structured_responses_request(self):
         client = FakeClient(response({
-            "assessment": "  The model predicts minor damage. Current mapped context is available.  ",
-            "what_stands_out": "A nearby competing class is close.",
-            "uncertainty": "Minor damage is nearly as likely as no damage.",
-            "context_interpretation": "Current mapped context describes the site, not this building.",
-            "suggested_review": "Compare the PRE and POST crops manually.",
-            "evidence_gaps": None,
+            "assessment": "  No Damage leads, but Minor retains similar model support; current mapped context applies to the site rather than confirming this building's use.  ",
+            "recommended_review": "Review the PRE/POST pair for subtle changes rather than only obvious structural loss.",
+            "supporting_details": ["The selected class is common in this scene."],
             "limitations": ["  GIS context does not establish individual identity.  "],
         }))
         result = OpenAIAssessmentProvider("gpt-6-luna", client=client).generate(prompt())
 
         self.assertEqual(set(result), {
-            "assessment", "what_stands_out", "uncertainty", "context_interpretation",
-            "suggested_review", "evidence_gaps", "limitations", "prompt_version", "generated_by",
+            "assessment", "recommended_review", "supporting_details", "limitations",
+            "prompt_version", "generated_by",
         })
-        self.assertEqual(result["assessment"], "The model predicts minor damage. Current mapped context is available.")
-        self.assertEqual(result["what_stands_out"], "A nearby competing class is close.")
-        self.assertEqual(result["uncertainty"], "Minor damage is nearly as likely as no damage.")
-        self.assertEqual(result["context_interpretation"], "Current mapped context describes the site, not this building.")
-        self.assertEqual(result["suggested_review"], "Compare the PRE and POST crops manually.")
-        self.assertIsNone(result["evidence_gaps"])
+        self.assertTrue(result["assessment"].startswith("No Damage leads"))
+        self.assertEqual(result["recommended_review"], "Review the PRE/POST pair for subtle changes rather than only obvious structural loss.")
+        self.assertEqual(result["supporting_details"], ["The selected class is common in this scene."])
         self.assertEqual(result["limitations"], ["GIS context does not establish individual identity."])
         self.assertEqual(result["prompt_version"], PROMPT_VERSION)
         self.assertEqual(result["generated_by"], "openai/gpt-6-luna")
@@ -158,8 +154,10 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             {"assessment": "Looks fine.", "limitations": ["x"] * (MAX_LIMITATIONS + 1)},
             {"assessment": "Looks fine.", "limitations": ["x" * (MAX_LIMITATION_LENGTH + 1)]},
             {"assessment": "Looks fine.", "limitations": [], "extra": "field"},
-            {"assessment": "Looks fine.", "what_stands_out": "x" * (MAX_SECTION_LENGTH + 1)},
-            {"assessment": "Looks fine.", "what_stands_out": 123},
+            {"assessment": "Looks fine.", "recommended_review": "x" * (MAX_SECTION_LENGTH + 1)},
+            {"assessment": "Looks fine.", "recommended_review": 123},
+            {"assessment": "Looks fine.", "supporting_details": ["x"] * (MAX_SUPPORTING_DETAILS + 1)},
+            {"assessment": "Looks fine.", "supporting_details": ["x" * (MAX_SUPPORTING_DETAIL_LENGTH + 1)]},
         ):
             with self.subTest(parsed=type(parsed).__name__):
                 with self.assertRaises(AssessmentProviderError) as caught:
@@ -186,19 +184,17 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
 
     def test_optional_sections_accept_missing_null_or_empty_content(self):
         output = AssessmentOutput.model_validate({"assessment": "Valid."}, strict=True)
-        self.assertIsNone(output.what_stands_out)
-        self.assertIsNone(output.uncertainty)
+        self.assertIsNone(output.recommended_review)
+        self.assertEqual(output.supporting_details, [])
         self.assertEqual(output.limitations, [])
 
         output = AssessmentOutput.model_validate({
             "assessment": "Valid.",
-            "what_stands_out": "  ",
-            "uncertainty": None,
-            "context_interpretation": "Useful context.",
+            "recommended_review": "  ",
+            "supporting_details": ["Useful context."],
         }, strict=True)
-        self.assertIsNone(output.what_stands_out)
-        self.assertIsNone(output.uncertainty)
-        self.assertEqual(output.context_interpretation, "Useful context.")
+        self.assertIsNone(output.recommended_review)
+        self.assertEqual(output.supporting_details, ["Useful context."])
 
 
 if __name__ == "__main__":
