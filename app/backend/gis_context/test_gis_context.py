@@ -18,7 +18,7 @@ from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matche
 from .models import Feature, Match, Source
 from .local_providers import LOCAL, fetch_local, local_features, local_claims
 from .scenes import SCENE_COUNTS, SCENE_PROVIDERS, OPTIONAL_PROVIDERS
-from .normalize import compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
+from .normalize import classify_claim_differences, compare_claims, hcad_claims, nsi_claims, nsi_occupancy, osm_claims, property_category
 from .providers import fetch_hcad, fetch_nsi, geojson_features, osm_features, overpass_query, source_info, HCAD_FIELDS
 from .report import write_reports
 from .review import apply_review, evidence_sha256
@@ -232,13 +232,66 @@ class SemanticTests(unittest.TestCase):
         claims = osm_claims(old, accepted("place")) + osm_claims(new, accepted("place"))
         self.assertEqual(claims[0].source.temporal_status, "event_snapshot")
         self.assertEqual(claims[1].source.temporal_status, "current_only")
-        self.assertEqual(compare_claims(claims)[0]["reason"], "historical_current_difference")
+        difference = classify_claim_differences(claims)[0]
+        self.assertEqual(difference["classification"], "scope_time_difference")
+        self.assertIn("historical_current_difference", difference["qualifications"])
+        self.assertEqual(compare_claims(claims), [])
+
+    def test_harmless_historical_current_place_name_variants_are_not_conflicts(self):
+        historical = feature("allstate", properties={"office": "office", "name": "Allstate Insurance"}, provider="osm_historical")
+        historical.source = replace(historical.source, snapshot="2017-08-31T17:38:50Z")
+        current = feature("allstate", properties={"office": "office", "name": "Allstate"}, provider="osm_current")
+        historical_claim, current_claim = (osm_claims(row, accepted("place"))[0] for row in (historical, current))
+        differences = classify_claim_differences([historical_claim, current_claim])
+        self.assertEqual(differences[0]["classification"], "source_label_variation")
+        self.assertIn("historical_current_difference", differences[0]["qualifications"])
+        self.assertEqual(compare_claims([historical_claim, current_claim]), [])
+        self.assertEqual([claim.mapped_name for claim in (historical_claim, current_claim)], ["Allstate Insurance", "Allstate"])
+
+    def test_punctuation_and_case_variants_are_source_label_variation(self):
+        first = feature(properties={"office": "office", "name": "Acme, Inc."}, provider="osm_current")
+        second = feature("2", properties={"office": "office", "name": "ACME"}, provider="osm_current")
+        claims = [osm_claims(row, accepted("place"))[0] for row in (first, second)]
+        self.assertEqual(classify_claim_differences(claims)[0]["classification"], "source_label_variation")
+        self.assertEqual(compare_claims(claims), [])
+
+    def test_different_labels_for_the_same_normalized_category_are_not_conflicts(self):
+        house = feature(properties={"building": "house"}, provider="osm_current")
+        detached = feature("2", properties={"building": "detached"}, provider="osm_current")
+        claims = [osm_claims(row, accepted("footprint"))[0] for row in (house, detached)]
+        difference = classify_claim_differences(claims)[0]
+        self.assertEqual(difference["classification"], "source_label_variation")
+        self.assertEqual(difference["reason"], "same_normalized_category")
+        self.assertEqual(compare_claims(claims), [])
+
+    def test_same_scope_and_time_with_incompatible_categories_is_semantic_conflict(self):
+        school = feature("school", properties={"amenity": "school", "name": "Shared Place"})
+        hospital = feature("hospital", properties={"amenity": "hospital", "name": "Shared Place"})
+        claims = [osm_claims(row, accepted("place"))[0] for row in (school, hospital)]
+        difference = classify_claim_differences(claims)[0]
+        self.assertEqual(difference["classification"], "semantic_conflict")
+        self.assertEqual(difference["reason"], "potential_use_conflict")
+        self.assertEqual(len(compare_claims(claims)), 1)
+
+    def test_different_same_scope_place_identities_remain_semantic_conflicts(self):
+        allstate = feature(properties={"office": "office", "name": "Allstate"}, provider="osm_current")
+        state_farm = feature("2", properties={"office": "office", "name": "State Farm"}, provider="osm_current")
+        claims = [osm_claims(row, accepted("place"))[0] for row in (allstate, state_farm)]
+        difference = classify_claim_differences(claims)[0]
+        self.assertEqual(difference["classification"], "semantic_conflict")
+        self.assertEqual(difference["reason"], "building_identity_conflict")
 
     def test_modeled_conflict_but_no_cross_scope_false_conflict(self):
         modeled = nsi_claims(feature(properties={"occtype": "RES1"}, provider="nsi"), accepted("nsi_structure"))[0]
         mapped = osm_claims(feature(properties={"building:use": "hospital"}), accepted())[0]
-        self.assertEqual(compare_claims([modeled, mapped])[0]["reason"], "modeled_vs_mapped_difference")
+        difference = classify_claim_differences([modeled, mapped])[0]
+        self.assertEqual(difference["classification"], "scope_time_difference")
+        self.assertIn("modeled_vs_mapped_difference", difference["qualifications"])
+        self.assertEqual(compare_claims([modeled, mapped]), [])
         mapped.scope = "parcel"
+        parcel_difference = classify_claim_differences([modeled, mapped])[0]
+        self.assertEqual(parcel_difference["classification"], "scope_time_difference")
+        self.assertIn("scope_difference", parcel_difference["qualifications"])
         self.assertEqual(compare_claims([modeled, mapped]), [])
 
 
@@ -587,7 +640,9 @@ class ReportingTests(unittest.TestCase):
             self.assertEqual(report["metrics"]["combined_displayable_context"]["count"], 3)
             self.assertEqual(report["metrics"]["event_aligned_useful_context"]["count"], 2)
             self.assertEqual(report["metrics"]["no_context"]["count"], 73)
-            self.assertEqual(report["metrics"]["historical_current_conflicts"]["count"], 1)
+            self.assertEqual(report["metrics"]["historical_current_differences"]["count"], 1)
+            self.assertEqual(report["metrics"]["conflicting_claims"]["count"], 0)
+            self.assertEqual(report["buildings"][2]["conflicts"], [])
             self.assertIn("2", report["qa"]["selected_uids"])
             self.assertEqual(manifest.read_bytes(), initial)
             write_reports(report, root / "report")

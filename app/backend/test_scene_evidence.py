@@ -44,6 +44,18 @@ def synthetic_scene(classes: list[str]) -> dict:
 
 
 class SceneEvidenceTests(unittest.TestCase):
+    def test_legacy_historical_current_label_variation_is_not_exposed_as_conflict(self):
+        scene, contexts = load_scene("hurricane-harvey_00000177")
+        matched = [(uid, context) for uid, context in contexts.items()
+                   if any(claim.get("name") == "Allstate Insurance" for claim in context["claims"])]
+        self.assertEqual(len(matched), 1)
+        _uid, context = matched[0]
+        names = {claim["name"] for claim in context["claims"]
+                 if isinstance(claim.get("name"), str) and claim["name"].startswith("Allstate")}
+        self.assertEqual(names, {"Allstate Insurance", "Allstate"})
+        self.assertFalse(any(conflict["reason"] == "historical_current_difference" for conflict in context["conflicts"]))
+        self.assertNotIn("Historical and current records differ; both are retained.", context["notes"])
+
     def test_exact_scene_distribution_and_uncertainty_distributions(self):
         scene, contexts = load_scene("hurricane-michael_00000247")
         evidence = build_scene_evidence(scene, contexts)

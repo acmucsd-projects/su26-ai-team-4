@@ -406,8 +406,10 @@ class AssessmentGenerationApiTests(unittest.TestCase):
         self.assertTrue(any(claim["modeled"] for claim in santa_rosa["context"]["claims"]))
         self.assertTrue(any(claim["mapped_from_osm"] for claim in santa_rosa["context"]["claims"]))
         santa_contexts = json.loads((Path(__file__).resolve().parents[1] / "demo_gis_context" / "santa-rosa-wildfire_00000014.json").read_text(encoding="utf-8"))["buildings"]
-        self.assertEqual(len(santa_rosa["context"]["conflicts"]),
-                         len(santa_contexts[santa_rosa["building"]["uid"]]["conflicts"]))
+        source_conflicts = santa_contexts[santa_rosa["building"]["uid"]]["conflicts"]
+        semantic_conflicts = [conflict for conflict in source_conflicts
+                              if conflict["reason"] not in {"historical_current_difference", "modeled_vs_mapped_difference"}]
+        self.assertEqual(len(santa_rosa["context"]["conflicts"]), len(semantic_conflicts))
         self.assertFalse(matthew["context"]["available"])
         self.assertFalse(palu["context"]["available"])
         self.assertEqual(matthew["context"]["claims"], [])

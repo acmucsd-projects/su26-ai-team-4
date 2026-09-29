@@ -106,6 +106,23 @@ def valid_context(context: object) -> bool:
         return False
 
 
+def _remove_qualification_only_conflicts(context: dict) -> None:
+    """Keep older overlay source records while treating scope/time as qualifications."""
+    qualification_reasons = {"historical_current_difference", "modeled_vs_mapped_difference"}
+    conflicts = context["conflicts"]
+    removed_reasons = {item["reason"] for item in conflicts if item["reason"] in qualification_reasons}
+    if not removed_reasons:
+        return
+    context["conflicts"] = [item for item in conflicts if item["reason"] not in qualification_reasons]
+    note_for_reason = {
+        "historical_current_difference": "Historical and current records differ; both are retained.",
+        "modeled_vs_mapped_difference": "Modeled and mapped uses differ; see source details.",
+    }
+    context["notes"] = [note for note in context["notes"]
+                         if not any(reason in removed_reasons and note == generated
+                                    for reason, generated in note_for_reason.items())]
+
+
 def load_context_overlay(root: Path | None, scene_id: str, manifest_path: Path, manifest: dict) -> dict:
     """Fail closed on absent, stale, mismatched or malformed optional local data."""
     if root is None or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", scene_id):
@@ -137,6 +154,7 @@ def load_context_overlay(root: Path | None, scene_id: str, manifest_path: Path, 
         for context in buildings.values():
             if not valid_context(context):
                 raise ValueError("invalid reviewed context")
+            _remove_qualification_only_conflicts(context)
         return {uid: context for uid, context in buildings.items() if context["claims"]}
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as error:
         LOGGER.warning("Ignoring local GIS overlay for %s: %s", scene_id, error)

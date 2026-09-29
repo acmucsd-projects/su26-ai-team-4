@@ -186,26 +186,72 @@ def osm_claims(feature: Feature, match: Match) -> list[Claim]:
 
 
 def compare_claims(claims: list[Claim]) -> list[dict]:
-    """Flag review differences; never overwrite one provider with another."""
+    """Return only material semantic conflicts; source differences stay qualified."""
+    return [difference for difference in classify_claim_differences(claims)
+            if difference["classification"] == "semantic_conflict"]
+
+
+_LABEL_VARIANT_SUFFIXES = {
+    "insurance", "company", "co", "inc", "incorporated", "llc", "ltd", "limited", "corp", "corporation",
+}
+
+
+def _normalized_name(value: str | None) -> str:
+    """Normalize punctuation, case, and common organization suffixes for comparison only."""
+    words = re.findall(r"[\w]+", value.casefold()) if value else []
+    while words and words[-1] in _LABEL_VARIANT_SUFFIXES:
+        words.pop()
+    return " ".join(words)
+
+
+def classify_claim_differences(claims: list[Claim]) -> list[dict]:
+    """Classify semantic disagreement separately from source labels and scope/time.
+
+    Claims are never merged or discarded. Returned indices refer to the supplied
+    claim list so audit tooling can preserve the original source records.
+    """
     differences = []
     compatible = {frozenset(("residential", "multifamily"))}
     for i, j in combinations(range(len(claims)), 2):
         a, b = claims[i], claims[j]
         same_record = a.source.provider == b.source.provider and a.source_record_id == b.source_record_id
         same_snapshot = a.source.snapshot == b.source.snapshot
-        changed_name = same_record and not same_snapshot and a.mapped_name and b.mapped_name and a.mapped_name != b.mapped_name
+        names_differ = bool(a.mapped_name and b.mapped_name and a.mapped_name != b.mapped_name)
+        same_normalized_name = bool(names_differ and _normalized_name(a.mapped_name) == _normalized_name(b.mapped_name))
         categories = frozenset((a.category, b.category))
         changed_use = len(categories) == 2 and not categories.intersection({"unknown", "mixed"}) and categories not in compatible
-        if not changed_name and not changed_use:
+        same_category = a.category == b.category and a.category not in {"unknown", "mixed"}
+        source_value_variation = same_category and not names_differ and a.kind == b.kind and a.raw_value != b.raw_value
+        if not names_differ and not changed_use and not source_value_variation:
             continue
         if a.kind == b.kind == "modeled_occupancy" and a.source.provider == b.source.provider:
             continue  # Legitimate mixed/stacked modeled occupancy is not discarded.
+        qualifications = []
         if a.scope != b.scope:
-            continue  # Parcel use and a tenant are different claims, not contradictions.
-        if same_record and same_snapshot and a.kind != b.kind:
-            continue  # E.g. structure design vs mapped tenant use.
-        reason = "historical_current_difference" if same_record and not same_snapshot else (
-            "modeled_vs_mapped_difference" if a.source.modeled != b.source.modeled else "potential_use_conflict")
-        differences.append({"claim_indices": [i, j], "reason": reason,
-                            "requires_review": True, "resolution": "preserved_separately"})
+            qualifications.append("scope_difference")
+        if a.source.temporal_status != b.source.temporal_status:
+            statuses = {a.source.temporal_status, b.source.temporal_status}
+            historical_and_current = bool(statuses & {"event_snapshot", "event_year", "pre_event_historical"}) and bool(
+                statuses & {"current_only", "current_modeled_not_event_aligned"})
+            qualifications.append("historical_current_difference" if historical_and_current else "temporal_difference")
+        elif same_record and not same_snapshot:
+            qualifications.append("historical_current_difference")
+        if a.source.modeled != b.source.modeled:
+            qualifications.append("modeled_vs_mapped_difference")
+
+        if same_normalized_name and not changed_use:
+            classification = "source_label_variation"
+            reason = "normalized_name_equivalent"
+        elif qualifications:
+            classification = "scope_time_difference"
+            reason = qualifications[0]
+        elif source_value_variation:
+            classification = "source_label_variation"
+            reason = "same_normalized_category"
+        else:
+            classification = "semantic_conflict"
+            reason = "potential_use_conflict" if changed_use else "building_identity_conflict"
+        differences.append({"claim_indices": [i, j], "classification": classification, "reason": reason,
+                            "qualifications": qualifications, "requires_review": classification == "semantic_conflict",
+                            "resolution": "preserved_separately"})
     return differences

@@ -216,16 +216,26 @@ class PortableDemoContextTests(unittest.TestCase):
                         self.assertEqual(actual["prediction"], original["prediction"])
                         context = package["buildings"][actual["uid"]]
                         if context["claims"]:
-                            self.assertEqual(actual["building_context"], context)
+                            displayed_context = actual["building_context"]
+                            self.assertEqual(displayed_context["claims"], context["claims"])
+                            semantic_conflicts = [conflict for conflict in context["conflicts"]
+                                                  if conflict["reason"] not in {
+                                                      "historical_current_difference",
+                                                      "modeled_vs_mapped_difference",
+                                                  }]
+                            self.assertEqual(displayed_context["conflicts"], semantic_conflicts)
                         else:
                             self.assertNotIn("building_context", actual)
-                        normalized = normalize_context(context["claims"], context["conflicts"])
-                        if context["notes"] != normalized["notes"]:
-                            self.assertEqual(context["notes"], sorted(set(normalized["notes"] + [
+                            semantic_conflicts = []
+                        normalized = normalize_context(displayed_context["claims"], displayed_context["conflicts"]) if context["claims"] else normalize_context([], [])
+                        displayed_notes = actual.get("building_context", {}).get("notes", [])
+                        if displayed_notes != normalized["notes"]:
+                            self.assertEqual(displayed_notes, sorted(set(normalized["notes"] + [
                                 "Historical OSM was unavailable; event-time mapped context could not be assessed."
                             ])))
-                            normalized["notes"] = context["notes"]
-                        self.assertEqual(normalized, context)
+                            normalized["notes"] = displayed_notes
+                        if context["claims"]:
+                            self.assertEqual(normalized, displayed_context)
                         for claim in context["claims"]:
                             self.assertTrue(claim["displayable"])
                             self.assertLessEqual(set(claim["original_values"]), CLASSIFICATION_FIELDS)

@@ -11,7 +11,7 @@ from shapely.geometry import mapping
 from .cache import CachedClient
 from .geometry import SCENE_ID, load_scene
 from .matching import footprint_matches, nsi_matches, parcel_matches, poi_matches, site_matches
-from .normalize import compare_claims, hcad_claims, nsi_claims, osm_claims
+from .normalize import classify_claim_differences, hcad_claims, nsi_claims, osm_claims
 from .providers import fetch_hcad, fetch_nsi, fetch_osm, geojson_features, osm_features
 from .local_providers import LOCAL, fetch_local, local_features, local_claims
 from .scenes import SCENE_COUNTS, SCENE_PROVIDERS, LOCAL_PARCELS, OPTIONAL_PROVIDERS
@@ -24,7 +24,7 @@ FLAGS = (
     "historical_osm_useful_context", "current_osm_useful_context", "mapped_name_place",
     "site_context", "critical_facility", "conflicting_claims", "ambiguous_rejected_candidates",
     "combined_displayable_context", "event_aligned_useful_context", "broad_use_coverage",
-    "historical_current_conflicts", "no_context",
+    "historical_current_differences", "no_context",
     "landuse_area_context", "context_excluding_landuse_areas", "direct_building_place_context",
     "hcad_parcel_ambiguity", "ambiguous_candidates", "site_context_excluding_landuse",
     "direct_mapped_name", "broad_use_excluding_landuse_areas", "event_aligned_direct_context",
@@ -88,7 +88,9 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     complete = required_providers_complete(statuses)
     event_complete = all(statuses[p]["status"] == "complete" for p in ("hcad", "osm_historical") if p in statuses)
     useful = [claim for claim in claims if claim.displayable]
-    conflicts = compare_claims(useful)
+    claim_differences = classify_claim_differences(useful)
+    conflicts = [difference for difference in claim_differences
+                 if difference["classification"] == "semantic_conflict"]
     by_provider = {p: [c for c in useful if (c.source.dataset == p if p.startswith("osm_") else c.source.provider == p)] for p in providers}
     matches = {p: [c for c in candidates if c["provider"] == p] for p in providers}
     local_provider = next((p for p in providers if p in LOCAL_PARCELS), None)
@@ -116,8 +118,9 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
         "combined_displayable_context": flag(bool(useful), complete),
         "event_aligned_useful_context": flag(any(c.source.temporal_status in {"event_year", "event_snapshot"} for c in useful), event_complete),
         "broad_use_coverage": flag(any(c.category != "unknown" for c in useful), complete),
-        "historical_current_conflicts": flag(any(c["reason"] == "historical_current_difference" for c in conflicts),
-                                            all(statuses[p]["status"] == "complete" for p in ("osm_historical", "osm_current"))),
+        "historical_current_differences": flag(any("historical_current_difference" in c["qualifications"]
+                                                    for c in claim_differences),
+                                               all(statuses[p]["status"] == "complete" for p in ("osm_historical", "osm_current"))),
         "no_context": False if useful else True if complete else None,
         "landuse_area_context": flag(any(c.kind == "area_use" for c in useful), complete),
         "context_excluding_landuse_areas": flag(any(c.kind != "area_use" for c in useful), complete),
@@ -153,6 +156,7 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     return {"building_id": building["id"], "uid": building["uid"], "geometry": geometry,
             "evaluation_status": "evaluated" if complete else "partially_evaluated",
             "claims": [c.to_dict() for c in claims], "candidates": candidates, "conflicts": conflicts,
+            "claim_differences": claim_differences,
             "nsi_occupancies": sorted({c.raw_value["occtype"] for c in by_provider.get("nsi", [])}),
             "flags": flags, "displayable_context": [c.label for c in useful],
             "qa_reasons": [], "qa_status": "not_selected"}
