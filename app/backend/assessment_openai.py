@@ -14,10 +14,20 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .assessment import AssessmentPrompt, AssessmentResult, PROMPT_VERSION
 
 DEFAULT_MODEL = "gpt-6-luna"
-MAX_OUTPUT_TOKENS = 500
+MAX_OUTPUT_TOKENS = 900
 MAX_ASSESSMENT_LENGTH = 1200
+MAX_SECTION_LENGTH = 500
 MAX_LIMITATIONS = 5
 MAX_LIMITATION_LENGTH = 300
+OPTIONAL_SECTION_FIELDS = (
+    "what_stands_out",
+    "uncertainty",
+    "context_interpretation",
+    "suggested_review",
+    "evidence_gaps",
+)
+
+OptionalAssessmentSection = Annotated[str | None, Field(max_length=MAX_SECTION_LENGTH)]
 
 
 class AssessmentOutput(BaseModel):
@@ -26,10 +36,15 @@ class AssessmentOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     assessment: Annotated[str, Field(min_length=1, max_length=MAX_ASSESSMENT_LENGTH)]
+    what_stands_out: OptionalAssessmentSection = None
+    uncertainty: OptionalAssessmentSection = None
+    context_interpretation: OptionalAssessmentSection = None
+    suggested_review: OptionalAssessmentSection = None
+    evidence_gaps: OptionalAssessmentSection = None
     limitations: Annotated[
         list[Annotated[str, Field(min_length=1, max_length=MAX_LIMITATION_LENGTH)]],
         Field(max_length=MAX_LIMITATIONS),
-    ]
+    ] = Field(default_factory=list)
 
     @field_validator("assessment")
     @classmethod
@@ -38,6 +53,14 @@ class AssessmentOutput(BaseModel):
         if not value:
             raise ValueError("assessment must contain text")
         return value
+
+    @field_validator(*OPTIONAL_SECTION_FIELDS)
+    @classmethod
+    def empty_optional_sections_are_omitted(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
     @field_validator("limitations")
     @classmethod
@@ -188,6 +211,7 @@ class OpenAIAssessmentProvider:
         # Only these application-controlled fields are returned publicly.
         return {
             "assessment": output.assessment,
+            **{field: getattr(output, field) for field in OPTIONAL_SECTION_FIELDS},
             "limitations": output.limitations,
             "prompt_version": PROMPT_VERSION,
             "generated_by": f"openai/{self.model}",

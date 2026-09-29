@@ -6,6 +6,7 @@ import unittest
 
 from app.backend.assessment import (
     DAMAGE_CLASSES,
+    EVIDENCE_PACKET_SCHEMA_VERSION,
     OUTPUT_CONTRACT,
     PROMPT_VERSION,
     build_assessment_preview,
@@ -44,6 +45,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
             scene, contexts, lambda claim: claim["scope"] == "building" and claim["kind"] == "structure_type"
         )
         packet = build_evidence_packet(scene, building, context)
+        self.assertEqual(packet["schema_version"], EVIDENCE_PACKET_SCHEMA_VERSION)
         claim = next(c for c in packet["context"]["claims"] if c["type"] == "structure_type")
         source_claim = next(c for c in context["claims"] if c["kind"] == "structure_type")
         self.assertEqual(claim["scope"], "building")
@@ -60,7 +62,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
         self.assertTrue(claim["modeled"])
         self.assertEqual(claim["temporal_relation"], "current_modeled_not_event_aligned")
         self.assertIn("not event-aligned", claim["timing"])
-        self.assertIn("modeled occupancy is not verified use", build_prompt(packet)["system"])
+        self.assertIn("modeled occupancy is not verified use", " ".join(build_prompt(packet)["system"].lower().split()))
 
     def test_case_c_property_and_area_scopes_are_preserved(self):
         scene, contexts = scene_and_context("hurricane-harvey_00000177")
@@ -116,6 +118,80 @@ class AssessmentEvidenceTests(unittest.TestCase):
         self.assertFalse(packet["context"]["available"])
         self.assertIn("recognized predicted damage class is unavailable", " ".join(packet["limitations"]))
 
+    def test_v2_florence_case_keeps_decisive_prediction_separate_from_current_modeled_use(self):
+        scene, contexts = scene_and_context("hurricane-florence_00000459")
+        building = next(row for row in scene["buildings"] if row["id"] == "hurricane-florence_00000459_b0000")
+        packet = build_evidence_packet(scene, building, contexts[building["uid"]])
+        prediction = packet["damage_prediction"]
+        claim = packet["context"]["claims"][0]
+
+        self.assertEqual(prediction["predicted_class"], "major-damage")
+        self.assertAlmostEqual(prediction["probabilities"]["major-damage"], 0.9936821460723877)
+        self.assertEqual(prediction["probability_ranking"]["most_likely_class"], "major-damage")
+        self.assertTrue(claim["modeled"])
+        self.assertEqual(claim["temporal_relation"], "current_modeled_not_event_aligned")
+        instructions = " ".join(build_prompt(packet)["system"].split())
+        self.assertIn("Modeled occupancy is not verified use", instructions)
+        self.assertIn("Current evidence is not event-time truth", instructions)
+
+    def test_v2_michael_case_exposes_close_top_two_values_without_threshold(self):
+        scene, contexts = scene_and_context("hurricane-michael_00000247")
+        building = next(row for row in scene["buildings"] if row["id"] == "hurricane-michael_00000247_b0009")
+        packet = build_evidence_packet(scene, building, contexts[building["uid"]])
+        prediction = packet["damage_prediction"]
+        ranking = prediction["probability_ranking"]
+
+        self.assertEqual(prediction["predicted_class"], "no-damage")
+        self.assertEqual(ranking["most_likely_class"], "no-damage")
+        self.assertEqual(ranking["second_most_likely_class"], "minor-damage")
+        self.assertEqual(ranking["top_probability"], prediction["probabilities"]["no-damage"])
+        self.assertEqual(ranking["second_probability"], prediction["probabilities"]["minor-damage"])
+        self.assertAlmostEqual(ranking["top_two_gap"], 0.0006180107593536)
+        self.assertIn("do not invent a confidence cutoff", build_prompt(packet)["system"].lower())
+
+    def test_v2_santa_rosa_case_preserves_scope_time_status_and_conflicts(self):
+        scene, contexts = scene_and_context("santa-rosa-wildfire_00000014")
+        building = next(row for row in scene["buildings"] if row["id"] == "santa-rosa-wildfire_00000014_b0006")
+        source_context = contexts[building["uid"]]
+        packet = build_evidence_packet(scene, building, source_context)
+
+        self.assertEqual(len(packet["context"]["claims"]), len(source_context["claims"]))
+        claims = packet["context"]["claims"]
+        self.assertIn("building", {claim["scope"] for claim in claims})
+        self.assertIn("parcel", {claim["scope"] for claim in claims})
+        self.assertIn("site", {claim["scope"] for claim in claims})
+        self.assertTrue(any(claim["modeled"] for claim in claims))
+        self.assertTrue(any(claim["mapped_from_osm"] for claim in claims))
+        for claim, original in zip(claims, source_context["claims"], strict=True):
+            self.assertEqual(claim["scope"], original["scope"])
+            self.assertEqual(claim["temporal_relation"], original["temporal_relation"])
+            self.assertEqual(claim["modeled"], original["modeled"])
+            self.assertEqual(claim["qualifications"], original["qualifications"])
+        expected_conflicts = [
+            {"reason": item["reason"], "resolution": item["resolution"], "supporting_claims": item["supporting_claims"]}
+            for item in source_context["conflicts"]
+        ]
+        self.assertEqual(packet["context"]["conflicts"], expected_conflicts)
+
+    def test_v2_no_context_cases_have_only_prediction_evidence(self):
+        for scene_id in ("hurricane-matthew_00000060", "palu-tsunami_00000065"):
+            with self.subTest(scene_id=scene_id):
+                scene, _ = scene_and_context(scene_id)
+                building = next(row for row in scene["buildings"] if row["id"].endswith("_b0000"))
+                packet = build_evidence_packet(scene, building)
+                self.assertFalse(packet["context"]["available"])
+                self.assertEqual(packet["context"]["claims"], [])
+                self.assertIsNotNone(packet["damage_prediction"]["probability_ranking"])
+
+    def test_probability_ranking_is_absent_without_four_valid_values_and_ties_are_stable(self):
+        incomplete = build_evidence_packet({}, {"prediction": {"probabilities": {"no-damage": 0.5}}})
+        self.assertIsNone(incomplete["damage_prediction"]["probability_ranking"])
+
+        tied = build_evidence_packet({}, {"prediction": {"probabilities": dict.fromkeys(DAMAGE_CLASSES, 0.25)}})
+        self.assertEqual(tied["damage_prediction"]["probability_ranking"]["most_likely_class"], "no-damage")
+        self.assertEqual(tied["damage_prediction"]["probability_ranking"]["second_most_likely_class"], "minor-damage")
+        self.assertEqual(tied["damage_prediction"]["probability_ranking"]["top_two_gap"], 0)
+
     def test_packet_excludes_raw_provider_payload_and_prompt_is_deterministic(self):
         scene, contexts = scene_and_context("hurricane-florence_00000459")
         building, context = selected_building(scene, contexts)
@@ -137,20 +213,29 @@ class AssessmentEvidenceTests(unittest.TestCase):
         self.assertNotIn("assessment", preview)
 
     def test_prompt_contract_covers_scope_time_and_operational_limits(self):
-        instructions = build_prompt({})["system"].lower()
+        instructions = " ".join(build_prompt({})["system"].lower().split())
         for rule in (
             "use only the supplied evidence packet",
-            "not verified damage",
-            "not established as calibrated real-world certainty",
-            "parcel/property, site, and area evidence do not establish individual-building",
+            "never verified physical damage",
+            "describe probabilities as calibrated real-world certainty",
+            "parcel, campus, site, and area evidence do not establish an individual building's identity or use",
             "modeled occupancy is not verified use",
             "current evidence is not",
             "do not infer critical-facility status",
             "evacuation, condemnation, dispatch",
-            "do not present this as an official damage assessment",
+            "not a chatbot, field inspection, or official damage assessment",
             "chain-of-thought",
+            "you receive no image pixels",
+            "never claim visual observations",
+            "manually compare pre and post imagery",
+            "never recommend evacuation",
+            "null when no specific content is useful",
         ):
             self.assertIn(rule, instructions)
+        self.assertEqual(PROMPT_VERSION, "building-assessment-v2")
+        self.assertEqual(EVIDENCE_PACKET_SCHEMA_VERSION, 2)
+        self.assertIn("what_stands_out", OUTPUT_CONTRACT)
+        self.assertIn("suggested_review", OUTPUT_CONTRACT)
 
 
 if __name__ == "__main__":

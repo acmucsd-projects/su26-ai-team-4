@@ -16,6 +16,8 @@ from app.backend.assessment_openai import (
     MAX_ASSESSMENT_LENGTH,
     MAX_LIMITATION_LENGTH,
     MAX_LIMITATIONS,
+    MAX_OUTPUT_TOKENS,
+    MAX_SECTION_LENGTH,
     OpenAIAssessmentProvider,
     configured_assessment_provider,
 )
@@ -88,12 +90,25 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
     def test_success_uses_small_nonpersistent_structured_responses_request(self):
         client = FakeClient(response({
             "assessment": "  The model predicts minor damage. Current mapped context is available.  ",
+            "what_stands_out": "A nearby competing class is close.",
+            "uncertainty": "Minor damage is nearly as likely as no damage.",
+            "context_interpretation": "Current mapped context describes the site, not this building.",
+            "suggested_review": "Compare the PRE and POST crops manually.",
+            "evidence_gaps": None,
             "limitations": ["  GIS context does not establish individual identity.  "],
         }))
         result = OpenAIAssessmentProvider("gpt-6-luna", client=client).generate(prompt())
 
-        self.assertEqual(set(result), {"assessment", "limitations", "prompt_version", "generated_by"})
+        self.assertEqual(set(result), {
+            "assessment", "what_stands_out", "uncertainty", "context_interpretation",
+            "suggested_review", "evidence_gaps", "limitations", "prompt_version", "generated_by",
+        })
         self.assertEqual(result["assessment"], "The model predicts minor damage. Current mapped context is available.")
+        self.assertEqual(result["what_stands_out"], "A nearby competing class is close.")
+        self.assertEqual(result["uncertainty"], "Minor damage is nearly as likely as no damage.")
+        self.assertEqual(result["context_interpretation"], "Current mapped context describes the site, not this building.")
+        self.assertEqual(result["suggested_review"], "Compare the PRE and POST crops manually.")
+        self.assertIsNone(result["evidence_gaps"])
         self.assertEqual(result["limitations"], ["GIS context does not establish individual identity."])
         self.assertEqual(result["prompt_version"], PROMPT_VERSION)
         self.assertEqual(result["generated_by"], "openai/gpt-6-luna")
@@ -101,7 +116,7 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
         arguments = client.responses.arguments
         self.assertEqual(arguments["model"], "gpt-6-luna")
         self.assertIs(arguments["text_format"], AssessmentOutput)
-        self.assertEqual(arguments["max_output_tokens"], 500)
+        self.assertEqual(arguments["max_output_tokens"], MAX_OUTPUT_TOKENS)
         self.assertEqual(arguments["reasoning"], {"effort": "none"})
         self.assertFalse(arguments["store"])
         self.assertEqual(arguments["input"], [
@@ -143,6 +158,8 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             {"assessment": "Looks fine.", "limitations": ["x"] * (MAX_LIMITATIONS + 1)},
             {"assessment": "Looks fine.", "limitations": ["x" * (MAX_LIMITATION_LENGTH + 1)]},
             {"assessment": "Looks fine.", "limitations": [], "extra": "field"},
+            {"assessment": "Looks fine.", "what_stands_out": "x" * (MAX_SECTION_LENGTH + 1)},
+            {"assessment": "Looks fine.", "what_stands_out": 123},
         ):
             with self.subTest(parsed=type(parsed).__name__):
                 with self.assertRaises(AssessmentProviderError) as caught:
@@ -166,6 +183,22 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             AssessmentOutput.model_validate({"assessment": "   ", "limitations": []})
         with self.assertRaises(ValidationError):
             AssessmentOutput.model_validate({"assessment": "Valid.", "limitations": ["  "]})
+
+    def test_optional_sections_accept_missing_null_or_empty_content(self):
+        output = AssessmentOutput.model_validate({"assessment": "Valid."}, strict=True)
+        self.assertIsNone(output.what_stands_out)
+        self.assertIsNone(output.uncertainty)
+        self.assertEqual(output.limitations, [])
+
+        output = AssessmentOutput.model_validate({
+            "assessment": "Valid.",
+            "what_stands_out": "  ",
+            "uncertainty": None,
+            "context_interpretation": "Useful context.",
+        }, strict=True)
+        self.assertIsNone(output.what_stands_out)
+        self.assertIsNone(output.uncertainty)
+        self.assertEqual(output.context_interpretation, "Useful context.")
 
 
 if __name__ == "__main__":

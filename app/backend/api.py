@@ -278,9 +278,19 @@ def create_app(model_path: Path | None = None) -> FastAPI:
                 },
             )
 
-        prompt = build_prompt(build_evidence_packet(manifest, building, context))
+        packet = build_evidence_packet(manifest, building, context)
+        prompt = build_prompt(packet)
         try:
-            return provider.generate(prompt)
+            result = provider.generate(prompt)
+            evidence_used = []
+            prediction = packet["damage_prediction"]
+            if prediction["predicted_class"] is not None:
+                evidence_used.append("damage_prediction")
+            if all(value is not None for value in prediction["probabilities"].values()):
+                evidence_used.append("class_probabilities")
+            if packet["context"]["available"]:
+                evidence_used.append("reviewed_context")
+            return {**result, "evidence_used": evidence_used}
         except AssessmentProviderError as error:
             raise HTTPException(
                 status_code=error.status_code,

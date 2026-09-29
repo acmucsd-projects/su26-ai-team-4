@@ -175,8 +175,13 @@ class FakeAssessmentProvider:
     def __init__(self, result=None, error=None):
         self.result = result or {
             "assessment": "The model predicts minor damage.",
+            "what_stands_out": None,
+            "uncertainty": None,
+            "context_interpretation": None,
+            "suggested_review": None,
+            "evidence_gaps": None,
             "limitations": ["GIS context does not establish individual identity."],
-            "prompt_version": "building-assessment-v1",
+            "prompt_version": "building-assessment-v2",
             "generated_by": "fake-provider-for-test",
         }
         self.error = error
@@ -204,13 +209,16 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                     florence_scene = client.get("/demo-scenes/hurricane-florence_00000459").json()
                     florence_building = next(
                         building for building in florence_scene["buildings"]
-                        if "building_context" in building
+                        if building["id"] == "hurricane-florence_00000459_b0000"
                     )
                     florence = client.post(
                         f"/demo-scenes/hurricane-florence_00000459/buildings/{florence_building['id']}/assessment"
                     )
                     self.assertEqual(florence.status_code, 200)
-                    self.assertEqual(florence.json(), provider.result)
+                    self.assertEqual(florence.json(), {
+                        **provider.result,
+                        "evidence_used": ["damage_prediction", "class_probabilities", "reviewed_context"],
+                    })
 
                     matthew_scene = client.get("/demo-scenes/hurricane-matthew_00000060").json()
                     matthew_building = matthew_scene["buildings"][0]
@@ -218,6 +226,7 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                         f"/demo-scenes/hurricane-matthew_00000060/buildings/{matthew_building['id']}/assessment"
                     )
                     self.assertEqual(matthew.status_code, 200)
+                    self.assertEqual(matthew.json()["evidence_used"], ["damage_prediction", "class_probabilities"])
 
                     self.assertEqual(len(provider.prompts), 2)
                     florence_packet = json.loads(provider.prompts[0]["user"].split("\n", 1)[1])
@@ -232,6 +241,51 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                     self.assertFalse(matthew_packet["context"]["available"])
                     self.assertEqual(matthew_packet["context"]["claims"], [])
                     self.assertIn("No reviewed GIS context", " ".join(matthew_packet["limitations"]))
+
+    def test_v2_acceptance_buildings_keep_exact_probability_and_gis_evidence_in_prompt(self) -> None:
+        provider = FakeAssessmentProvider()
+        cases = (
+            ("hurricane-florence_00000459", "hurricane-florence_00000459_b0000", True),
+            ("hurricane-michael_00000247", "hurricane-michael_00000247_b0009", True),
+            ("santa-rosa-wildfire_00000014", "santa-rosa-wildfire_00000014_b0006", True),
+            ("hurricane-matthew_00000060", "hurricane-matthew_00000060_b0000", False),
+            ("palu-tsunami_00000065", "palu-tsunami_00000065_b0000", False),
+        )
+        environment = {
+            "DEMO_SCENE_ROOT": str(DEPLOYMENT_DEMO_SCENE_ROOT),
+            "GIS_CONTEXT_ROOT": "",
+            "DEMO_SCENES_ONLY": "1",
+        }
+        with patch.dict(os.environ, environment, clear=False):
+            with patch("app.backend.api.configured_assessment_provider", return_value=provider):
+                with TestClient(create_app()) as client:
+                    for scene_id, building_id, has_context in cases:
+                        result = client.post(f"/demo-scenes/{scene_id}/buildings/{building_id}/assessment")
+                        self.assertEqual(result.status_code, 200, building_id)
+                        self.assertEqual("reviewed_context" in result.json()["evidence_used"], has_context)
+
+        packets = [json.loads(prompt["user"].split("\n", 1)[1]) for prompt in provider.prompts]
+        florence, michael, santa_rosa, matthew, palu = packets
+        self.assertEqual(florence["damage_prediction"]["probability_ranking"]["most_likely_class"], "major-damage")
+        self.assertTrue(florence["context"]["claims"][0]["modeled"])
+        self.assertEqual(florence["context"]["claims"][0]["temporal_relation"], "current_modeled_not_event_aligned")
+
+        michael_rank = michael["damage_prediction"]["probability_ranking"]
+        self.assertEqual(michael_rank["most_likely_class"], "no-damage")
+        self.assertEqual(michael_rank["second_most_likely_class"], "minor-damage")
+        self.assertAlmostEqual(michael_rank["top_two_gap"], 0.0006180107593536)
+
+        santa_scopes = {claim["scope"] for claim in santa_rosa["context"]["claims"]}
+        self.assertTrue({"building", "parcel", "site"}.issubset(santa_scopes))
+        self.assertTrue(any(claim["modeled"] for claim in santa_rosa["context"]["claims"]))
+        self.assertTrue(any(claim["mapped_from_osm"] for claim in santa_rosa["context"]["claims"]))
+        santa_contexts = json.loads((Path(__file__).resolve().parents[1] / "demo_gis_context" / "santa-rosa-wildfire_00000014.json").read_text(encoding="utf-8"))["buildings"]
+        self.assertEqual(len(santa_rosa["context"]["conflicts"]),
+                         len(santa_contexts[santa_rosa["building"]["uid"]]["conflicts"]))
+        self.assertFalse(matthew["context"]["available"])
+        self.assertFalse(palu["context"]["available"])
+        self.assertEqual(matthew["context"]["claims"], [])
+        self.assertEqual(palu["context"]["claims"], [])
 
     def test_generation_endpoint_preserves_parcel_site_and_area_scope(self) -> None:
         scene_id = "hurricane-harvey_00000177"
