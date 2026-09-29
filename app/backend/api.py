@@ -27,6 +27,7 @@ from .scene_assessment import (
     build_scene_assessment_prompt,
 )
 from .scene_evidence import build_scene_evidence
+from .scene_evidence import build_scene_metadata
 
 
 load_repo_dotenv()
@@ -264,6 +265,11 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             for building in public_manifest["buildings"]:
                 if building["uid"] in overlay:
                     building["building_context"] = overlay[building["uid"]]
+        event_context = build_scene_metadata(manifest)
+        public_manifest["scene_evidence_context"] = {
+            key: event_context[key]
+            for key in ("event_name", "location", "post_acquisition_date")
+        }
         return public_manifest
 
     @app.get("/demo-scenes/{scene_id}/buildings/{building_id}/assessment-preview")

@@ -146,6 +146,32 @@ function normalizeSceneAssessmentResult(body, buildingIds) {
   return { overview, findings, recommended_review: recommendedReview, limitations, generated_by: generatedBy, evidence_used: evidenceUsed, candidate_buildings: Object.fromEntries(validCandidateBuildings), candidate_types: candidateTypes };
 }
 
+function sceneFindingTypeLabel(type, buildingCount) {
+  const labels = {
+    AMBIGUOUS_CLASS_PAIR: "Ambiguous prediction",
+    HIGH_CONFIDENCE_SEVERE: "High-confidence severe prediction",
+    LOCAL_SEVERITY_OUTLIER: "Local contrast",
+    LOCAL_LOW_DAMAGE_OUTLIER: "Local contrast",
+    LOCAL_CLASS_DISAGREEMENT: "Local contrast",
+    SEVERE_PROXIMITY_GROUP: "Severe proximity group",
+    MULTI_BUILDING_SITE: "Reviewed multi-building site",
+    CONTEXT_RICH_SEVERE: "Context-rich building",
+    REPRESENTATIVE_SEVERE: "Severe prediction",
+    REPRESENTATIVE_LOW_DAMAGE: "Lower-damage prediction",
+  };
+  const label = labels[type] || (typeof type === "string" ? type.replaceAll("_", " ").toLowerCase() : "Scene pattern");
+  return buildingCount > 1 ? label + " · " + buildingCount + " buildings" : label;
+}
+
+function sceneFindingGroupLabel(type, fallbackTitle) {
+  const labels = {
+    AMBIGUOUS_CLASS_PAIR: "Ambiguous prediction",
+    SEVERE_PROXIMITY_GROUP: "Severe proximity group",
+    MULTI_BUILDING_SITE: "Reviewed multi-building site",
+  };
+  return labels[type] || (typeof fallbackTitle === "string" ? fallbackTitle.slice(0, 80) : "Finding group");
+}
+
 function renderSceneAssessment(result) {
   clearSceneAssessmentResult();
   sceneAssessmentOverview.textContent = result.overview;
@@ -157,18 +183,21 @@ function renderSceneAssessment(result) {
   result.findings.forEach((finding) => {
     const item = document.createElement("li");
     item.className = "scene-assessment-finding";
+    const targetIds = [...new Set(finding.candidate_keys.flatMap((key) => result.candidate_buildings[key] || []))];
+    const type = finding.candidate_keys.map((key) => result.candidate_types?.[key]).find((value) => typeof value === "string");
+    const typeLabel = document.createElement("span");
+    typeLabel.className = "scene-assessment-finding-type";
+    typeLabel.textContent = sceneFindingTypeLabel(type, targetIds.length);
     const title = document.createElement("h5");
     title.textContent = finding.title;
     const explanation = document.createElement("p");
     explanation.textContent = finding.explanation;
-    item.append(title, explanation);
-    const targetIds = [...new Set(finding.candidate_keys.flatMap((key) => result.candidate_buildings[key] || []))];
+    item.append(typeLabel, title, explanation);
     if (targetIds.length) {
       const inspect = document.createElement("button");
       inspect.type = "button";
       inspect.className = "scene-assessment-inspect";
-      const type = finding.candidate_keys.map((key) => result.candidate_types?.[key]).find((value) => value === "SEVERE_PROXIMITY_GROUP");
-      inspect.textContent = targetIds.length === 1 ? "Inspect building →" : type ? "Show group →" : "Show " + targetIds.length + " buildings →";
+      inspect.textContent = targetIds.length === 1 ? "Inspect building →" : type === "SEVERE_PROXIMITY_GROUP" ? "Show group →" : "Show " + targetIds.length + " buildings →";
       inspect.addEventListener("click", () => {
         const validIds = targetIds.filter((id) => activeSceneBuildingIds.has(id));
         if (validIds.length === 1) {
@@ -177,7 +206,12 @@ function renderSceneAssessment(result) {
           }));
         } else if (validIds.length > 1) {
           document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", {
-            detail: { scene_id: activeSceneOverviewId, building_ids: validIds, group_id: finding.candidate_keys[0] },
+            detail: {
+              scene_id: activeSceneOverviewId,
+              building_ids: validIds,
+              group_id: finding.candidate_keys[0],
+              group_label: sceneFindingGroupLabel(type, finding.title),
+            },
           }));
         }
       });
@@ -196,9 +230,9 @@ function renderSceneAssessment(result) {
     sceneAssessmentLimitations.append(item);
   });
   sceneAssessmentLimitationsBlock.hidden = result.limitations.length === 0;
-  const evidenceLabels = result.evidence_used
+  const evidenceLabels = [...new Set(result.evidence_used
     .filter((item) => Object.prototype.hasOwnProperty.call(SCENE_ASSESSMENT_EVIDENCE_LABELS, item))
-    .map((item) => SCENE_ASSESSMENT_EVIDENCE_LABELS[item]);
+    .map((item) => SCENE_ASSESSMENT_EVIDENCE_LABELS[item]))];
   if (evidenceLabels.length) {
     sceneAssessmentEvidenceUsed.textContent = "Evidence synthesized: " + evidenceLabels.join(" / ");
     sceneAssessmentEvidenceUsed.hidden = false;

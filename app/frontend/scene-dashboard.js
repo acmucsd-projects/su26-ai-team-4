@@ -5,6 +5,7 @@
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
   const sceneDescription = document.querySelector("#scene-description");
+  const sceneEventContext = document.querySelector("#scene-event-context");
   const sceneBuildingCount = document.querySelector("#scene-building-count");
   const sceneStatusMessage = document.querySelector("#scene-status-message");
   const sceneCanvas = document.querySelector("#scene-canvas");
@@ -56,6 +57,25 @@
     const match = String(scene.scene_id || "").match(/^(.*)_(\d+)$/);
     const eventName = titleCase(scene.event_name || match?.[1] || scene.scene_id);
     return match ? eventName + " — Scene " + Number(match[2]) : eventName;
+  }
+
+  function renderSceneEvidenceContext(scene) {
+    const context = scene?.scene_evidence_context;
+    if (!context || typeof context !== "object") {
+      sceneEventContext.textContent = "";
+      sceneEventContext.hidden = true;
+      return;
+    }
+    const eventName = typeof context.event_name === "string" && context.event_name.trim()
+      ? titleCase(context.event_name.trim()) : "";
+    const location = typeof context.location === "string" && context.location.trim()
+      ? context.location.trim() : "";
+    const postDate = typeof context.post_acquisition_date === "string"
+      && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(context.post_acquisition_date)
+      ? "POST · " + context.post_acquisition_date.slice(0, 10) : "";
+    const lines = [eventName, location, postDate].filter(Boolean);
+    sceneEventContext.textContent = lines.join("\n");
+    sceneEventContext.hidden = lines.length === 0;
   }
 
   function updateSceneControls() {
@@ -253,8 +273,9 @@
     const active = Boolean(activeFindingGroup && currentScene);
     groupInspection.hidden = !active;
     if (!active) return;
-    const { buildingIds, index, groupId } = activeFindingGroup;
-    groupInspectionStatus.textContent = `${groupId ? "Finding group" : "Finding"}: building ${index + 1} of ${buildingIds.length}`;
+    const { buildingIds, index, groupId, groupLabel } = activeFindingGroup;
+    const label = groupLabel || (groupId ? "Finding group" : "Finding");
+    groupInspectionStatus.textContent = `${label} · ${buildingIds.length} buildings · building ${index + 1} of ${buildingIds.length}`;
     groupPrevious.disabled = index <= 0;
     groupNext.disabled = index >= buildingIds.length - 1;
   }
@@ -282,7 +303,12 @@
     if (!validIds.length) return;
     if (validIds.length === 1) return inspectRequestedBuilding({ scene_id: detail.scene_id, building_id: validIds[0] });
     if (activeFindingGroup) clearFindingGroup(false);
-    activeFindingGroup = { buildingIds: validIds, index: 0, groupId: typeof detail.group_id === "string" ? detail.group_id : "" };
+    activeFindingGroup = {
+      buildingIds: validIds,
+      index: 0,
+      groupId: typeof detail.group_id === "string" ? detail.group_id : "",
+      groupLabel: typeof detail.group_label === "string" ? detail.group_label.slice(0, 80) : "",
+    };
     if (validIds.some((id) => {
       const building = currentScene.buildings.find((item) => item?.id === id);
       return !matchesPredictionFilter(building?.prediction?.predicted_class);
@@ -319,7 +345,10 @@
       if (!matchesPredictionFilter(predictedClass)) return;
       const polygon = document.createElementNS(SVG_NAMESPACE, "polygon");
       polygon.setAttribute("points", polygonPoints(polygonForCurrentMode(building)));
-      polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass) + (activeFindingGroup?.buildingIds.includes(building.id) ? " group-highlight" : ""));
+      const groupClass = activeFindingGroup
+        ? activeFindingGroup.buildingIds.includes(building.id) ? " group-highlight" : " group-muted"
+        : "";
+      polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass) + groupClass);
       polygon.setAttribute("tabindex", "0");
       polygon.setAttribute("role", "button");
       polygon.setAttribute("aria-pressed", "false");
@@ -351,6 +380,8 @@
     sceneOverlay.hidden = true;
     scenePostImage.removeAttribute("src");
     sceneCanvas.hidden = true;
+    sceneEventContext.textContent = "";
+    sceneEventContext.hidden = true;
     clearSceneSummary();
     document.dispatchEvent(new Event("scene-changed"));
   }
@@ -374,6 +405,7 @@
       currentSceneIndex = index;
       currentScene = scene;
       sceneDescription.textContent = sceneLabel(scene);
+      renderSceneEvidenceContext(scene);
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + " buildings" : "";
       sceneBuildingCount.hidden = false;
       sceneOverlay.setAttribute("viewBox", "0 0 " + Number(scene.image.width) + " " + Number(scene.image.height));
@@ -388,6 +420,8 @@
       sceneBuildingCount.hidden = true;
       clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
+      sceneEventContext.textContent = "";
+      sceneEventContext.hidden = true;
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
     } finally {
       isSceneLoading = false;

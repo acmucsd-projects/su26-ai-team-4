@@ -72,6 +72,7 @@ class FakeElement {
 function createDocument() {
   const elements = new Map([
     ["#scene-description", new FakeElement()],
+    ["#scene-event-context", new FakeElement()],
     ["#scene-building-count", new FakeElement()],
     ["#scene-status-message", new FakeElement()],
     ["#scene-canvas", new FakeElement()],
@@ -312,16 +313,16 @@ async function main() {
     scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
   } }));
   assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
-  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 1 of 3");
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group · 3 buildings · building 1 of 3");
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
   assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
   assert.deepEqual(overlay.children.filter((polygon) => polygon.classList.contains("group-highlight")).map((polygon) => polygon.dataset.buildingId), groupIds);
   assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[0]).classList.contains("selected"), true);
   document.elements.get("#scene-group-next").trigger("click");
-  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 2 of 3");
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group · 3 buildings · building 2 of 3");
   assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[1]).classList.contains("selected"), true);
   document.elements.get("#scene-group-previous").trigger("click");
-  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 1 of 3");
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group · 3 buildings · building 1 of 3");
   document.elements.get("#scene-group-clear").trigger("click");
   assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);

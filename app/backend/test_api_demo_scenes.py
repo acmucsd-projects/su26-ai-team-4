@@ -73,6 +73,11 @@ class DemoSceneApiTests(unittest.TestCase):
                 self.assertEqual(scene.status_code, 200)
                 self.assertEqual(scene.json()["image"]["post_url"], f"/demo-scenes/{SCENE_ID}/post.png")
                 self.assertEqual(scene.json()["buildings"][0]["crops"]["pre_url"], f"/demo-scenes/{SCENE_ID}/crops/0000001_pre.png")
+                event_context = scene.json()["scene_evidence_context"]
+                self.assertEqual(event_context["event_name"], "hurricane-michael")
+                self.assertEqual(event_context["location"], "Bay County, Florida")
+                self.assertNotIn("pre_acquisition_date", event_context)
+                self.assertEqual(event_context["post_acquisition_date"], "2018-10-13T16:48:15.000Z")
                 self.assertEqual(client.get(f"/demo-scenes/{SCENE_ID}/post.png").status_code, 200)
                 self.assertEqual(client.get(f"/demo-scenes/{SCENE_ID}/crops/0000001_pre.png").status_code, 200)
                 self.assertEqual(client.get("/demo-scenes/not.a.scene").status_code, 404)
