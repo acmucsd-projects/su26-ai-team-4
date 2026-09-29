@@ -1,32 +1,43 @@
-# AI-Assisted Assessment (backend preview)
+# AI-Assisted Assessment
 
-The backend preview defines a deterministic boundary for a future language
-model:
+The backend keeps a deterministic evidence flow:
 
-**demo prediction -> normalized GIS context -> evidence packet -> versioned prompt
--> future LLM provider -> short assessment**
+**demo prediction -> validated normalized GIS context -> evidence packet -> versioned prompt -> optional provider -> structured assessment**
 
 `GET /demo-scenes/{scene_id}/buildings/{building_id}/assessment-preview` returns
-the packet, exact prompt, and output contract. It is a prompt preview only:
-`provider_status` is `disabled`, and no assessment is generated or sent outside
-the app. No API key or LLM SDK is required. `app/backend/assessment.py` defines
-the `AssessmentProvider` boundary for a later adapter.
+the packet, exact prompt, and output contract. It makes no provider call and
+continues to work without an API key or the OpenAI SDK. Its `provider_status`
+remains `disabled` because the preview does not generate text.
 
-The packet contains the model's predicted damage class, confidence, and all four
-class probabilities, plus only displayable normalized GIS claims. It keeps each
-claim's category, type, scope, source, source release/snapshot, temporal
-relationship, modeled/mapped status, and qualifications. Raw provider values,
-record IDs, and source tag payloads are excluded. Missing GIS context stays
-empty; optional prediction fields are represented as unknown with a limitation.
+`POST /demo-scenes/{scene_id}/buildings/{building_id}/assessment` generates one
+assessment from that same packet. It returns `assessment`, `limitations`,
+`prompt_version`, and `generated_by`. If the provider is not configured, the
+endpoint returns HTTP 503 with `assessment_provider_unavailable`; it never
+substitutes mock text.
 
-Any eventual assessment is AI-generated analyst-assist output, not an official
-damage assessment. Damage predictions are not ground truth, and confidence is
-not established as calibrated real-world certainty. Parcel/property, site, and
-area context do not establish individual-building identity. Modeled occupancy
-is not verified use, and current GIS does not establish disaster-time context.
-The prompt prohibits unsupported critical-facility claims and operational
-instructions, and requires meaningful limitations in a concise response.
+The optional provider uses the OpenAI Responses API with Structured Outputs.
+Set `OPENAI_API_KEY` in the process environment. `OPENAI_ASSESSMENT_MODEL`
+selects the model and defaults to `gpt-6-luna`. Without a non-empty key, the
+provider stays unavailable and the application starts normally. The Responses
+request contains only the existing system and user prompt text, sends no images
+or tools, sets `store=false`, and does not retain conversation history.
 
-The preview and packet tests use local fixtures and packaged scenes. A real
-provider, output validation against provider responses, privacy/retention review,
-and user-facing disclosure should be reviewed before enabling generation.
+The provider validates the structured response locally, bounds assessment and
+limitation lengths, rejects extra fields, and attaches `prompt_version` and
+`generated_by` in application code. Refusals, incomplete output, invalid output,
+timeouts, and provider errors produce clean application errors without exposing
+raw provider details.
+
+The packet includes the predicted damage class, confidence, four probabilities,
+and only displayable normalized GIS claims with their scope, source, temporal
+relation, modeled/mapped status, and qualifications. It omits raw GIS payloads.
+The versioned prompt requires predicted/model language, preserves uncertainty
+and evidence scope, treats modeled occupancy as unverified, qualifies current
+GIS, and prohibits unsupported critical-facility claims and operational
+instructions. Missing GIS context remains missing.
+
+API secrets must stay in environment configuration and must never be committed
+to the repository or placed in tests. Automated provider tests use fake
+Responses clients and make no paid API calls. Live assessment calls are
+intentional external operations and should be limited to selected demo
+buildings.
