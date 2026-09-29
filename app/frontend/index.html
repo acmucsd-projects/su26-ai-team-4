@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=ai-assessment-1">
+  <link rel="stylesheet" href="styles.css?v=ai-assessment-2">
   <script src="scene-dashboard.js?v=assessment-selection-1" defer></script>
-  <script src="app.js?v=ai-assessment-1" defer></script>
+  <script src="app.js?v=ai-assessment-2" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -129,12 +129,38 @@
           <button id="assessment-generate-button" class="assessment-generate-button" type="button">Generate assessment</button>
           <p id="assessment-status" class="assessment-status" role="status"></p>
           <div id="assessment-result" class="assessment-result" hidden>
-            <p id="assessment-text" class="assessment-text"></p>
+            <p id="assessment-model" class="assessment-model" hidden></p>
+            <p id="assessment-evidence-used" class="assessment-evidence-used" hidden></p>
+            <div class="assessment-sections">
+              <section id="assessment-assessment-section" class="assessment-section" hidden>
+                <h4>Assessment</h4>
+                <p id="assessment-assessment-text" class="assessment-text"></p>
+              </section>
+              <section id="assessment-stands-out-section" class="assessment-section" hidden>
+                <h4>What stands out</h4>
+                <p id="assessment-stands-out-text" class="assessment-section-text"></p>
+              </section>
+              <section id="assessment-uncertainty-section" class="assessment-section" hidden>
+                <h4>Uncertainty</h4>
+                <p id="assessment-uncertainty-text" class="assessment-section-text"></p>
+              </section>
+              <section id="assessment-context-section" class="assessment-section" hidden>
+                <h4>Context interpretation</h4>
+                <p id="assessment-context-text" class="assessment-section-text"></p>
+              </section>
+              <section id="assessment-review-section" class="assessment-section" hidden>
+                <h4>Suggested review</h4>
+                <p id="assessment-review-text" class="assessment-section-text"></p>
+              </section>
+              <section id="assessment-gaps-section" class="assessment-section" hidden>
+                <h4>Evidence gaps</h4>
+                <p id="assessment-gaps-text" class="assessment-section-text"></p>
+              </section>
+            </div>
             <section id="assessment-limitations-block" class="assessment-limitations" hidden aria-labelledby="assessment-limitations-title">
               <h4 id="assessment-limitations-title">Limitations</h4>
               <ul id="assessment-limitations"></ul>
             </section>
-            <p class="assessment-disclosure">AI-generated analyst-assist summary</p>
           </div>
         </section>
       </div>

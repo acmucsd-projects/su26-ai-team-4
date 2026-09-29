@@ -39,9 +39,91 @@ const buildingAssessment = document.querySelector("#building-assessment");
 const assessmentGenerateButton = document.querySelector("#assessment-generate-button");
 const assessmentStatus = document.querySelector("#assessment-status");
 const assessmentResult = document.querySelector("#assessment-result");
-const assessmentText = document.querySelector("#assessment-text");
+const assessmentModel = document.querySelector("#assessment-model");
+const assessmentEvidenceUsed = document.querySelector("#assessment-evidence-used");
+const assessmentSections = {
+  assessment: { block: document.querySelector("#assessment-assessment-section"), content: document.querySelector("#assessment-assessment-text") },
+  what_stands_out: { block: document.querySelector("#assessment-stands-out-section"), content: document.querySelector("#assessment-stands-out-text") },
+  uncertainty: { block: document.querySelector("#assessment-uncertainty-section"), content: document.querySelector("#assessment-uncertainty-text") },
+  context_interpretation: { block: document.querySelector("#assessment-context-section"), content: document.querySelector("#assessment-context-text") },
+  suggested_review: { block: document.querySelector("#assessment-review-section"), content: document.querySelector("#assessment-review-text") },
+  evidence_gaps: { block: document.querySelector("#assessment-gaps-section"), content: document.querySelector("#assessment-gaps-text") },
+};
 const assessmentLimitationsBlock = document.querySelector("#assessment-limitations-block");
 const assessmentLimitations = document.querySelector("#assessment-limitations");
+const ASSESSMENT_EVIDENCE_LABELS = {
+  damage_prediction: "Damage prediction",
+  class_probabilities: "4-class probabilities",
+  reviewed_context: "Reviewed building context",
+};
+
+function clearAssessmentResult() {
+  assessmentModel.textContent = "";
+  assessmentModel.hidden = true;
+  assessmentEvidenceUsed.textContent = "";
+  assessmentEvidenceUsed.hidden = true;
+  Object.values(assessmentSections).forEach(({ block, content }) => {
+    block.hidden = true;
+    content.textContent = "";
+  });
+  assessmentLimitations.replaceChildren();
+  assessmentLimitationsBlock.hidden = true;
+}
+
+function assessmentModelLabel(generatedBy) {
+  if (typeof generatedBy !== "string" || generatedBy.length > 120) return "";
+  const modelId = generatedBy.split("/").pop();
+  if (!modelId || !/^[A-Za-z0-9._-]+$/.test(modelId)) return "";
+  const words = modelId.split(/[-_]+/).filter(Boolean).map((word) =>
+    word.toLowerCase() === "gpt" ? "GPT" : word.charAt(0).toUpperCase() + word.slice(1)
+  );
+  if (words[0] === "GPT" && /^\d/.test(words[1] || "")) words[1] = "-" + words[1];
+  return words.join(" ").replace("GPT -", "GPT-");
+}
+
+function renderAssessmentResult(result) {
+  clearAssessmentResult();
+  Object.entries(assessmentSections).forEach(([field, elements]) => {
+    const value = typeof result[field] === "string" ? result[field].trim() : "";
+    if (!value) return;
+    elements.content.textContent = value;
+    elements.block.hidden = false;
+  });
+  result.limitations.forEach((limitation) => {
+    const item = document.createElement("li");
+    item.textContent = limitation;
+    assessmentLimitations.append(item);
+  });
+  assessmentLimitationsBlock.hidden = result.limitations.length === 0;
+  const modelLabel = assessmentModelLabel(result.generated_by);
+  if (modelLabel) {
+    assessmentModel.textContent = modelLabel + " · Evidence-grounded assessment";
+    assessmentModel.hidden = false;
+  }
+  const evidenceLabels = result.evidence_used
+    .filter((item) => Object.prototype.hasOwnProperty.call(ASSESSMENT_EVIDENCE_LABELS, item))
+    .map((item) => ASSESSMENT_EVIDENCE_LABELS[item]);
+  if (evidenceLabels.length) {
+    assessmentEvidenceUsed.textContent = "Evidence used: " + evidenceLabels.join(" · ");
+    assessmentEvidenceUsed.hidden = false;
+  }
+}
+
+function normalizedAssessmentResult(body) {
+  return {
+    assessment: typeof body.assessment === "string" ? body.assessment.trim() : "",
+    what_stands_out: body.what_stands_out,
+    uncertainty: body.uncertainty,
+    context_interpretation: body.context_interpretation,
+    suggested_review: body.suggested_review,
+    evidence_gaps: body.evidence_gaps,
+    limitations: Array.isArray(body.limitations)
+      ? body.limitations.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+      : [],
+    generated_by: typeof body.generated_by === "string" ? body.generated_by.trim() : "",
+    evidence_used: Array.isArray(body.evidence_used) ? body.evidence_used : [],
+  };
+}
 
 function assessmentIdentity(sceneId, buildingId) {
   return JSON.stringify([sceneId, buildingId]);
@@ -55,9 +137,7 @@ function resetAssessmentView() {
   assessmentStatus.textContent = "";
   assessmentStatus.classList.remove("error");
   assessmentResult.hidden = true;
-  assessmentText.textContent = "";
-  assessmentLimitations.replaceChildren();
-  assessmentLimitationsBlock.hidden = true;
+  clearAssessmentResult();
 }
 
 function renderAssessment(identity) {
@@ -67,20 +147,12 @@ function renderAssessment(identity) {
   assessmentStatus.classList.remove("error");
   assessmentStatus.textContent = "";
   assessmentResult.hidden = true;
-  assessmentText.textContent = "";
-  assessmentLimitations.replaceChildren();
-  assessmentLimitationsBlock.hidden = true;
+  clearAssessmentResult();
   if (cached) {
     assessmentGenerateButton.hidden = true;
     assessmentGenerateButton.disabled = false;
     assessmentResult.hidden = false;
-    assessmentText.textContent = cached.assessment;
-    cached.limitations.forEach((limitation) => {
-      const item = document.createElement("li");
-      item.textContent = limitation;
-      assessmentLimitations.append(item);
-    });
-    assessmentLimitationsBlock.hidden = cached.limitations.length === 0;
+    renderAssessmentResult(cached);
     return;
   }
   assessmentGenerateButton.hidden = false;
@@ -112,10 +184,7 @@ async function generateAssessment() {
     } else if (typeof body?.assessment !== "string" || !body.assessment.trim()) {
       failureMessage = "Assessment could not be generated. Try again.";
     } else {
-      const limitations = Array.isArray(body.limitations)
-        ? body.limitations.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
-        : [];
-      assessmentCache.set(identity, { assessment: body.assessment.trim(), limitations });
+      assessmentCache.set(identity, normalizedAssessmentResult(body));
     }
   } catch (_error) {
     failureMessage = "Assessment could not be generated. Try again.";

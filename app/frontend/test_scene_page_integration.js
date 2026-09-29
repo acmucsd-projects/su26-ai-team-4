@@ -59,7 +59,15 @@ function createDocument() {
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
-    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result", "#assessment-text", "#assessment-limitations-block", "#assessment-limitations",
+    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result",
+    "#assessment-model", "#assessment-evidence-used",
+    "#assessment-assessment-section", "#assessment-assessment-text",
+    "#assessment-stands-out-section", "#assessment-stands-out-text",
+    "#assessment-uncertainty-section", "#assessment-uncertainty-text",
+    "#assessment-context-section", "#assessment-context-text",
+    "#assessment-review-section", "#assessment-review-text",
+    "#assessment-gaps-section", "#assessment-gaps-text",
+    "#assessment-limitations-block", "#assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";
@@ -113,8 +121,8 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=ai-assessment-1"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=assessment-selection-1"') < html.indexOf('src="app.js?v=ai-assessment-1"'));
+  assert.match(html, /href="styles\.css\?v=ai-assessment-2"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=assessment-selection-1"') < html.indexOf('src="app.js?v=ai-assessment-2"'));
   assert.match(styles, /\.context-more summary:focus-visible\s*\{[^}]*outline: 2px solid var\(--blue\)/);
   assert.match(styles, /\.context-more summary:focus:not\(:focus-visible\)\s*\{\s*outline: none/);
   assert.match(html, /openstreetmap.org\/copyright/);

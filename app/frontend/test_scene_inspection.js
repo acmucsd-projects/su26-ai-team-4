@@ -47,7 +47,15 @@ function createDocument() {
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
-    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result", "#assessment-text", "#assessment-limitations-block", "#assessment-limitations",
+    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result",
+    "#assessment-model", "#assessment-evidence-used",
+    "#assessment-assessment-section", "#assessment-assessment-text",
+    "#assessment-stands-out-section", "#assessment-stands-out-text",
+    "#assessment-uncertainty-section", "#assessment-uncertainty-text",
+    "#assessment-context-section", "#assessment-context-text",
+    "#assessment-review-section", "#assessment-review-text",
+    "#assessment-gaps-section", "#assessment-gaps-text",
+    "#assessment-limitations-block", "#assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";
