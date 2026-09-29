@@ -5,3 +5,4 @@ pillow
 torch
 torchvision
 pydantic==2.13.5
+openai>=1.68.0
