@@ -49,10 +49,11 @@ reads only packaged manifests/overlays and makes no network requests.
 The optional provider uses the OpenAI Responses API with Structured Outputs.
 Set `OPENAI_API_KEY` in the process environment or the repo-root `.env`;
 `python-dotenv` loads that file at backend startup without replacing values set
-by the shell. `OPENAI_ASSESSMENT_MODEL` selects the model and defaults to
-`gpt-6-luna`. Without a non-empty key, the provider stays unavailable and the
-application starts normally. The Responses
-request contains only the existing system and user prompt text, sends no images
+by the shell. `OPENAI_ASSESSMENT_MODEL` selects the one model used for scene and
+building assessments and defaults to `gpt-6-sol`; set it to `gpt-6-astra` to
+select that model for both request types. Without a non-empty key, the provider
+stays unavailable and the application starts normally. The Responses request
+contains only the existing system and user prompt text, sends no images
 or tools, sets `store=false`, and does not retain conversation history.
 
 The provider validates every structured section locally, bounds field and

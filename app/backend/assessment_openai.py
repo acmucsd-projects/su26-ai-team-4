@@ -18,7 +18,7 @@ from .scene_assessment import (
     SceneAssessmentPrompt,
 )
 
-DEFAULT_MODEL = "gpt-6-luna"
+DEFAULT_MODEL = "gpt-6-sol"
 MAX_OUTPUT_TOKENS = 900
 MAX_ASSESSMENT_LENGTH = 1200
 MAX_SECTION_LENGTH = 500
@@ -31,6 +31,18 @@ MAX_SCENE_FINDINGS = 4
 MAX_SCENE_FINDING_TITLE_LENGTH = 100
 MAX_SCENE_FINDING_EXPLANATION_LENGTH = 500
 MAX_SCENE_CANDIDATE_REFERENCES = 3
+
+
+def normalize_generation_usage(value: object) -> dict[str, int] | None:
+    """Keep only nonnegative Responses API token counters; missing metadata is normal."""
+    if value is None:
+        return None
+    counts = {}
+    for key in ("input_tokens", "output_tokens", "total_tokens"):
+        raw = value.get(key) if isinstance(value, dict) else getattr(value, key, None)
+        if type(raw) is int and raw >= 0:
+            counts[key] = raw
+    return counts or None
 
 OptionalAssessmentSection = Annotated[str | None, Field(max_length=MAX_SECTION_LENGTH)]
 
@@ -193,10 +205,10 @@ class OpenAIAssessmentProvider:
                 400,
             )
 
-        output = self._request_structured_output(prompt, AssessmentOutput, "assessment")
+        output, usage = self._request_structured_output(prompt, AssessmentOutput, "assessment")
 
         # Only these application-controlled fields are returned publicly.
-        return {
+        result = {
             "assessment": output.assessment,
             "recommended_review": output.recommended_review,
             "supporting_details": output.supporting_details,
@@ -204,6 +216,9 @@ class OpenAIAssessmentProvider:
             "prompt_version": PROMPT_VERSION,
             "generated_by": f"openai/{self.model}",
         }
+        if usage:
+            result["generation_usage"] = usage
+        return result
 
     def generate_scene(self, prompt: SceneAssessmentPrompt) -> dict:
         if prompt.get("version") != SCENE_ASSESSMENT_PROMPT_VERSION:
@@ -213,14 +228,19 @@ class OpenAIAssessmentProvider:
                 400,
             )
 
-        output = self._request_structured_output(prompt, SceneAssessmentOutput, "scene overview")
-        return {
+        output, usage = self._request_structured_output(prompt, SceneAssessmentOutput, "scene overview")
+        result = {
             **output.model_dump(),
             "prompt_version": SCENE_ASSESSMENT_PROMPT_VERSION,
             "generated_by": f"openai/{self.model}",
         }
+        if usage:
+            result["generation_usage"] = usage
+        return result
 
-    def _request_structured_output(self, prompt: dict, output_schema: type[BaseModel], label: str) -> BaseModel:
+    def _request_structured_output(
+        self, prompt: dict, output_schema: type[BaseModel], label: str
+    ) -> tuple[BaseModel, dict[str, int] | None]:
         """Share the same non-persistent Responses API handling for each output schema."""
 
         try:
@@ -306,7 +326,7 @@ class OpenAIAssessmentProvider:
                 f"The provider returned an invalid {label} response.",
                 502,
             ) from None
-        return output
+        return output, normalize_generation_usage(getattr(response, "usage", None))
 
     @staticmethod
     def _contains_refusal(response: Any) -> bool:
@@ -387,7 +407,7 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
             if isinstance(candidate.get("type"), str):
                 candidate_types[key] = candidate["type"]
 
-    return {
+    normalized = {
         "overview": output.overview,
         "findings": findings,
         "recommended_review": output.recommended_review,
@@ -397,6 +417,10 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
         "candidate_buildings": candidate_buildings,
         "candidate_types": candidate_types,
     }
+    usage = normalize_generation_usage(result.get("generation_usage"))
+    if usage:
+        normalized["generation_usage"] = usage
+    return normalized
 
 
 def _api_key_is_configured() -> bool:
@@ -405,14 +429,18 @@ def _api_key_is_configured() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
 
 
+def configured_assessment_model() -> str:
+    """Resolve the single model setting shared by scene and building generation."""
+    configured_model = os.environ.get("OPENAI_ASSESSMENT_MODEL", DEFAULT_MODEL).strip()
+    return configured_model or DEFAULT_MODEL
+
+
 def configured_assessment_provider() -> OpenAIAssessmentProvider | None:
     """Create the optional provider only when a key and SDK are available."""
 
     if not _api_key_is_configured():
         return None
-    configured_model = os.environ.get("OPENAI_ASSESSMENT_MODEL", DEFAULT_MODEL).strip()
-    model = configured_model or DEFAULT_MODEL
     try:
-        return OpenAIAssessmentProvider(model)
+        return OpenAIAssessmentProvider(configured_assessment_model())
     except (ImportError, RuntimeError):
         return None

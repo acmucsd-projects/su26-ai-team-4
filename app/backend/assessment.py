@@ -83,13 +83,17 @@ class AssessmentPrompt(TypedDict):
     output_contract: dict[str, str]
 
 
-class AssessmentResult(TypedDict):
+class _AssessmentResultCore(TypedDict):
     assessment: str
     recommended_review: str | None
     supporting_details: list[str]
     limitations: list[str]
     prompt_version: str
     generated_by: str
+
+
+class AssessmentResult(_AssessmentResultCore, total=False):
+    generation_usage: dict[str, int]
 
 
 class AssessmentProvider(Protocol):

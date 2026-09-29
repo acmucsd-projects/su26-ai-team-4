@@ -28,6 +28,7 @@ from app.backend.assessment_openai import (
     OpenAIAssessmentProvider,
     SceneAssessmentOutput,
     configured_assessment_provider,
+    normalize_generation_usage,
     normalize_scene_assessment_result,
 )
 
@@ -68,12 +69,13 @@ def scene_prompt():
     }
 
 
-def response(parsed, *, status="completed", output=None, incomplete_details=None):
+def response(parsed, *, status="completed", output=None, incomplete_details=None, usage=None):
     return SimpleNamespace(
         status=status,
         output=output or [],
         output_parsed=parsed,
         incomplete_details=incomplete_details,
+        usage=usage,
     )
 
 
@@ -89,11 +91,15 @@ class AssessmentProviderConfigurationTests(unittest.TestCase):
             with patch.dict(os.environ, {"OPENAI_ASSESSMENT_MODEL": " "}, clear=False):
                 with patch("app.backend.assessment_openai.OpenAIAssessmentProvider", return_value=object()) as constructor:
                     configured_assessment_provider()
-                    constructor.assert_called_once_with("gpt-6-luna")
+                    constructor.assert_called_once_with("gpt-6-sol")
             with patch.dict(os.environ, {"OPENAI_ASSESSMENT_MODEL": "model-for-review"}, clear=False):
                 with patch("app.backend.assessment_openai.OpenAIAssessmentProvider", return_value=object()) as constructor:
                     configured_assessment_provider()
                     constructor.assert_called_once_with("model-for-review")
+            with patch.dict(os.environ, {"OPENAI_ASSESSMENT_MODEL": "gpt-6-astra"}, clear=False):
+                with patch("app.backend.assessment_openai.OpenAIAssessmentProvider", return_value=object()) as constructor:
+                    configured_assessment_provider()
+                    constructor.assert_called_once_with("gpt-6-astra")
 
     def test_invalid_prompt_version_is_rejected_before_provider_call(self):
         client = FakeClient(response({"assessment": "Fine.", "limitations": []}))
@@ -113,6 +119,36 @@ class AssessmentProviderConfigurationTests(unittest.TestCase):
 
 
 class OpenAIResponsesAdapterTests(unittest.TestCase):
+    def test_response_usage_is_returned_as_safe_generation_metadata(self):
+        client = FakeClient(response({"assessment": "Grounded result.", "limitations": []}, usage=SimpleNamespace(
+            input_tokens=321, output_tokens=45, total_tokens=366, cached_input_tokens=99,
+        )))
+        result = OpenAIAssessmentProvider("gpt-6-sol", client=client).generate(prompt())
+        self.assertEqual(result["generation_usage"], {
+            "input_tokens": 321, "output_tokens": 45, "total_tokens": 366,
+        })
+        self.assertNotIn("generation_usage", client.responses.arguments["input"][1]["content"])
+
+        absent_client = FakeClient(response({"assessment": "Still works.", "limitations": []}))
+        absent_result = OpenAIAssessmentProvider("gpt-6-sol", client=absent_client).generate(prompt())
+        self.assertNotIn("generation_usage", absent_result)
+        self.assertIsNone(normalize_generation_usage({
+            "input_tokens": True, "output_tokens": -1, "total_tokens": "12", "secret": 9,
+        }))
+
+    def test_scene_usage_survives_scene_result_normalization(self):
+        client = FakeClient(response({
+            "overview": "A concise scene overview.",
+            "findings": [],
+            "recommended_review": None,
+            "limitations": [],
+        }, usage={"input_tokens": 40, "output_tokens": 12, "total_tokens": 52}))
+        result = OpenAIAssessmentProvider("gpt-6-sol", client=client).generate_scene(scene_prompt())
+        normalized = normalize_scene_assessment_result(result, {"candidate_findings": {}})
+        self.assertEqual(normalized["generation_usage"], {
+            "input_tokens": 40, "output_tokens": 12, "total_tokens": 52,
+        })
+
     def test_success_uses_small_nonpersistent_structured_responses_request(self):
         client = FakeClient(response({
             "assessment": "  No Damage leads, but Minor retains similar model support; current mapped context applies to the site rather than confirming this building's use.  ",

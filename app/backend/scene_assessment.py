@@ -53,13 +53,17 @@ class SceneAssessmentPrompt(TypedDict):
     output_contract: dict[str, str]
 
 
-class SceneAssessmentProviderResult(TypedDict):
+class _SceneAssessmentProviderResultCore(TypedDict):
     overview: str
     findings: list[dict]
     recommended_review: str | None
     limitations: list[str]
     prompt_version: str
     generated_by: str
+
+
+class SceneAssessmentProviderResult(_SceneAssessmentProviderResultCore, total=False):
+    generation_usage: dict[str, int]
 
 
 class SceneAssessmentProvider(Protocol):
