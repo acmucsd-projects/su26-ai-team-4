@@ -19,7 +19,8 @@ from PIL import Image
 from pydantic import BaseModel
 
 from .building_context import load_context_overlay
-from .assessment import build_assessment_preview
+from .assessment import build_assessment_preview, build_evidence_packet, build_prompt
+from .assessment_openai import AssessmentProviderError, configured_assessment_provider
 
 
 def load_classifier(model_path):
@@ -158,6 +159,27 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     context_root = Path(os.environ["GIS_CONTEXT_ROOT"]) if os.environ.get("GIS_CONTEXT_ROOT") else DEFAULT_GIS_CONTEXT_ROOT
     scenes_only = os.environ.get("DEMO_SCENES_ONLY") == "1"
 
+    def assessment_target(scene_id: str, building_id: str):
+        """Resolve one selected building and its validated optional GIS context."""
+
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", building_id):
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        scene_directory = demo_scene_directory(demo_scene_root, scene_id)
+        manifest_path = scene_directory / "scene.json"
+        manifest = load_demo_scene_manifest(scene_directory, scene_id)
+        buildings = manifest.get("buildings")
+        if not isinstance(buildings, list):
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        matches = [building for building in buildings
+                   if isinstance(building, dict) and building.get("id") == building_id]
+        if len(matches) != 1:
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        building = matches[0]
+        overlay = load_context_overlay(context_root, scene_id, manifest_path, manifest)
+        uid = building.get("uid")
+        context = overlay.get(uid) if isinstance(uid, str) else None
+        return manifest, building, context
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.classifier = None if scenes_only else load_classifier(selected_model_path)
@@ -230,23 +252,44 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     async def preview_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
         """Preview the exact evidence packet and prompt; no LLM provider is called."""
 
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", building_id):
-            raise HTTPException(status_code=404, detail="Demo building not found.")
-        scene_directory = demo_scene_directory(demo_scene_root, scene_id)
-        manifest_path = scene_directory / "scene.json"
-        manifest = load_demo_scene_manifest(scene_directory, scene_id)
-        buildings = manifest.get("buildings")
-        if not isinstance(buildings, list):
-            raise HTTPException(status_code=404, detail="Demo building not found.")
-        matches = [building for building in buildings
-                   if isinstance(building, dict) and building.get("id") == building_id]
-        if len(matches) != 1:
-            raise HTTPException(status_code=404, detail="Demo building not found.")
-        building = matches[0]
-        overlay = load_context_overlay(context_root, scene_id, manifest_path, manifest)
-        uid = building.get("uid")
-        context = overlay.get(uid) if isinstance(uid, str) else None
+        manifest, building, context = assessment_target(scene_id, building_id)
         return build_assessment_preview(manifest, building, context)
+
+    @app.post("/demo-scenes/{scene_id}/buildings/{building_id}/assessment")
+    def generate_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
+        """Generate one paid, structured assessment from the canonical evidence packet."""
+
+        manifest, building, context = assessment_target(scene_id, building_id)
+        provider = getattr(app.state, "assessment_provider", None)
+        if provider is None:
+            provider = configured_assessment_provider()
+            if provider is not None:
+                app.state.assessment_provider = provider
+        if provider is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "assessment_provider_unavailable",
+                    "message": "Assessment generation is not configured.",
+                },
+            )
+
+        prompt = build_prompt(build_evidence_packet(manifest, building, context))
+        try:
+            return provider.generate(prompt)
+        except AssessmentProviderError as error:
+            raise HTTPException(
+                status_code=error.status_code,
+                detail={"code": error.code, "message": error.message},
+            ) from None
+        except Exception:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "code": "assessment_provider_failed",
+                    "message": "Assessment generation failed. Please try again later.",
+                },
+            ) from None
 
     @app.get("/demo-scenes/{scene_id}/{asset_path:path}")
     async def get_demo_scene_asset(scene_id: str, asset_path: str) -> FileResponse:
