@@ -16,9 +16,11 @@ endpoint returns HTTP 503 with `assessment_provider_unavailable`; it never
 substitutes mock text.
 
 The optional provider uses the OpenAI Responses API with Structured Outputs.
-Set `OPENAI_API_KEY` in the process environment. `OPENAI_ASSESSMENT_MODEL`
-selects the model and defaults to `gpt-6-luna`. Without a non-empty key, the
-provider stays unavailable and the application starts normally. The Responses
+Set `OPENAI_API_KEY` in the process environment or the repo-root `.env`;
+`python-dotenv` loads that file at backend startup without replacing values set
+by the shell. `OPENAI_ASSESSMENT_MODEL` selects the model and defaults to
+`gpt-6-luna`. Without a non-empty key, the provider stays unavailable and the
+application starts normally. The Responses
 request contains only the existing system and user prompt text, sends no images
 or tools, sets `store=false`, and does not retain conversation history.
 

@@ -21,6 +21,10 @@ from pydantic import BaseModel
 from .building_context import load_context_overlay
 from .assessment import build_assessment_preview, build_evidence_packet, build_prompt
 from .assessment_openai import AssessmentProviderError, configured_assessment_provider
+from .local_env import load_repo_dotenv
+
+
+load_repo_dotenv()
 
 
 def load_classifier(model_path):

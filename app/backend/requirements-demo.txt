@@ -6,3 +6,4 @@ pillow
 pydantic==2.13.5
 httpx
 openai>=1.68.0
+python-dotenv>=1.0.0

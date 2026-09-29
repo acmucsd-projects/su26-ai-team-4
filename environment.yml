@@ -21,3 +21,4 @@ dependencies:
       - gradio
       - wandb
       - openai>=1.68.0
+      - python-dotenv>=1.0.0
