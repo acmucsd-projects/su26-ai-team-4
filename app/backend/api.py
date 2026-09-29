@@ -19,6 +19,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from .building_context import load_context_overlay
+from .assessment import build_assessment_preview
 
 
 def load_classifier(model_path):
@@ -224,6 +225,28 @@ def create_app(model_path: Path | None = None) -> FastAPI:
                 if building["uid"] in overlay:
                     building["building_context"] = overlay[building["uid"]]
         return public_manifest
+
+    @app.get("/demo-scenes/{scene_id}/buildings/{building_id}/assessment-preview")
+    async def preview_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
+        """Preview the exact evidence packet and prompt; no LLM provider is called."""
+
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", building_id):
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        scene_directory = demo_scene_directory(demo_scene_root, scene_id)
+        manifest_path = scene_directory / "scene.json"
+        manifest = load_demo_scene_manifest(scene_directory, scene_id)
+        buildings = manifest.get("buildings")
+        if not isinstance(buildings, list):
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        matches = [building for building in buildings
+                   if isinstance(building, dict) and building.get("id") == building_id]
+        if len(matches) != 1:
+            raise HTTPException(status_code=404, detail="Demo building not found.")
+        building = matches[0]
+        overlay = load_context_overlay(context_root, scene_id, manifest_path, manifest)
+        uid = building.get("uid")
+        context = overlay.get(uid) if isinstance(uid, str) else None
+        return build_assessment_preview(manifest, building, context)
 
     @app.get("/demo-scenes/{scene_id}/{asset_path:path}")
     async def get_demo_scene_asset(scene_id: str, asset_path: str) -> FileResponse:

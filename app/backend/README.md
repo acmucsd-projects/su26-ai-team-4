@@ -16,6 +16,9 @@ loaded automatically for these four scenes. `GIS_CONTEXT_ROOT` overrides that
 directory for development; canonical scene packs stay unchanged. See the
 [dashboard notes](gis_context/LOCAL_DASHBOARD.md) for examples and evidence details.
 
+The [AI-Assisted Assessment backend preview](ASSESSMENT.md) exposes a deterministic
+evidence packet and versioned prompt without calling an LLM provider.
+
 ## Portable scene-only demo
 
 Python 3.10+ is required. From the repository root on Windows PowerShell:

@@ -97,6 +97,43 @@ class DemoSceneApiTests(unittest.TestCase):
             self.assertEqual(client.get(manifest["image"]["post_url"]).status_code, 200)
             self.assertEqual(client.get(manifest["buildings"][0]["crops"]["pre_url"]).status_code, 200)
 
+    def test_assessment_preview_uses_normalized_optional_context_without_provider_call(self) -> None:
+        with patch.dict(os.environ, {
+            "DEMO_SCENE_ROOT": str(DEPLOYMENT_DEMO_SCENE_ROOT),
+            "GIS_CONTEXT_ROOT": "",
+            "DEMO_SCENES_ONLY": "1",
+        }, clear=False):
+            with TestClient(create_app()) as client:
+                florence = client.get("/demo-scenes/hurricane-florence_00000459").json()
+                selected = next(b for b in florence["buildings"] if "building_context" in b)
+                preview = client.get(
+                    f"/demo-scenes/hurricane-florence_00000459/buildings/{selected['id']}/assessment-preview"
+                )
+                self.assertEqual(preview.status_code, 200)
+                payload = preview.json()
+                self.assertEqual(payload["status"], "preview_only")
+                self.assertEqual(payload["provider_status"], "disabled")
+                self.assertEqual(payload["evidence_packet"]["damage_prediction"]["predicted_class"],
+                                 selected["prediction"]["predicted_class"])
+                claim = payload["evidence_packet"]["context"]["claims"][0]
+                self.assertTrue(claim["modeled"])
+                self.assertEqual(claim["temporal_relation"], "current_modeled_not_event_aligned")
+                self.assertNotIn("assessment", payload)
+
+                matthew = client.get("/demo-scenes/hurricane-matthew_00000060").json()
+                building = matthew["buildings"][0]
+                no_context = client.get(
+                    f"/demo-scenes/hurricane-matthew_00000060/buildings/{building['id']}/assessment-preview"
+                )
+                self.assertEqual(no_context.status_code, 200)
+                self.assertFalse(no_context.json()["evidence_packet"]["context"]["available"])
+                self.assertEqual(no_context.json()["evidence_packet"]["context"]["claims"], [])
+
+                self.assertEqual(client.get("/demo-scenes/unknown_scene/buildings/id/assessment-preview").status_code, 404)
+                self.assertEqual(client.get("/demo-scenes/hurricane-matthew_00000060/buildings/not-found/assessment-preview").status_code, 404)
+                self.assertEqual(client.get("/demo-scenes/not.valid/buildings/id/assessment-preview").status_code, 404)
+                self.assertEqual(client.get("/demo-scenes/hurricane-matthew_00000060/buildings/bad!/assessment-preview").status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()
