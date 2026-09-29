@@ -22,6 +22,11 @@
   ]));
   const sceneSummarySevere = document.querySelector("#scene-summary-severe");
   const sceneSummarySevereDetail = document.querySelector("#scene-summary-severe-detail");
+  const groupInspection = document.querySelector("#scene-group-inspection");
+  const groupInspectionStatus = document.querySelector("#scene-group-inspection-status");
+  const groupPrevious = document.querySelector("#scene-group-previous");
+  const groupNext = document.querySelector("#scene-group-next");
+  const groupClear = document.querySelector("#scene-group-clear");
   const predictionFilterButtons = document.querySelectorAll("[data-scene-filter]");
   const imageryModeButtons = document.querySelectorAll("[data-imagery-mode]");
   let selectedPolygon = null;
@@ -32,6 +37,7 @@
   let isImageLoading = false;
   let imageryMode = "post-predictions";
   let predictionFilter = "all";
+  let activeFindingGroup = null;
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -92,6 +98,7 @@
 
   function setPredictionFilter(filter) {
     if (!PREDICTION_FILTERS.includes(filter) || !currentScene || isSceneLoading || filter === predictionFilter) return;
+    if (activeFindingGroup) clearFindingGroup(false);
     const selectedPredictedClass = selectedPolygon?.dataset.predictedClass;
     predictionFilter = filter;
     if (selectedPredictedClass && !matchesPredictionFilter(selectedPredictedClass)) {
@@ -215,6 +222,7 @@
   document.addEventListener("scene-building-clear", clearSelectedPolygon);
 
   function selectBuilding(building, polygon) {
+    if (activeFindingGroup && !activeFindingGroup.buildingIds.includes(building.id)) clearFindingGroup(false);
     setSelectedPolygon(polygon);
     const selection = { scene_id: currentScene.scene_id, building, handled: false };
     const accepted = document.dispatchEvent(new CustomEvent("scene-building-selected", { detail: selection, cancelable: true }));
@@ -241,6 +249,57 @@
 
   document.addEventListener("scene-building-inspect-request", (event) => inspectRequestedBuilding(event.detail));
 
+  function updateFindingGroupControls() {
+    const active = Boolean(activeFindingGroup && currentScene);
+    groupInspection.hidden = !active;
+    if (!active) return;
+    const { buildingIds, index, groupId } = activeFindingGroup;
+    groupInspectionStatus.textContent = `${groupId ? "Finding group" : "Finding"}: building ${index + 1} of ${buildingIds.length}`;
+    groupPrevious.disabled = index <= 0;
+    groupNext.disabled = index >= buildingIds.length - 1;
+  }
+
+  function clearFindingGroup(render = true) {
+    activeFindingGroup = null;
+    updateFindingGroupControls();
+    if (render && currentScene) renderBuildings(currentScene.buildings);
+    document.dispatchEvent(new Event("scene-building-clear"));
+  }
+
+  function inspectFindingGroupMember(index) {
+    if (!activeFindingGroup || !currentScene) return;
+    activeFindingGroup.index = Math.max(0, Math.min(index, activeFindingGroup.buildingIds.length - 1));
+    updateFindingGroupControls();
+    const buildingId = activeFindingGroup.buildingIds[activeFindingGroup.index];
+    const building = currentScene.buildings.find((item) => item?.id === buildingId);
+    const polygon = Array.from(sceneOverlay.children).find((item) => item.dataset.buildingId === buildingId);
+    if (building && polygon) selectBuilding(building, polygon);
+  }
+
+  function inspectRequestedGroup(detail) {
+    if (!detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(detail.building_ids)) return;
+    const validIds = [...new Set(detail.building_ids)].filter((id) => currentScene.buildings.some((item) => item?.id === id));
+    if (!validIds.length) return;
+    if (validIds.length === 1) return inspectRequestedBuilding({ scene_id: detail.scene_id, building_id: validIds[0] });
+    if (activeFindingGroup) clearFindingGroup(false);
+    activeFindingGroup = { buildingIds: validIds, index: 0, groupId: typeof detail.group_id === "string" ? detail.group_id : "" };
+    if (validIds.some((id) => {
+      const building = currentScene.buildings.find((item) => item?.id === id);
+      return !matchesPredictionFilter(building?.prediction?.predicted_class);
+    })) {
+      predictionFilter = "all";
+      updatePredictionFilterControls();
+    }
+    renderBuildings(currentScene.buildings);
+    updateFindingGroupControls();
+    inspectFindingGroupMember(0);
+  }
+
+  document.addEventListener("scene-building-group-inspect-request", (event) => inspectRequestedGroup(event.detail));
+  groupPrevious.addEventListener("click", () => inspectFindingGroupMember((activeFindingGroup?.index || 0) - 1));
+  groupNext.addEventListener("click", () => inspectFindingGroupMember((activeFindingGroup?.index || 0) + 1));
+  groupClear.addEventListener("click", () => clearFindingGroup(true));
+
   function polygonForCurrentMode(building) {
     return imageryMode === "pre" ? building.pre_pixel_polygon : building.post_pixel_polygon;
   }
@@ -260,7 +319,7 @@
       if (!matchesPredictionFilter(predictedClass)) return;
       const polygon = document.createElementNS(SVG_NAMESPACE, "polygon");
       polygon.setAttribute("points", polygonPoints(polygonForCurrentMode(building)));
-      polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass));
+      polygon.setAttribute("class", polygonClassForCurrentMode(predictedClass) + (activeFindingGroup?.buildingIds.includes(building.id) ? " group-highlight" : ""));
       polygon.setAttribute("tabindex", "0");
       polygon.setAttribute("role", "button");
       polygon.setAttribute("aria-pressed", "false");
@@ -285,6 +344,7 @@
   }
 
   function clearSceneForLoad() {
+    clearFindingGroup(false);
     clearSelectedPolygon();
     currentScene = null;
     sceneOverlay.replaceChildren();

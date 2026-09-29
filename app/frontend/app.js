@@ -69,14 +69,16 @@ const sceneAssessmentEvidenceUsed = document.querySelector("#scene-assessment-ev
 const sceneAssessmentLimitationsBlock = document.querySelector("#scene-assessment-limitations-block");
 const sceneAssessmentLimitations = document.querySelector("#scene-assessment-limitations");
 const ASSESSMENT_EVIDENCE_LABELS = {
-  damage_prediction: "Damage prediction",
-  class_probabilities: "4-class probabilities",
-  reviewed_context: "Reviewed building context",
+  model: "MODEL",
+  spatial: "SPATIAL",
+  event: "EVENT",
+  reviewed_gis: "REVIEWED GIS",
 };
 const SCENE_ASSESSMENT_EVIDENCE_LABELS = {
-  scene_damage_distribution: "Scene damage distribution",
-  model_uncertainty: "Model uncertainty rankings",
-  reviewed_context: "Reviewed scene context",
+  model: "MODEL",
+  spatial: "SPATIAL",
+  event: "EVENT",
+  reviewed_gis: "REVIEWED GIS",
 };
 const BUILDING_ID_PATTERN = /\b[A-Za-z0-9][A-Za-z0-9_-]*_b\d+\b/;
 
@@ -115,9 +117,10 @@ function normalizeSceneAssessmentResult(body, buildingIds) {
   const candidateBuildings = body?.candidate_buildings;
   const validCandidateBuildings = new Map();
   if (candidateBuildings && typeof candidateBuildings === "object" && !Array.isArray(candidateBuildings)) {
-    Object.entries(candidateBuildings).forEach(([key, buildingId]) => {
-      if (/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(key) && buildingIds.has(buildingId)) {
-        validCandidateBuildings.set(key, buildingId);
+    Object.entries(candidateBuildings).forEach(([key, rawBuildingIds]) => {
+      const ids = Array.isArray(rawBuildingIds) ? [...new Set(rawBuildingIds)] : [];
+      if (/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(key) && ids.length > 0 && ids.every((id) => typeof id === "string" && buildingIds.has(id))) {
+        validCandidateBuildings.set(key, ids);
       }
     });
   }
@@ -137,7 +140,10 @@ function normalizeSceneAssessmentResult(body, buildingIds) {
     ? body.limitations.filter((item) => typeof item === "string" && item.trim() && item.length <= 300 && !BUILDING_ID_PATTERN.test(item)).slice(0, 4).map((item) => item.trim())
     : [];
   const evidenceUsed = Array.isArray(body?.evidence_used) ? body.evidence_used : [];
-  return { overview, findings, recommended_review: recommendedReview, limitations, generated_by: generatedBy, evidence_used: evidenceUsed, candidate_buildings: Object.fromEntries(validCandidateBuildings) };
+  const candidateTypes = body?.candidate_types && typeof body.candidate_types === "object" && !Array.isArray(body.candidate_types)
+    ? Object.fromEntries(Object.entries(body.candidate_types).filter(([key, type]) => validCandidateBuildings.has(key) && typeof type === "string"))
+    : {};
+  return { overview, findings, recommended_review: recommendedReview, limitations, generated_by: generatedBy, evidence_used: evidenceUsed, candidate_buildings: Object.fromEntries(validCandidateBuildings), candidate_types: candidateTypes };
 }
 
 function renderSceneAssessment(result) {
@@ -156,21 +162,27 @@ function renderSceneAssessment(result) {
     const explanation = document.createElement("p");
     explanation.textContent = finding.explanation;
     item.append(title, explanation);
-    finding.candidate_keys.forEach((key) => {
+    const targetIds = [...new Set(finding.candidate_keys.flatMap((key) => result.candidate_buildings[key] || []))];
+    if (targetIds.length) {
       const inspect = document.createElement("button");
       inspect.type = "button";
       inspect.className = "scene-assessment-inspect";
-      inspect.textContent = "Inspect building →";
+      const type = finding.candidate_keys.map((key) => result.candidate_types?.[key]).find((value) => value === "SEVERE_PROXIMITY_GROUP");
+      inspect.textContent = targetIds.length === 1 ? "Inspect building →" : type ? "Show group →" : "Show " + targetIds.length + " buildings →";
       inspect.addEventListener("click", () => {
-        const buildingId = result.candidate_buildings[key];
-        if (buildingId && activeSceneBuildingIds.has(buildingId)) {
+        const validIds = targetIds.filter((id) => activeSceneBuildingIds.has(id));
+        if (validIds.length === 1) {
           document.dispatchEvent(new CustomEvent("scene-building-inspect-request", {
-            detail: { scene_id: activeSceneOverviewId, building_id: buildingId },
+            detail: { scene_id: activeSceneOverviewId, building_id: validIds[0] },
+          }));
+        } else if (validIds.length > 1) {
+          document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", {
+            detail: { scene_id: activeSceneOverviewId, building_ids: validIds, group_id: finding.candidate_keys[0] },
           }));
         }
       });
       item.append(inspect);
-    });
+    }
     sceneAssessmentFindings.append(item);
   });
   sceneAssessmentFindingsBlock.hidden = result.findings.length === 0;
@@ -188,7 +200,7 @@ function renderSceneAssessment(result) {
     .filter((item) => Object.prototype.hasOwnProperty.call(SCENE_ASSESSMENT_EVIDENCE_LABELS, item))
     .map((item) => SCENE_ASSESSMENT_EVIDENCE_LABELS[item]);
   if (evidenceLabels.length) {
-    sceneAssessmentEvidenceUsed.textContent = "Evidence used: " + evidenceLabels.join(" Â· ");
+    sceneAssessmentEvidenceUsed.textContent = "Evidence synthesized: " + evidenceLabels.join(" / ");
     sceneAssessmentEvidenceUsed.hidden = false;
   }
   sceneAssessmentDetails.hidden = !evidenceLabels.length && !result.limitations.length;
@@ -305,7 +317,7 @@ function renderAssessmentResult(result) {
     .filter((item) => Object.prototype.hasOwnProperty.call(ASSESSMENT_EVIDENCE_LABELS, item))
     .map((item) => ASSESSMENT_EVIDENCE_LABELS[item]);
   if (evidenceLabels.length) {
-    assessmentEvidenceUsed.textContent = "Evidence used: " + evidenceLabels.join(" · ");
+    assessmentEvidenceUsed.textContent = "Evidence synthesized: " + evidenceLabels.join(" / ");
     assessmentEvidenceUsed.hidden = false;
   }
   assessmentEvidenceDetails.hidden = !evidenceLabels.length && !result.supporting_details.length && !result.limitations.length;

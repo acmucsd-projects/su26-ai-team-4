@@ -89,6 +89,11 @@ function createDocument() {
     ["#scene-summary-destroyed", new FakeElement()],
     ["#scene-summary-severe", new FakeElement()],
     ["#scene-summary-severe-detail", new FakeElement()],
+    ["#scene-group-inspection", new FakeElement()],
+    ["#scene-group-inspection-status", new FakeElement()],
+    ["#scene-group-previous", new FakeElement()],
+    ["#scene-group-next", new FakeElement()],
+    ["#scene-group-clear", new FakeElement()],
   ]);
   const imageryButtons = ["pre", "post", "post-predictions"].map((mode) => {
     const button = new FakeElement();
@@ -302,6 +307,30 @@ async function main() {
   assert.equal(image.src, "/demo-scenes/socal-fire_00000663/post.png");
   assert.equal(overlay.hidden, false);
   assert.equal(document.elements.get("#scene-next").disabled, true);
+  const groupIds = ["socal-fire_00000663_b0001", "socal-fire_00000663_b0002", "socal-fire_00000663_b0003"];
+  document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", { detail: {
+    scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
+  } }));
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 1 of 3");
+  assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
+  assert.equal(filterButton("all").getAttribute("aria-pressed"), "true");
+  assert.deepEqual(overlay.children.filter((polygon) => polygon.classList.contains("group-highlight")).map((polygon) => polygon.dataset.buildingId), groupIds);
+  assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[0]).classList.contains("selected"), true);
+  document.elements.get("#scene-group-next").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 2 of 3");
+  assert.equal(overlay.children.find((polygon) => polygon.dataset.buildingId === groupIds[1]).classList.contains("selected"), true);
+  document.elements.get("#scene-group-previous").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection-status").textContent, "Finding group: building 1 of 3");
+  document.elements.get("#scene-group-clear").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);
+  document.dispatchEvent(new CustomEvent("scene-building-group-inspect-request", { detail: {
+    scene_id: "socal-fire_00000663", building_ids: groupIds, group_id: "severe-demo-group",
+  } }));
+  await document.elements.get("#scene-previous").trigger("click");
+  assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
+  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);
   console.log("scene_dashboard_render=passed");
 }
 

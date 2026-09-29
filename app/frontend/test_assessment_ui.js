@@ -156,7 +156,7 @@ async function main() {
     supporting_details: ["The GIS occupancy value is modeled and current."],
     limitations: ["Prediction is not verified ground truth."],
     generated_by: "openai/gpt-6-luna",
-    evidence_used: ["damage_prediction", "class_probabilities", "reviewed_context"],
+    evidence_used: ["model", "spatial", "event", "reviewed_gis"],
   }));
   await firstClick;
   assert.equal(el("#assessment-result").hidden, false);
@@ -166,7 +166,7 @@ async function main() {
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
   assert.equal(el("#assessment-evidence-details").hidden, false);
   assert.equal(el("#assessment-evidence-details").open, false);
-  assert.equal(el("#assessment-evidence-used").textContent, "Evidence used: Damage prediction · 4-class probabilities · Reviewed building context");
+  assert.equal(el("#assessment-evidence-used").textContent, "Evidence synthesized: MODEL / SPATIAL / EVENT / REVIEWED GIS");
   assert.equal(el("#assessment-supporting-block").hidden, false);
   assert.equal(el("#assessment-supporting-details").children.length, 1);
   assert.equal(el("#assessment-limitations-block").hidden, false);
@@ -188,7 +188,7 @@ async function main() {
   assert.equal(el("#assessment-text").textContent, "The classifier favors Major Damage, with Minor Damage as the next interpretation. Current modeled residential occupancy describes context but does not verify event-time building use.");
   assert.match(el("#assessment-review-text").textContent, /distinguish Major from Minor/);
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
-  assert.match(el("#assessment-evidence-used").textContent, /Reviewed building context/);
+  assert.match(el("#assessment-evidence-used").textContent, /REVIEWED GIS/);
   assert.equal(requests.length, 1);
 
   // F: A successful empty limitations array omits that subsection.
@@ -196,14 +196,14 @@ async function main() {
   queuedResponses.push(response(200, {
     assessment: "The model predicts no damage.", recommended_review: null, supporting_details: [], limitations: [],
     generated_by: "openai/alternate-model-v2",
-    evidence_used: ["damage_prediction", "class_probabilities"],
+    evidence_used: ["model", "spatial", "event"],
   }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 2);
   assert.equal(el("#assessment-text").textContent, "The model predicts no damage.");
   assert.equal(el("#assessment-review-block").hidden, true);
   assert.equal(el("#assessment-model").textContent, "Alternate Model V2 · Evidence-grounded assessment");
-  assert.equal(el("#assessment-evidence-used").textContent, "Evidence used: Damage prediction · 4-class probabilities");
+  assert.equal(el("#assessment-evidence-used").textContent, "Evidence synthesized: MODEL / SPATIAL / EVENT");
   assert.equal(el("#assessment-limitations-block").hidden, true);
   assert.equal(el("#assessment-limitations").children.length, 0);
   assert.equal(el("#assessment-evidence-details").open, false);
@@ -216,7 +216,7 @@ async function main() {
   assert.equal(el("#assessment-status").textContent, "AI assessment is currently unavailable.");
   assert.equal(el("#assessment-generate-button").disabled, false);
   assert.doesNotMatch(el("#assessment-status").textContent, /secret|provider_unavailable/);
-  queuedResponses.push(response(200, { assessment: "A retry succeeded.", limitations: [], evidence_used: ["damage_prediction", "class_probabilities"] }));
+  queuedResponses.push(response(200, { assessment: "A retry succeeded.", limitations: [], evidence_used: ["model", "spatial"] }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 4);
   assert.equal(el("#assessment-text").textContent, "A retry succeeded.");
@@ -228,7 +228,7 @@ async function main() {
   assert.equal(el("#assessment-status").textContent, "Assessment could not be generated. Try again.");
   assert.doesNotMatch(el("#assessment-status").textContent, /private|provider detail/);
   assert.equal(el("#assessment-generate-button").disabled, false);
-  queuedResponses.push(response(200, { assessment: "The retry worked after a temporary failure.", limitations: [], evidence_used: ["damage_prediction", "class_probabilities"] }));
+  queuedResponses.push(response(200, { assessment: "The retry worked after a temporary failure.", limitations: [], evidence_used: ["model", "spatial"] }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 6);
   assert.equal(el("#assessment-text").textContent, "The retry worked after a temporary failure.");
