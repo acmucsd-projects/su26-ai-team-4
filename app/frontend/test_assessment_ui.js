@@ -49,6 +49,10 @@ function createDocument() {
     "#assessment-model", "#assessment-text", "#assessment-review-block", "#assessment-review-text",
     "#assessment-evidence-details", "#assessment-evidence-used", "#assessment-supporting-block",
     "#assessment-supporting-details", "#assessment-limitations-block", "#assessment-limitations",
+    "#scene-assessment", "#scene-assessment-generate-button", "#scene-assessment-status", "#scene-assessment-result",
+    "#scene-assessment-model", "#scene-assessment-overview", "#scene-assessment-findings-block", "#scene-assessment-findings",
+    "#scene-assessment-review-block", "#scene-assessment-review", "#scene-assessment-details", "#scene-assessment-evidence-used",
+    "#scene-assessment-limitations-block", "#scene-assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";

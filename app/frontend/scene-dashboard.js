@@ -226,6 +226,21 @@
     setSceneStatus("Selected " + building.id + ". Its precomputed result is shown below.");
   }
 
+  function inspectRequestedBuilding(detail) {
+    if (!detail || detail.scene_id !== currentScene?.scene_id || !Array.isArray(currentScene?.buildings)) return;
+    const building = currentScene.buildings.find((item) => item?.id === detail.building_id);
+    if (!building) return;
+    if (!matchesPredictionFilter(building?.prediction?.predicted_class)) {
+      predictionFilter = "all";
+      updatePredictionFilterControls();
+      renderBuildings(currentScene.buildings);
+    }
+    const polygon = Array.from(sceneOverlay.children).find((item) => item.dataset.buildingId === building.id);
+    if (polygon) selectBuilding(building, polygon);
+  }
+
+  document.addEventListener("scene-building-inspect-request", (event) => inspectRequestedBuilding(event.detail));
+
   function polygonForCurrentMode(building) {
     return imageryMode === "pre" ? building.pre_pixel_polygon : building.post_pixel_polygon;
   }
@@ -307,6 +322,7 @@
       await showCurrentSceneImage();
       sceneCanvas.hidden = false;
       setSceneStatus(isPredictionMode() ? "Showing POST imagery with model predictions." : "Showing " + imageryMode.toUpperCase() + " imagery.");
+      document.dispatchEvent(new CustomEvent("scene-loaded", { detail: { scene_id: scene.scene_id, scene } }));
     } catch (error) {
       sceneCanvas.hidden = true;
       sceneBuildingCount.hidden = true;

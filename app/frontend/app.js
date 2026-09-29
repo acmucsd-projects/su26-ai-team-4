@@ -12,7 +12,12 @@ const EXAMPLES = {
 const state = { pre: null, post: null, previewUrls: { pre: null, post: null }, source: null, scenePrediction: null };
 const assessmentCache = new Map();
 const assessmentRequests = new Map();
+const sceneAssessmentCache = new Map();
+const sceneAssessmentRequests = new Map();
+const sceneAssessmentBuildingIds = new Map();
 let selectedAssessmentIdentity = null;
+let activeSceneOverviewId = null;
+let activeSceneBuildingIds = new Set();
 const preInput = document.querySelector("#pre-image");
 const postInput = document.querySelector("#post-image");
 const prePreview = document.querySelector("#pre-preview");
@@ -49,11 +54,200 @@ const assessmentSupportingBlock = document.querySelector("#assessment-supporting
 const assessmentSupportingDetails = document.querySelector("#assessment-supporting-details");
 const assessmentLimitationsBlock = document.querySelector("#assessment-limitations-block");
 const assessmentLimitations = document.querySelector("#assessment-limitations");
+const sceneAssessment = document.querySelector("#scene-assessment");
+const sceneAssessmentGenerateButton = document.querySelector("#scene-assessment-generate-button");
+const sceneAssessmentStatus = document.querySelector("#scene-assessment-status");
+const sceneAssessmentResult = document.querySelector("#scene-assessment-result");
+const sceneAssessmentModel = document.querySelector("#scene-assessment-model");
+const sceneAssessmentOverview = document.querySelector("#scene-assessment-overview");
+const sceneAssessmentFindingsBlock = document.querySelector("#scene-assessment-findings-block");
+const sceneAssessmentFindings = document.querySelector("#scene-assessment-findings");
+const sceneAssessmentReviewBlock = document.querySelector("#scene-assessment-review-block");
+const sceneAssessmentReview = document.querySelector("#scene-assessment-review");
+const sceneAssessmentDetails = document.querySelector("#scene-assessment-details");
+const sceneAssessmentEvidenceUsed = document.querySelector("#scene-assessment-evidence-used");
+const sceneAssessmentLimitationsBlock = document.querySelector("#scene-assessment-limitations-block");
+const sceneAssessmentLimitations = document.querySelector("#scene-assessment-limitations");
 const ASSESSMENT_EVIDENCE_LABELS = {
   damage_prediction: "Damage prediction",
   class_probabilities: "4-class probabilities",
   reviewed_context: "Reviewed building context",
 };
+const SCENE_ASSESSMENT_EVIDENCE_LABELS = {
+  scene_damage_distribution: "Scene damage distribution",
+  model_uncertainty: "Model uncertainty rankings",
+  reviewed_context: "Reviewed scene context",
+};
+const BUILDING_ID_PATTERN = /\b[A-Za-z0-9][A-Za-z0-9_-]*_b\d+\b/;
+
+function clearSceneAssessmentResult() {
+  sceneAssessmentModel.textContent = "";
+  sceneAssessmentModel.hidden = true;
+  sceneAssessmentOverview.textContent = "";
+  sceneAssessmentFindings.replaceChildren();
+  sceneAssessmentFindingsBlock.hidden = true;
+  sceneAssessmentReview.textContent = "";
+  sceneAssessmentReviewBlock.hidden = true;
+  sceneAssessmentDetails.open = false;
+  sceneAssessmentDetails.hidden = true;
+  sceneAssessmentEvidenceUsed.textContent = "";
+  sceneAssessmentEvidenceUsed.hidden = true;
+  sceneAssessmentLimitations.replaceChildren();
+  sceneAssessmentLimitationsBlock.hidden = true;
+}
+
+function resetSceneAssessmentView() {
+  sceneAssessmentGenerateButton.disabled = false;
+  sceneAssessmentGenerateButton.hidden = false;
+  sceneAssessmentStatus.textContent = "";
+  sceneAssessmentStatus.classList.remove("error");
+  sceneAssessmentResult.hidden = true;
+  clearSceneAssessmentResult();
+}
+
+function normalizeSceneAssessmentResult(body, buildingIds) {
+  const overview = typeof body?.overview === "string" ? body.overview.trim() : "";
+  const recommendedReview = typeof body?.recommended_review === "string" ? body.recommended_review.trim() : "";
+  const generatedBy = typeof body?.generated_by === "string" ? body.generated_by.trim() : "";
+  if (!overview || overview.length > 1200 || !generatedBy || generatedBy.length > 120 || BUILDING_ID_PATTERN.test(overview)) return null;
+  if (recommendedReview.length > 500 || BUILDING_ID_PATTERN.test(recommendedReview)) return null;
+
+  const candidateBuildings = body?.candidate_buildings;
+  const validCandidateBuildings = new Map();
+  if (candidateBuildings && typeof candidateBuildings === "object" && !Array.isArray(candidateBuildings)) {
+    Object.entries(candidateBuildings).forEach(([key, buildingId]) => {
+      if (/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(key) && buildingIds.has(buildingId)) {
+        validCandidateBuildings.set(key, buildingId);
+      }
+    });
+  }
+  const findings = [];
+  if (Array.isArray(body?.findings)) {
+    body.findings.slice(0, 4).forEach((finding) => {
+      const title = typeof finding?.title === "string" ? finding.title.trim() : "";
+      const explanation = typeof finding?.explanation === "string" ? finding.explanation.trim() : "";
+      const candidateKeys = Array.isArray(finding?.candidate_keys) ? finding.candidate_keys : [];
+      if (!title || title.length > 100 || !explanation || explanation.length > 500 ||
+          BUILDING_ID_PATTERN.test(title) || BUILDING_ID_PATTERN.test(explanation) ||
+          candidateKeys.length > 3 || candidateKeys.some((key) => !validCandidateBuildings.has(key))) return;
+      findings.push({ title, explanation, candidate_keys: [...new Set(candidateKeys)] });
+    });
+  }
+  const limitations = Array.isArray(body?.limitations)
+    ? body.limitations.filter((item) => typeof item === "string" && item.trim() && item.length <= 300 && !BUILDING_ID_PATTERN.test(item)).slice(0, 4).map((item) => item.trim())
+    : [];
+  const evidenceUsed = Array.isArray(body?.evidence_used) ? body.evidence_used : [];
+  return { overview, findings, recommended_review: recommendedReview, limitations, generated_by: generatedBy, evidence_used: evidenceUsed, candidate_buildings: Object.fromEntries(validCandidateBuildings) };
+}
+
+function renderSceneAssessment(result) {
+  clearSceneAssessmentResult();
+  sceneAssessmentOverview.textContent = result.overview;
+  const modelLabel = assessmentModelLabel(result.generated_by);
+  if (modelLabel) {
+    sceneAssessmentModel.textContent = modelLabel + " Â· Evidence-grounded scene assessment";
+    sceneAssessmentModel.hidden = false;
+  }
+  result.findings.forEach((finding) => {
+    const item = document.createElement("li");
+    item.className = "scene-assessment-finding";
+    const title = document.createElement("h5");
+    title.textContent = finding.title;
+    const explanation = document.createElement("p");
+    explanation.textContent = finding.explanation;
+    item.append(title, explanation);
+    finding.candidate_keys.forEach((key) => {
+      const inspect = document.createElement("button");
+      inspect.type = "button";
+      inspect.className = "scene-assessment-inspect";
+      inspect.textContent = "Inspect building →";
+      inspect.addEventListener("click", () => {
+        const buildingId = result.candidate_buildings[key];
+        if (buildingId && activeSceneBuildingIds.has(buildingId)) {
+          document.dispatchEvent(new CustomEvent("scene-building-inspect-request", {
+            detail: { scene_id: activeSceneOverviewId, building_id: buildingId },
+          }));
+        }
+      });
+      item.append(inspect);
+    });
+    sceneAssessmentFindings.append(item);
+  });
+  sceneAssessmentFindingsBlock.hidden = result.findings.length === 0;
+  if (result.recommended_review) {
+    sceneAssessmentReview.textContent = result.recommended_review;
+    sceneAssessmentReviewBlock.hidden = false;
+  }
+  result.limitations.forEach((limitation) => {
+    const item = document.createElement("li");
+    item.textContent = limitation;
+    sceneAssessmentLimitations.append(item);
+  });
+  sceneAssessmentLimitationsBlock.hidden = result.limitations.length === 0;
+  const evidenceLabels = result.evidence_used
+    .filter((item) => Object.prototype.hasOwnProperty.call(SCENE_ASSESSMENT_EVIDENCE_LABELS, item))
+    .map((item) => SCENE_ASSESSMENT_EVIDENCE_LABELS[item]);
+  if (evidenceLabels.length) {
+    sceneAssessmentEvidenceUsed.textContent = "Evidence used: " + evidenceLabels.join(" Â· ");
+    sceneAssessmentEvidenceUsed.hidden = false;
+  }
+  sceneAssessmentDetails.hidden = !evidenceLabels.length && !result.limitations.length;
+  sceneAssessmentGenerateButton.hidden = true;
+  sceneAssessmentStatus.textContent = "";
+  sceneAssessmentStatus.classList.remove("error");
+  sceneAssessmentResult.hidden = false;
+}
+
+function renderActiveSceneAssessment() {
+  if (!activeSceneOverviewId) return;
+  const cached = sceneAssessmentCache.get(activeSceneOverviewId);
+  const pending = sceneAssessmentRequests.has(activeSceneOverviewId);
+  resetSceneAssessmentView();
+  sceneAssessmentGenerateButton.disabled = pending;
+  if (pending) sceneAssessmentStatus.textContent = "Generating scene overview…";
+  if (cached) renderSceneAssessment(cached);
+}
+
+async function generateSceneAssessment() {
+  const sceneId = activeSceneOverviewId;
+  if (!sceneId || sceneAssessmentCache.has(sceneId) || sceneAssessmentRequests.has(sceneId)) return;
+  sceneAssessmentRequests.set(sceneId, true);
+  if (sceneId === activeSceneOverviewId) {
+    sceneAssessmentStatus.classList.remove("error");
+    sceneAssessmentStatus.textContent = "Generating scene overview…";
+    sceneAssessmentGenerateButton.disabled = true;
+  }
+  let failureMessage = "";
+  try {
+    const response = await fetch("/demo-scenes/" + encodeURIComponent(sceneId) + "/assessment", { method: "POST" });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      failureMessage = body?.detail?.code === "assessment_provider_unavailable"
+        ? "AI scene overview is currently unavailable."
+        : "Scene overview could not be generated. Try again.";
+    } else {
+      const result = normalizeSceneAssessmentResult(body, activeSceneBuildingIdsFor(sceneId));
+      if (!result) failureMessage = "Scene overview could not be generated. Try again.";
+      else sceneAssessmentCache.set(sceneId, result);
+    }
+  } catch (_error) {
+    failureMessage = "Scene overview could not be generated. Try again.";
+  } finally {
+    sceneAssessmentRequests.delete(sceneId);
+    if (sceneId === activeSceneOverviewId) {
+      if (sceneAssessmentCache.has(sceneId)) renderActiveSceneAssessment();
+      else {
+        sceneAssessmentGenerateButton.disabled = false;
+        sceneAssessmentStatus.textContent = failureMessage;
+        sceneAssessmentStatus.classList.toggle("error", Boolean(failureMessage));
+      }
+    }
+  }
+}
+
+function activeSceneBuildingIdsFor(sceneId) {
+  return sceneAssessmentBuildingIds.get(sceneId) || new Set();
+}
 
 function clearAssessmentResult() {
   assessmentModel.textContent = "";
@@ -487,7 +681,22 @@ document.addEventListener("scene-building-selected", (event) => {
 });
 
 document.addEventListener("scene-changed", () => {
+  activeSceneOverviewId = null;
+  activeSceneBuildingIds = new Set();
+  sceneAssessment.hidden = true;
+  resetSceneAssessmentView();
   if (state.source === "scene") clearSelection();
+});
+
+document.addEventListener("scene-loaded", (event) => {
+  const sceneId = event.detail?.scene_id;
+  const buildings = event.detail?.scene?.buildings;
+  if (typeof sceneId !== "string" || !Array.isArray(buildings)) return;
+  activeSceneOverviewId = sceneId;
+  activeSceneBuildingIds = new Set(buildings.map((building) => building?.id).filter((id) => typeof id === "string"));
+  sceneAssessmentBuildingIds.set(sceneId, activeSceneBuildingIds);
+  sceneAssessment.hidden = false;
+  renderActiveSceneAssessment();
 });
 
 document.addEventListener("scene-building-filtered-out", () => {
@@ -502,3 +711,4 @@ document.querySelectorAll(".example-button").forEach((button) => {
 document.querySelector("#clear-selection").addEventListener("click", clearSelection);
 predictButton.addEventListener("click", predictDamage);
 assessmentGenerateButton.addEventListener("click", generateAssessment);
+sceneAssessmentGenerateButton.addEventListener("click", generateSceneAssessment);

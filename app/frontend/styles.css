@@ -52,6 +52,28 @@ button { cursor: pointer; }
 .scene-severe-total strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .scene-severe-detail { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
 .scene-severe-helper { color: var(--muted); font-size: 0.73rem; line-height: 1.35; }
+.scene-assessment { margin: 15px 0 17px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fbfcfe; }
+.scene-assessment-heading { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.scene-assessment-heading h3 { margin: 0; color: var(--ink); font-size: 0.96rem; }
+.scene-assessment .assessment-generate-button { min-height: 34px; }
+.scene-assessment-status { min-height: 1.1rem; margin: 8px 0 0; color: var(--muted); font-size: 0.77rem; }
+.scene-assessment-status.error { color: #b02e3f; }
+.scene-assessment-result { margin-top: 9px; }
+.scene-assessment-model { margin: 0 0 7px; color: var(--muted); font-size: 0.69rem; font-weight: 700; }
+.scene-assessment-overview { margin: 0; color: var(--ink); font-size: 0.84rem; line-height: 1.5; }
+.scene-assessment-section { margin-top: 12px; }
+.scene-assessment-section h4 { margin: 0 0 5px; color: #40516e; font-size: 0.75rem; font-weight: 800; }
+.scene-assessment-findings { display: grid; gap: 9px; margin: 0; padding-left: 19px; }
+.scene-assessment-finding h5 { margin: 0 0 2px; color: var(--ink); font-size: 0.77rem; }
+.scene-assessment-finding p { margin: 0; color: var(--ink); font-size: 0.77rem; line-height: 1.45; }
+.scene-assessment-inspect { margin-top: 5px; padding: 0; border: 0; background: transparent; color: var(--blue-dark); font-size: 0.72rem; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.scene-assessment-inspect:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 2px; }
+.scene-assessment-details { margin-top: 11px; color: var(--muted); font-size: 0.72rem; line-height: 1.45; }
+.scene-assessment-details summary { width: fit-content; cursor: pointer; font-weight: 700; text-underline-offset: 3px; }
+.scene-assessment-details summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
+.scene-assessment-details[open] summary { margin-bottom: 8px; }
+.scene-assessment-evidence-used { margin: 0; }
+.scene-assessment-limitations { display: grid; gap: 3px; margin: 8px 0 0; padding-left: 18px; }
 .scene-filters { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 14px; }
 .scene-filter-label { color: var(--muted); font-size: 0.73rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .scene-filter-button { min-height: 30px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #40516e; font-size: 0.72rem; font-weight: 800; }

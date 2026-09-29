@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Demo interface for paired satellite building-damage classification.">
   <title>Damage Triage | Building Classifier</title>
-  <link rel="stylesheet" href="styles.css?v=ai-assessment-3">
-  <script src="scene-dashboard.js?v=assessment-selection-1" defer></script>
-  <script src="app.js?v=ai-assessment-3" defer></script>
+  <link rel="stylesheet" href="styles.css?v=scene-ai-2">
+  <script src="scene-dashboard.js?v=scene-ai-2" defer></script>
+  <script src="app.js?v=scene-ai-2" defer></script>
 </head>
 <body>
   <main class="page-shell">
@@ -42,6 +42,33 @@
           <p class="scene-severe-label">Severe damage summary</p>
           <p class="scene-severe-total"><strong id="scene-summary-severe"></strong> buildings</p>
           <p id="scene-summary-severe-detail" class="scene-severe-detail"></p>
+        </div>
+      </section>
+      <section id="scene-assessment" class="scene-assessment" aria-labelledby="scene-assessment-title" hidden>
+        <div class="scene-assessment-heading">
+          <h3 id="scene-assessment-title">AI Scene Overview</h3>
+          <button id="scene-assessment-generate-button" class="assessment-generate-button" type="button">Generate scene overview</button>
+        </div>
+        <p id="scene-assessment-status" class="scene-assessment-status" role="status"></p>
+        <div id="scene-assessment-result" class="scene-assessment-result" hidden>
+          <p id="scene-assessment-model" class="assessment-model" hidden></p>
+          <p id="scene-assessment-overview" class="scene-assessment-overview"></p>
+          <section id="scene-assessment-findings-block" class="scene-assessment-section" hidden aria-labelledby="scene-assessment-findings-title">
+            <h4 id="scene-assessment-findings-title">Key findings</h4>
+            <ul id="scene-assessment-findings" class="scene-assessment-findings"></ul>
+          </section>
+          <section id="scene-assessment-review-block" class="scene-assessment-section" hidden aria-labelledby="scene-assessment-review-title">
+            <h4 id="scene-assessment-review-title">Recommended review</h4>
+            <p id="scene-assessment-review"></p>
+          </section>
+          <details id="scene-assessment-details" class="scene-assessment-details" hidden>
+            <summary>Evidence &amp; limitations</summary>
+            <p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p>
+            <section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden>
+              <h4>Limitations</h4>
+              <ul id="scene-assessment-limitations"></ul>
+            </section>
+          </details>
         </div>
       </section>
       <div id="scene-filters" class="scene-filters" role="group" aria-label="Filter footprints by model prediction">
