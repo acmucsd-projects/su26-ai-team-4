@@ -189,6 +189,9 @@ async function main() {
   }));
   const firstScene = scenes.get(sceneSummaries[0].scene_id);
   const secondScene = scenes.get(sceneSummaries[1].scene_id);
+  scenes.get("hurricane-florence_00000459").scene_evidence_context = {
+    location: "Duplin County, North Carolina", post_acquisition_date: null,
+  };
   for (const scene of scenes.values()) {
     scene.buildings[0].prediction.confidence = 0.45;
     scene.buildings[0].prediction.probabilities = { "no-damage": 0.45, "minor-damage": 0.43, "major-damage": 0.07, destroyed: 0.05 };
@@ -371,6 +374,11 @@ async function main() {
 
   for (let index = 2; index < sceneSummaries.length; index += 1) {
     await document.elements.get("#scene-next").trigger("click");
+    if (index === 2) assert.equal(document.elements.get("#scene-event-context").hidden, true);
+    if (index === 3) {
+      assert.equal(document.elements.get("#scene-event-context").textContent, "Duplin County, North Carolina");
+      assert.equal(document.elements.get("#scene-event-context").hidden, false);
+    }
   }
   assert.equal(fetchCalls.length, sceneSummaries.length + 1);
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
@@ -416,6 +424,7 @@ async function main() {
   assert.equal(document.elements.get("#scene-loading").hidden, true);
   const highlightButtons = document.elements.get("#scene-highlights-list").children;
   assert.equal(highlightButtons.length, 4);
+  assert.equal(highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").getAttribute("aria-label"), "Most ambiguous: #1 by top-two gap");
   assert.equal(highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").children[1].textContent, "#1 by top-two gap");
   highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").trigger("click");
   assert.equal(selections.at(-1).id, scenes.get("santa-rosa-wildfire_00000014").buildings[0].id);

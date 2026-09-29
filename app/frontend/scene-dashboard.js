@@ -3,6 +3,7 @@
   const DAMAGE_CLASSES = ["no-damage", "minor-damage", "major-damage", "destroyed"];
   const PREDICTION_FILTERS = ["all", "severe", ...DAMAGE_CLASSES];
   const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+  const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   const sceneDescription = document.querySelector("#scene-description");
   const sceneDashboardTitle = document.querySelector("#scene-dashboard-title");
@@ -87,11 +88,12 @@
     }
     const location = typeof context.location === "string" && context.location.trim()
       ? context.location.trim() : "";
-    const postDate = typeof context.post_acquisition_date === "string"
-      && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(context.post_acquisition_date)
-      ? "POST · " + context.post_acquisition_date.slice(0, 10) : "";
+    const dateMatch = typeof context.post_acquisition_date === "string"
+      ? context.post_acquisition_date.match(/^(\d{4})-(\d{2})-\d{2}(?:T|$)/) : null;
+    const month = dateMatch ? MONTH_LABELS[Number(dateMatch[2]) - 1] : null;
+    const postDate = month ? "POST " + month + " " + dateMatch[1] : "";
     const lines = [location, postDate].filter(Boolean);
-    sceneEventContext.textContent = lines.join("  /  ");
+    sceneEventContext.textContent = lines.join(" · ");
     sceneEventContext.hidden = lines.length === 0;
   }
 
@@ -443,11 +445,11 @@
   const HIGHLIGHT_TYPES = [
     { types: ["AMBIGUOUS_CLASS_PAIR"], label: "Most ambiguous", category: "ambiguity" },
     { types: ["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER"], label: "Local contrast", category: "spatial" },
-    { types: ["SEVERE_PROXIMITY_GROUP"], label: "Severe proximity group", category: "severe" },
+    { types: ["SEVERE_PROXIMITY_GROUP"], label: "Severe group", category: "severe" },
     { types: ["MULTI_BUILDING_SITE"], label: "Reviewed site", category: "gis" },
-    { types: ["CONTEXT_RICH_SEVERE"], label: "GIS-rich example", category: "gis" },
+    { types: ["CONTEXT_RICH_SEVERE"], label: "GIS-rich", category: "gis" },
     { types: ["REPRESENTATIVE_SEVERE"], label: "Representative severe", category: "severe" },
-    { types: ["REPRESENTATIVE_LOW_DAMAGE"], label: "Representative low damage", category: "spatial" },
+    { types: ["REPRESENTATIVE_LOW_DAMAGE"], label: "Representative low", category: "spatial" },
   ];
 
   function highlightMetadata(candidate, ids) {
@@ -479,6 +481,7 @@
       title.textContent = spec.label;
       const count = document.createElement("small");
       count.textContent = highlightMetadata(candidate, ids);
+      button.setAttribute("aria-label", spec.label + ": " + count.textContent);
       button.append(title, count);
       button.addEventListener("click", () => {
         if (currentScene?.scene_id !== sceneId) return;
@@ -534,6 +537,8 @@
     highlightsList.replaceChildren();
     sceneEventContext.textContent = "";
     sceneEventContext.hidden = true;
+    sceneDescription.textContent = "";
+    sceneDescription.hidden = true;
     clearSceneSummary();
     document.dispatchEvent(new Event("scene-changed"));
   }
@@ -557,7 +562,8 @@
       currentSceneIndex = index;
       currentScene = scene;
       sceneDashboardTitle.textContent = sceneLabel(scene);
-      sceneDescription.textContent = "Curated PRE and POST satellite imagery.";
+      sceneDescription.textContent = "";
+      sceneDescription.hidden = true;
       renderSceneEvidenceContext(scene);
       sceneBuildingCount.textContent = Array.isArray(scene.buildings) ? scene.buildings.length + (scene.buildings.length === 1 ? " building" : " buildings") : "";
       sceneBuildingCount.hidden = false;
@@ -576,6 +582,7 @@
       sceneBuildingCount.hidden = true;
       clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
+      sceneDescription.hidden = false;
       sceneDashboardTitle.textContent = "Explore the scene";
       sceneEventContext.textContent = "";
       sceneEventContext.hidden = true;
@@ -640,6 +647,7 @@
       if (!listResponse.ok) throw new Error("Available demo scenes could not be loaded.");
       if (!Array.isArray(listBody.scenes) || listBody.scenes.length === 0) {
         sceneDescription.textContent = "No precomputed demo scenes are available locally.";
+        sceneDescription.hidden = false;
         sceneDashboardTitle.textContent = "Explore the scene";
         sceneLoading.hidden = true;
         setSceneStatus("You can still test a single matched building pair below.");
@@ -656,6 +664,7 @@
       sceneBuildingCount.hidden = true;
       clearSceneSummary();
       sceneDescription.textContent = "Demo scene unavailable.";
+      sceneDescription.hidden = false;
       sceneDashboardTitle.textContent = "Explore the scene";
       setSceneStatus(error.message || "The demo scene could not be loaded.", true);
     }
