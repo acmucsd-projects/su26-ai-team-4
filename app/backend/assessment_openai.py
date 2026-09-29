@@ -356,6 +356,13 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
     candidates = scene_evidence.get("candidates")
     candidates = candidates if isinstance(candidates, dict) else {}
     building_id_pattern = re.compile(r"\b[A-Za-z0-9][A-Za-z0-9_-]*_b\d+\b")
+    global_text = [output.overview, output.recommended_review or "", *output.limitations]
+    if any(building_id_pattern.search(text) for text in global_text):
+        raise AssessmentProviderError(
+            "assessment_provider_invalid_output",
+            "The provider returned an invalid scene overview response.",
+            502,
+        )
     findings = []
     referenced_candidate_keys: list[str] = []
     for finding in output.findings:

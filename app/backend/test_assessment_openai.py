@@ -207,6 +207,27 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
         self.assertEqual([finding["title"] for finding in result["findings"]], ["Ambiguity", "Scene-wide pattern"])
         self.assertEqual(result["candidate_buildings"], {"most_ambiguous_1": "scene_000001_b0001"})
 
+    def test_scene_normalizer_rejects_identifiers_in_scene_level_narrative(self):
+        scene_evidence = {"candidates": {}}
+        for field, value in (
+            ("overview", "Review scene_000001_b0001 first."),
+            ("recommended_review", "Inspect scene_000001_b0001 next."),
+            ("limitations", ["scene_000001_b0001 is not verified."]),
+        ):
+            result = {
+                "overview": "A concise overview.",
+                "findings": [],
+                "recommended_review": None,
+                "limitations": [],
+                "prompt_version": SCENE_ASSESSMENT_PROMPT_VERSION,
+                "generated_by": "openai/gpt-6-luna",
+            }
+            result[field] = value
+            with self.subTest(field=field):
+                with self.assertRaises(AssessmentProviderError) as caught:
+                    normalize_scene_assessment_result(result, scene_evidence)
+                self.assertEqual(caught.exception.code, "assessment_provider_invalid_output")
+
     def test_model_cannot_supply_application_metadata_or_extra_fields(self):
         client = FakeClient(response({
             "assessment": "The model predicts minor damage.",
