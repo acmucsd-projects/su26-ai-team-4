@@ -190,7 +190,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
         incomplete = build_evidence_packet({}, {"prediction": {"probabilities": {"no-damage": 0.5}}})
         self.assertIsNone(incomplete["damage_prediction"]["probability_ranking"])
         self.assertNotIn("scene_id", incomplete["scene_context"])
-        self.assertIsNone(incomplete["scene_context"]["uncertainty_summary"]["selected_building"]["uncertainty_rank"])
+        self.assertIsNone(incomplete["scene_context"]["uncertainty_summary"]["selected_building_rankings"])
 
         non_finite_gap = build_scene_context({}, {}, {"top_two_gap": float("nan")})
         self.assertNotIn("top_two_probability_gap", non_finite_gap["selected_building"])
@@ -256,16 +256,14 @@ class AssessmentEvidenceTests(unittest.TestCase):
             if predicted_class in expected_counts:
                 expected_counts[predicted_class] += 1
 
-        distribution = scene_summary["damage_distribution"]
+        distribution = scene_summary["model_summary"]
         self.assertEqual(distribution["total_buildings"], len(scene["buildings"]))
         self.assertEqual(distribution["classified_buildings"], len(scene["buildings"]))
         self.assertEqual(distribution["class_counts"], expected_counts)
         self.assertEqual(distribution["severe_count"], expected_counts["major-damage"] + expected_counts["destroyed"])
-        selected = scene_summary["uncertainty_summary"]["selected_building"]
-        self.assertEqual(selected["uncertainty_rank"], next(
-            row["rank"] for row in build_scene_evidence(scene, contexts)["model_uncertainty"]["uncertainty_ranking"]
-            if row["building_id"] == building["id"]
-        ))
+        selected = scene_summary["uncertainty_summary"]["selected_building_rankings"]
+        self.assertEqual(selected["uncertainty_rank"], build_scene_evidence(scene, contexts)["uncertainty_summary"]["building_rankings"][building["id"]]["uncertainty_rank"])
+        self.assertIsNotNone(scene_summary["spatial_context"])
         self.assertEqual(evidence["event_context"]["hazard_type"], "hurricane")
 
     def test_building_packet_uses_shared_scene_evidence_without_scene_llm_or_all_candidates(self):
@@ -283,7 +281,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
             packet["scene_context"],
             building_scene_context(shared_evidence, building["id"]),
         )
-        self.assertEqual(packet["scene_context"]["context_summary"]["buildings_with_reviewed_context"], 48)
+        self.assertEqual(packet["scene_context"]["gis_summary"]["buildings_with_reviewed_context"], 48)
         self.assertNotIn("candidates", packet["scene_context"])
         self.assertNotIn("candidate_order", packet["scene_context"])
         self.assertNotIn("scene_overview", packet)
@@ -300,6 +298,19 @@ class AssessmentEvidenceTests(unittest.TestCase):
         self.assertEqual(build_prompt(packet), build_prompt(packet))
         self.assertEqual(build_prompt(packet)["version"], PROMPT_VERSION)
         self.assertEqual(build_prompt(packet)["output_contract"], OUTPUT_CONTRACT)
+
+    def test_building_ai_packet_and_candidate_context_ignore_xbd_ground_truth(self):
+        scene, contexts = scene_and_context("hurricane-michael_00000247")
+        building = next(row for row in scene["buildings"] if row["id"].endswith("_b0009"))
+        mutated_scene = json.loads(json.dumps(scene))
+        for row in mutated_scene["buildings"]:
+            row["demo_metadata"]["ground_truth"] = "private-reference-label-token"
+        changed_building = next(row for row in mutated_scene["buildings"] if row["id"] == building["id"])
+        first = build_evidence_packet(scene, building, contexts[building["uid"]])
+        second = build_evidence_packet(mutated_scene, changed_building, contexts[building["uid"]])
+        self.assertEqual(first, second)
+        self.assertNotIn("private-reference-label-token", build_prompt(second)["user"])
+        self.assertNotIn('"ground_truth"', build_prompt(second)["user"])
 
     def test_preview_is_not_a_mock_assessment(self):
         scene, contexts = scene_and_context("hurricane-florence_00000459")
@@ -335,8 +346,8 @@ class AssessmentEvidenceTests(unittest.TestCase):
             "do not provide chain-of-thought",
         ):
             self.assertIn(rule, instructions)
-        self.assertEqual(PROMPT_VERSION, "building-assessment-v2.2")
-        self.assertEqual(EVIDENCE_PACKET_SCHEMA_VERSION, 4)
+        self.assertEqual(PROMPT_VERSION, "building-assessment-v2.3")
+        self.assertEqual(EVIDENCE_PACKET_SCHEMA_VERSION, 5)
         self.assertEqual(set(OUTPUT_CONTRACT), {"assessment", "recommended_review", "supporting_details", "limitations"})
 
 

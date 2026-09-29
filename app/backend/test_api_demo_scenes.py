@@ -178,7 +178,7 @@ class FakeAssessmentProvider:
             "recommended_review": "Verify the building against an event-time record if use matters.",
             "supporting_details": [],
             "limitations": [],
-            "prompt_version": "building-assessment-v2.2",
+            "prompt_version": "building-assessment-v2.3",
             "generated_by": "fake-provider-for-test",
         }
         self.error = error
@@ -188,7 +188,7 @@ class FakeAssessmentProvider:
             "findings": [],
             "recommended_review": None,
             "limitations": [],
-            "prompt_version": "scene-assessment-v1",
+            "prompt_version": "scene-assessment-v2",
             "generated_by": "fake-provider-for-test",
         }
         self.scene_prompts = []
@@ -209,7 +209,7 @@ class FakeAssessmentProvider:
 class AssessmentGenerationApiTests(unittest.TestCase):
     def test_scene_preview_and_generation_share_evidence_and_only_return_known_candidates(self) -> None:
         scene_id = "hurricane-harvey_00000177"
-        candidate_key = "most_ambiguous_1"
+        candidate_key = "ambiguous_1"
         provider = FakeAssessmentProvider(scene_result={
             "overview": "The model-derived scene picture includes several close class comparisons.",
             "findings": [
@@ -219,7 +219,7 @@ class AssessmentGenerationApiTests(unittest.TestCase):
             ],
             "recommended_review": "Can PRE/POST comparison resolve the leading classes for the most ambiguous candidate?",
             "limitations": ["Model predictions are not verified ground truth."],
-            "prompt_version": "scene-assessment-v1",
+            "prompt_version": "scene-assessment-v2",
             "generated_by": "openai/gpt-6-luna",
         })
         environment = {
@@ -245,13 +245,13 @@ class AssessmentGenerationApiTests(unittest.TestCase):
 
         self.assertEqual(len(provider.scene_prompts), 1)
         prompt_packet = json.loads(provider.scene_prompts[0]["user"].split("\n", 1)[1])
-        self.assertEqual(prompt_packet["damage_distribution"], preview_body["scene_evidence"]["damage_distribution"])
+        self.assertEqual(prompt_packet["model_summary"], preview_body["scene_evidence"]["model_summary"])
         self.assertEqual([item["title"] for item in body["findings"]], ["Classification ambiguity"])
-        expected_building_id = preview_body["scene_evidence"]["candidates"][candidate_key]["building_id"]
-        self.assertEqual(body["candidate_buildings"], {candidate_key: expected_building_id})
-        self.assertEqual(body["evidence_used"], ["scene_damage_distribution", "model_uncertainty", "reviewed_context"])
+        expected_building_ids = preview_body["scene_evidence"]["candidate_findings"][candidate_key]["building_ids"]
+        self.assertEqual(body["candidate_buildings"], {candidate_key: expected_building_ids})
+        self.assertEqual(body["evidence_used"], ["model", "spatial", "event", "reviewed_gis"])
         self.assertEqual(body["generated_by"], "openai/gpt-6-luna")
-        self.assertEqual(body["prompt_version"], "scene-assessment-v1")
+        self.assertEqual(body["prompt_version"], "scene-assessment-v2")
 
     def test_scene_overview_handles_no_gis_and_unavailable_provider(self) -> None:
         scene_id = "palu-tsunami_00000065"
@@ -269,8 +269,8 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                     generated = client.post(f"/demo-scenes/{scene_id}/assessment")
                     self.assertEqual(preview.status_code, 200)
                     self.assertEqual(generated.status_code, 200)
-                    self.assertEqual(generated.json()["evidence_used"], ["scene_damage_distribution", "model_uncertainty"])
-                    self.assertEqual(preview.json()["scene_evidence"]["context_summary"]["buildings_with_reviewed_context"], 0)
+                    self.assertEqual(generated.json()["evidence_used"], ["model", "spatial", "event"])
+                    self.assertEqual(preview.json()["scene_evidence"]["gis_summary"]["buildings_with_reviewed_context"], 0)
 
             with patch("app.backend.api.configured_assessment_provider", return_value=None):
                 with TestClient(create_app()) as client:
@@ -308,7 +308,7 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                     self.assertEqual(florence.status_code, 200)
                     self.assertEqual(florence.json(), {
                         **provider.result,
-                        "evidence_used": ["damage_prediction", "class_probabilities", "reviewed_context"],
+                        "evidence_used": ["model", "spatial", "event", "reviewed_gis"],
                     })
 
                     matthew_scene = client.get("/demo-scenes/hurricane-matthew_00000060").json()
@@ -317,7 +317,7 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                         f"/demo-scenes/hurricane-matthew_00000060/buildings/{matthew_building['id']}/assessment"
                     )
                     self.assertEqual(matthew.status_code, 200)
-                    self.assertEqual(matthew.json()["evidence_used"], ["damage_prediction", "class_probabilities"])
+                    self.assertEqual(matthew.json()["evidence_used"], ["model", "spatial", "event"])
 
                     self.assertEqual(len(provider.prompts), 2)
                     florence_packet = json.loads(provider.prompts[0]["user"].split("\n", 1)[1])
@@ -353,7 +353,7 @@ class AssessmentGenerationApiTests(unittest.TestCase):
                     for scene_id, building_id, has_context in cases:
                         result = client.post(f"/demo-scenes/{scene_id}/buildings/{building_id}/assessment")
                         self.assertEqual(result.status_code, 200, building_id)
-                        self.assertEqual("reviewed_context" in result.json()["evidence_used"], has_context)
+                        self.assertEqual("reviewed_gis" in result.json()["evidence_used"], has_context)
 
         packets = [json.loads(prompt["user"].split("\n", 1)[1]) for prompt in provider.prompts]
         florence, michael, santa_rosa, matthew, palu = packets
@@ -375,16 +375,16 @@ class AssessmentGenerationApiTests(unittest.TestCase):
         for packet, (scene_id, _building_id, _has_context), hazard_type, location, post_date in zip(
             packets, cases, expected_hazards, expected_locations, expected_post_dates, strict=True
         ):
-            self.assertEqual(packet["schema_version"], 4)
+            self.assertEqual(packet["schema_version"], 5)
             self.assertEqual(packet["event_context"]["hazard_type"], hazard_type)
             self.assertEqual(packet["event_context"]["location"], location)
             self.assertEqual(packet["event_context"]["post_acquisition_date"], post_date)
             self.assertIsNone(packet["event_context"]["pre_acquisition_date"])
             self.assertEqual(packet["event_context"]["scene_id"], scene_id)
-            distribution = packet["scene_context"]["damage_distribution"]
+            distribution = packet["scene_context"]["model_summary"]
             self.assertGreater(distribution["total_buildings"], 0)
             self.assertEqual(distribution["classified_buildings"], distribution["total_buildings"])
-            self.assertEqual(packet["scene_context"]["context_summary"]["buildings_with_reviewed_context"], {
+            self.assertEqual(packet["scene_context"]["gis_summary"]["buildings_with_reviewed_context"], {
                 "hurricane-florence_00000459": 40,
                 "hurricane-michael_00000247": 175,
                 "santa-rosa-wildfire_00000014": 48,

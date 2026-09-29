@@ -353,7 +353,7 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
             502,
         ) from None
 
-    candidates = scene_evidence.get("candidates")
+    candidates = scene_evidence.get("candidate_findings")
     candidates = candidates if isinstance(candidates, dict) else {}
     building_id_pattern = re.compile(r"\b[A-Za-z0-9][A-Za-z0-9_-]*_b\d+\b")
     global_text = [output.overview, output.recommended_review or "", *output.limitations]
@@ -378,11 +378,14 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
                 referenced_candidate_keys.append(key)
 
     candidate_buildings = {}
+    candidate_types = {}
     for key in referenced_candidate_keys:
         candidate = candidates.get(key)
-        building_id = candidate.get("building_id") if isinstance(candidate, dict) else None
-        if isinstance(building_id, str) and building_id:
-            candidate_buildings[key] = building_id
+        building_ids = candidate.get("building_ids") if isinstance(candidate, dict) else None
+        if isinstance(building_ids, list) and building_ids and all(isinstance(value, str) and value for value in building_ids):
+            candidate_buildings[key] = sorted(set(building_ids))
+            if isinstance(candidate.get("type"), str):
+                candidate_types[key] = candidate["type"]
 
     return {
         "overview": output.overview,
@@ -392,6 +395,7 @@ def normalize_scene_assessment_result(result: object, scene_evidence: dict) -> d
         "prompt_version": SCENE_ASSESSMENT_PROMPT_VERSION,
         "generated_by": generated_by.strip(),
         "candidate_buildings": candidate_buildings,
+        "candidate_types": candidate_types,
     }
 
 

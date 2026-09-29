@@ -308,11 +308,13 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             evidence_used = []
             prediction = packet["damage_prediction"]
             if prediction["predicted_class"] is not None:
-                evidence_used.append("damage_prediction")
-            if all(value is not None for value in prediction["probabilities"].values()):
-                evidence_used.append("class_probabilities")
+                evidence_used.append("model")
+            if packet["scene_context"].get("spatial_context"):
+                evidence_used.append("spatial")
+            if packet["event_context"].get("event_name"):
+                evidence_used.append("event")
             if packet["context"]["available"]:
-                evidence_used.append("reviewed_context")
+                evidence_used.append("reviewed_gis")
             return {**result, "evidence_used": evidence_used}
         except AssessmentProviderError as error:
             raise HTTPException(
@@ -354,11 +356,13 @@ def create_app(model_path: Path | None = None) -> FastAPI:
             from .assessment_openai import normalize_scene_assessment_result
 
             normalized = normalize_scene_assessment_result(result, scene_evidence)
-            evidence_used = ["scene_damage_distribution"]
-            if scene_evidence["model_uncertainty"]["ranked_building_count"]:
-                evidence_used.append("model_uncertainty")
-            if scene_evidence["context_summary"]["buildings_with_reviewed_context"]:
-                evidence_used.append("reviewed_context")
+            evidence_used = ["model"]
+            if scene_evidence["spatial_summary"]["usable_geometry_buildings"]:
+                evidence_used.append("spatial")
+            if scene_evidence["event"].get("event_name") or scene_evidence["event"].get("hazard_type"):
+                evidence_used.append("event")
+            if scene_evidence["gis_summary"]["buildings_with_reviewed_context"]:
+                evidence_used.append("reviewed_gis")
             return {**normalized, "evidence_used": evidence_used}
         except AssessmentProviderError as error:
             raise HTTPException(

@@ -151,14 +151,14 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             "findings": [{
                 "title": "Classification ambiguity",
                 "explanation": "The leading classes are close, so the selected examples are useful for review.",
-                "candidate_keys": ["most_ambiguous_1"],
+                "candidate_keys": ["ambiguous_1"],
             }],
             "recommended_review": "Can PRE/POST comparison distinguish the leading classes for the most ambiguous candidates?",
             "limitations": ["Predictions are not verified ground truth."],
         }))
         result = OpenAIAssessmentProvider("gpt-6-luna", client=client).generate_scene(scene_prompt())
         self.assertEqual(result["overview"].split()[0], "Severe")
-        self.assertEqual(result["findings"][0]["candidate_keys"], ["most_ambiguous_1"])
+        self.assertEqual(result["findings"][0]["candidate_keys"], ["ambiguous_1"])
         self.assertEqual(result["prompt_version"], SCENE_ASSESSMENT_PROMPT_VERSION)
         self.assertEqual(result["generated_by"], "openai/gpt-6-luna")
         self.assertEqual(client.responses.arguments["text_format"], SceneAssessmentOutput)
@@ -190,11 +190,11 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             }]}, strict=True)
 
     def test_scene_normalizer_ignores_unknown_candidate_keys_and_identifier_prose(self):
-        scene_evidence = {"candidates": {"most_ambiguous_1": {"building_id": "scene_000001_b0001"}}}
+        scene_evidence = {"candidate_findings": {"ambiguous_1": {"type": "AMBIGUOUS_CLASS_PAIR", "building_ids": ["scene_000001_b0001"]}}}
         result = normalize_scene_assessment_result({
             "overview": "A concise scene overview.",
             "findings": [
-                {"title": "Ambiguity", "explanation": "The leading classes are close.", "candidate_keys": ["most_ambiguous_1"]},
+                {"title": "Ambiguity", "explanation": "The leading classes are close.", "candidate_keys": ["ambiguous_1"]},
                 {"title": "Unknown", "explanation": "This refers to no supplied candidate.", "candidate_keys": ["invented_key"]},
                 {"title": "Untrusted identifier", "explanation": "Inspect scene_000001_b9999 next.", "candidate_keys": []},
                 {"title": "Scene-wide pattern", "explanation": "The class distribution is uneven.", "candidate_keys": []},
@@ -205,10 +205,11 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
             "generated_by": "openai/gpt-6-luna",
         }, scene_evidence)
         self.assertEqual([finding["title"] for finding in result["findings"]], ["Ambiguity", "Scene-wide pattern"])
-        self.assertEqual(result["candidate_buildings"], {"most_ambiguous_1": "scene_000001_b0001"})
+        self.assertEqual(result["candidate_buildings"], {"ambiguous_1": ["scene_000001_b0001"]})
+        self.assertEqual(result["candidate_types"], {"ambiguous_1": "AMBIGUOUS_CLASS_PAIR"})
 
     def test_scene_normalizer_rejects_identifiers_in_scene_level_narrative(self):
-        scene_evidence = {"candidates": {}}
+        scene_evidence = {"candidate_findings": {}}
         for field, value in (
             ("overview", "Review scene_000001_b0001 first."),
             ("recommended_review", "Inspect scene_000001_b0001 next."),

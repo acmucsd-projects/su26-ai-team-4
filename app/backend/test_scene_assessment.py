@@ -35,12 +35,13 @@ class SceneAssessmentPromptTests(unittest.TestCase):
         prompt_packet = json.loads(packet_json)
 
         self.assertEqual(prompt["version"], SCENE_ASSESSMENT_PROMPT_VERSION)
-        self.assertEqual(SCENE_ASSESSMENT_PROMPT_VERSION, "scene-assessment-v1")
+        self.assertEqual(SCENE_ASSESSMENT_PROMPT_VERSION, "scene-assessment-v2")
         self.assertEqual(evidence["schema_version"], SCENE_ASSESSMENT_PACKET_SCHEMA_VERSION)
         self.assertEqual(prompt_packet["schema_version"], evidence["schema_version"])
         self.assertEqual(prompt["output_contract"], SCENE_OUTPUT_CONTRACT)
-        self.assertEqual(prompt_packet["candidates"], evidence["candidates"])
-        self.assertNotIn("uncertainty_ranking", prompt_packet["model_uncertainty"])
+        self.assertEqual(prompt_packet["candidate_findings"], evidence["candidate_findings"])
+        self.assertNotIn("building_rankings", prompt_packet["uncertainty_summary"])
+        self.assertNotIn("per_building", prompt_packet["spatial_summary"])
         self.assertNotIn("image", prompt_packet)
         self.assertNotIn("coordinates", prompt_packet)
         serialized = json.dumps(prompt_packet, ensure_ascii=False)
@@ -53,10 +54,11 @@ class SceneAssessmentPromptTests(unittest.TestCase):
         instructions = " ".join(prompt["system"].lower().split())
         for rule in (
             "2-4 sentence synthesis",
-            "only from the supplied candidates object",
+            "only from the supplied candidate_findings object",
             "do not invent, reproduce, or mention building identifiers",
             "rankings are ordinal summaries",
-            "do not infer spatial concentrations, directions, clusters, or causal patterns",
+            "call connected nearby severe predictions proximity groups",
+            "pixel distances and relative positions describe only the scene image frame",
             "preserve the distinction between building/place, parcel, site and area evidence",
             "never state that you observed collapse",
             "provide evacuation",
@@ -72,16 +74,16 @@ class SceneAssessmentPromptTests(unittest.TestCase):
         self.assertEqual(first["status"], "preview_only")
         self.assertEqual(first["provider_status"], "disabled")
         self.assertNotIn("overview", first)
-        self.assertEqual(first["scene_evidence"]["context_summary"]["buildings_with_reviewed_context"], len(contexts))
+        self.assertEqual(first["scene_evidence"]["gis_summary"]["buildings_with_reviewed_context"], len(contexts))
 
     def test_no_gis_scene_has_zero_context_and_unknown_location_remains_null(self):
         scene, contexts = load_scene("palu-tsunami_00000065")
         preview = build_scene_assessment_preview(scene, contexts)
         evidence = preview["scene_evidence"]
-        self.assertEqual(evidence["context_summary"]["buildings_with_reviewed_context"], 0)
-        self.assertEqual(evidence["context_summary"]["buildings_without_reviewed_context"], len(scene["buildings"]))
-        self.assertIsNone(evidence["scene_metadata"]["location"])
-        self.assertEqual(evidence["scene_metadata"]["hazard_type"], "tsunami")
+        self.assertEqual(evidence["gis_summary"]["buildings_with_reviewed_context"], 0)
+        self.assertEqual(evidence["gis_summary"]["buildings_without_reviewed_context"], len(scene["buildings"]))
+        self.assertIsNone(evidence["event"]["location"])
+        self.assertEqual(evidence["event"]["hazard_type"], "tsunami")
 
 
 if __name__ == "__main__":
