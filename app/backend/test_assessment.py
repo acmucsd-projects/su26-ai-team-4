@@ -199,7 +199,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
         self.assertEqual(tied["damage_prediction"]["probability_ranking"]["second_most_likely_class"], "minor-damage")
         self.assertEqual(tied["damage_prediction"]["probability_ranking"]["top_two_gap"], 0)
 
-    def test_packaged_event_context_uses_manifest_names_and_omits_unknown_place_and_dates(self):
+    def test_packaged_event_context_uses_curated_metadata_and_preserves_unknowns(self):
         expected_hazards = {
             "hurricane-florence": "hurricane",
             "hurricane-harvey": "hurricane",
@@ -215,10 +215,10 @@ class AssessmentEvidenceTests(unittest.TestCase):
                 event = build_event_context(scene)
                 self.assertEqual(event["event_name"], scene["event_name"])
                 self.assertEqual(event["hazard_type"], expected_hazards[scene["event_name"]])
-                self.assertEqual(event["hazard_type_basis"], "explicit mapping from packaged event_name")
-                self.assertNotIn("location", event)
-                self.assertNotIn("pre_acquisition_date", event)
-                self.assertNotIn("post_acquisition_date", event)
+                self.assertEqual(event["hazard_type_basis"], "allowlisted mapping from packaged event_name")
+                self.assertIn("location", event)
+                self.assertIn("pre_acquisition_date", event)
+                self.assertIn("post_acquisition_date", event)
 
     def test_event_context_accepts_only_explicit_location_and_iso_acquisition_dates(self):
         event = build_event_context({
@@ -238,10 +238,10 @@ class AssessmentEvidenceTests(unittest.TestCase):
             "post_acquisition_date": "event day",
         })
         self.assertEqual(unknown["event_name"], "unknown-event")
-        self.assertNotIn("hazard_type", unknown)
-        self.assertNotIn("location", unknown)
-        self.assertNotIn("pre_acquisition_date", unknown)
-        self.assertNotIn("post_acquisition_date", unknown)
+        self.assertIsNone(unknown["hazard_type"])
+        self.assertIsNone(unknown["location"])
+        self.assertIsNone(unknown["pre_acquisition_date"])
+        self.assertIsNone(unknown["post_acquisition_date"])
 
     def test_scene_context_counts_predictions_and_selected_probability_gap_deterministically(self):
         scene, contexts = scene_and_context("hurricane-michael_00000247")

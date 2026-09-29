@@ -8,59 +8,17 @@ packaged event names; no location or event date is inferred from GIS claims.
 from __future__ import annotations
 
 import math
-from datetime import date
-
-
-DAMAGE_CLASSES = ("no-damage", "minor-damage", "major-damage", "destroyed")
-HAZARD_TYPE_BY_EVENT_NAME = {
-    "hurricane-florence": "hurricane",
-    "hurricane-harvey": "hurricane",
-    "hurricane-matthew": "hurricane",
-    "hurricane-michael": "hurricane",
-    "palu-tsunami": "tsunami",
-    "santa-rosa-wildfire": "wildfire",
-    "socal-fire": "wildfire",
-}
+from .scene_evidence import DAMAGE_CLASSES, HAZARD_TYPE_BY_EVENT_NAME, build_scene_metadata
 
 
 def _optional_text(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
-def _optional_iso_date(value: object) -> str | None:
-    text = _optional_text(value)
-    if text is None:
-        return None
-    try:
-        parsed = date.fromisoformat(text)
-    except ValueError:
-        return None
-    return text if parsed.isoformat() == text else None
-
-
 def build_event_context(scene: dict) -> dict:
-    """Return only explicit manifest event metadata and recognized hazard type."""
+    """Compatibility wrapper around the centralized curated metadata layer."""
 
-    context = {}
-    event_name = _optional_text(scene.get("event_name"))
-    if event_name:
-        context["event_name"] = event_name
-        hazard_type = HAZARD_TYPE_BY_EVENT_NAME.get(event_name)
-        if hazard_type:
-            context["hazard_type"] = hazard_type
-            context["hazard_type_basis"] = "explicit mapping from packaged event_name"
-
-    location = _optional_text(scene.get("location"))
-    if location:
-        context["location"] = location
-    for field in ("pre_acquisition_date", "post_acquisition_date"):
-        acquisition_date = _optional_iso_date(scene.get(field))
-        if acquisition_date:
-            context[field] = acquisition_date
-
-    if context:
-        return {"schema_version": 1, **context}
-    return {}
+    return {"schema_version": 1, **build_scene_metadata(scene)}
 
 
 def build_scene_context(
