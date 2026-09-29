@@ -190,10 +190,13 @@ async function main() {
     location: "Duplin County, North Carolina", location_scope: "scene", post_acquisition_date: "2018-09-20T16:04:41.000Z",
   };
   scenes.get("palu-tsunami_00000065").scene_evidence_context = {
-    location: "Palu, Central Sulawesi", location_scope: "event", post_acquisition_date: "2018-10-01T02:26:02.000Z",
+    location: "Palu, Central Sulawesi, Indonesia", location_scope: "scene", post_acquisition_date: "2018-10-01T02:26:02.000Z",
   };
   scenes.get("hurricane-matthew_00000060").scene_evidence_context = {
-    location: null, location_scope: null, post_acquisition_date: "2016-10-09T15:32:03.000Z",
+    location: "Les Cayes, Sud, Haiti", location_scope: "scene", post_acquisition_date: "2016-10-09T15:32:03.000Z",
+  };
+  scenes.get("santa-rosa-wildfire_00000014").scene_evidence_context = {
+    location: "Northern California", location_scope: "event", post_acquisition_date: "2017-10-11T19:19:41.000Z",
   };
   for (const scene of scenes.values()) {
     scene.buildings[0].prediction.confidence = 0.45;
@@ -361,12 +364,13 @@ async function main() {
 
   for (let index = 2; index < sceneSummaries.length; index += 1) {
     await document.elements.get("#scene-next").trigger("click");
-    if (index === 2) assert.equal(document.elements.get("#scene-event-context").textContent, "POST Oct 2016");
+    if (index === 2) assert.equal(document.elements.get("#scene-event-context").textContent, "Les Cayes, Sud, Haiti · POST Oct 2016");
     if (index === 3) {
       assert.equal(document.elements.get("#scene-event-context").textContent, "Duplin County, North Carolina · POST Sep 2018");
       assert.equal(document.elements.get("#scene-event-context").hidden, false);
     }
-    if (index === 4) assert.equal(document.elements.get("#scene-event-context").textContent, "Event region: Palu, Central Sulawesi · POST Oct 2018");
+    if (index === 4) assert.equal(document.elements.get("#scene-event-context").textContent, "Palu, Central Sulawesi, Indonesia · POST Oct 2018");
+    if (index === 5) assert.equal(document.elements.get("#scene-event-context").textContent, "Event region: Northern California · POST Oct 2017");
   }
   assert.equal(fetchCalls.length, sceneSummaries.length + 1);
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");

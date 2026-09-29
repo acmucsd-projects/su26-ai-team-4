@@ -126,8 +126,9 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=geo-workspace-4"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-4"') < html.indexOf('src="app.js?v=geo-workspace-4"'));
+  assert.match(html, /href="styles\.css\?v=geo-workspace-5"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-5"') < html.indexOf('src="app.js?v=geo-workspace-5"'));
+  assert.match(html, /src="app\.js\?v=geo-workspace-5"/);
   assert.match(styles, /button:focus-visible, input:focus-visible, summary:focus-visible/);
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 920px\)/);
@@ -156,6 +157,12 @@ async function main() {
   assert.match(html, /Assessment not revealed/);
   assert.doesNotMatch(html, /Quick Explore|Read full analysis|scene-assessment-overview-excerpt/);
   assert.match(html, /Test your own PRE \/ POST pair/);
+  assert.match(html, /Optional live paired-crop classifier/);
+  assert.match(styles, /\.manual-lab \{ width: 100%;/);
+  assert.match(styles, /\.manual-lab-content \{ padding:/);
+  assert.match(styles, /\.manual-lab-content \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.ok(html.indexOf('class="analysis-layout"') < html.indexOf('class="manual-lab"'));
+  assert.ok(html.indexOf('id="building-inspector"') < html.indexOf('class="manual-lab"'));
   assert.match(html, /id="scene-assessment-overview"/);
   assert.ok(html.indexOf('id="scene-assessment-overview"') < html.indexOf('id="scene-assessment-review-block"'));
   assert.ok(html.indexOf('id="scene-assessment-review-block"') < html.indexOf('id="scene-assessment-findings-block"'));

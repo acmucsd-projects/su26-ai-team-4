@@ -258,8 +258,8 @@ details summary { cursor: pointer; }
 .context-attribution { margin: 10px 0 0; font-size: .73rem; }
 .context-attribution a { color: #b9d5ff; }
 
-.manual-lab { width: fit-content; max-width: 100%; margin: 11px 0 0 auto; border: 1px solid #334761; border-radius: 7px; background: #0b1728; }
-.manual-lab[open] { width: min(100%, 760px); background: var(--panel); }
+.manual-lab { width: 100%; margin: 11px 0 0; border: 1px solid #334761; border-radius: 7px; background: #0b1728; }
+.manual-lab[open] { background: var(--panel); }
 .manual-lab > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; list-style: none; }
 .manual-lab > summary::-webkit-details-marker { display: none; }
 .manual-lab > summary strong, .manual-lab > summary small { display: block; }
@@ -267,7 +267,7 @@ details summary { cursor: pointer; }
 .manual-lab > summary small { margin-top: 2px; color: var(--muted); font-size: .73rem; }
 .manual-lab-indicator { color: var(--blue); font-size: 1.2rem; }
 .manual-lab[open] .manual-lab-indicator { transform: rotate(45deg); }
-.manual-lab-content { max-width: 760px; padding: 15px 17px 18px; border-top: 1px solid var(--line); }
+.manual-lab-content { padding: 15px 17px 18px; border-top: 1px solid var(--line); }
 .manual-lab-heading { display: flex; align-items: center; gap: 12px; }
 .manual-lab-heading h2 { margin: 0; font-size: 1.03rem; }
 .manual-lab-heading .section-kicker { margin: 0; }
@@ -288,6 +288,14 @@ details summary { cursor: pointer; }
 .status-message { margin: 8px 0 0; color: var(--muted); font-size: .76rem; }
 .app-footer { margin-top: 18px; color: var(--quiet); font-size: .73rem; }
 .app-footer p { margin: 0; }
+
+@media (min-width: 1000px) {
+  .manual-lab-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  .manual-lab-heading, .manual-lab-copy { grid-column: 1 / -1; }
+  .example-section { grid-column: 1; }
+  .upload-grid, .predict-button, .manual-lab .status-message { grid-column: 2; }
+  .predict-button { justify-self: start; }
+}
 
 @media (max-width: 1180px) {
   .analysis-layout { grid-template-columns: minmax(0, 1fr) minmax(310px, 35%); }
