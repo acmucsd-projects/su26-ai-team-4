@@ -94,20 +94,26 @@ class SceneEvidenceTests(unittest.TestCase):
         expected = {
             "hurricane-harvey_00000177": ("Harris County, Texas", "2017-08-31T17:38:50.685Z"),
             "hurricane-michael_00000247": ("Bay County, Florida", "2018-10-13T16:48:15.000Z"),
+            "hurricane-matthew_00000060": (None, "2016-10-09T15:32:03.000Z"),
+            "hurricane-florence_00000459": ("Duplin County, North Carolina", "2018-09-20T16:04:41.000Z"),
+            "palu-tsunami_00000065": (None, "2018-10-01T02:26:02.000Z"),
             "santa-rosa-wildfire_00000014": ("Sonoma County, California", "2017-10-11T19:19:41.000Z"),
+            "socal-fire_00000663": ("Los Angeles County, California", "2018-11-14T18:42:58.000Z"),
         }
         for scene_id, (location, post_date) in expected.items():
             event = build_scene_evidence(*load_scene(scene_id))["event"]
             self.assertEqual((event["location"], event["post_acquisition_date"]), (location, post_date))
-            self.assertTrue(event["location_source"])
+            self.assertEqual(event["location_scope"], "scene" if location else None)
+            self.assertEqual(bool(event["location_source"]), bool(location))
             self.assertTrue(event["acquisition_date_source"])
         for scene_id in SCENE_IDS:
             scene, contexts = load_scene(scene_id)
             self.assertEqual(build_scene_evidence(scene, contexts)["event"]["scene_id"], scene_id)
-        unknown = {"scene_id": "unknown_000001", "event_name": "unknown-event", "location": " explicit ",
+        unknown = {"scene_id": "unknown_000001", "event_name": "unknown-event", "location": " explicit ", "location_scope": "event",
                    "pre_acquisition_date": "2020-02-29", "post_acquisition_date": "2020-2-30", "buildings": []}
         event = build_scene_evidence(unknown)["event"]
         self.assertEqual(event["location"], "explicit")
+        self.assertEqual(event["location_scope"], "event")
         self.assertEqual(event["pre_acquisition_date"], "2020-02-29")
         self.assertIsNone(event["post_acquisition_date"])
 

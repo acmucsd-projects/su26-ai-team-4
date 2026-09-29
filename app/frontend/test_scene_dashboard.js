@@ -85,9 +85,6 @@ function createDocument() {
     ["#scene-tooltip", new FakeElement()],
     [".scene-legend", new FakeElement()],
     ["#scene-uncertainty-legend", new FakeElement()],
-    ["#scene-highlights", new FakeElement()],
-    ["#scene-highlights-status", new FakeElement()],
-    ["#scene-highlights-list", new FakeElement()],
     ["#scene-post-image", new FakeElement()],
     ["#scene-overlay", new FakeElement()],
     ["#scene-selector", new FakeElement()],
@@ -190,31 +187,22 @@ async function main() {
   const firstScene = scenes.get(sceneSummaries[0].scene_id);
   const secondScene = scenes.get(sceneSummaries[1].scene_id);
   scenes.get("hurricane-florence_00000459").scene_evidence_context = {
-    location: "Duplin County, North Carolina", post_acquisition_date: null,
+    location: "Duplin County, North Carolina", location_scope: "scene", post_acquisition_date: "2018-09-20T16:04:41.000Z",
+  };
+  scenes.get("palu-tsunami_00000065").scene_evidence_context = {
+    location: "Palu, Central Sulawesi", location_scope: "event", post_acquisition_date: "2018-10-01T02:26:02.000Z",
+  };
+  scenes.get("hurricane-matthew_00000060").scene_evidence_context = {
+    location: null, location_scope: null, post_acquisition_date: "2016-10-09T15:32:03.000Z",
   };
   for (const scene of scenes.values()) {
     scene.buildings[0].prediction.confidence = 0.45;
     scene.buildings[0].prediction.probabilities = { "no-damage": 0.45, "minor-damage": 0.43, "major-damage": 0.07, destroyed: 0.05 };
   }
   const fetchCalls = [];
-  const previewCalls = [];
   const revealDelays = [];
   let reduceMotion = false;
   const fetch = async (url) => {
-    if (url.endsWith("/assessment-preview")) {
-      previewCalls.push(url);
-      const sceneId = url.slice("/demo-scenes/".length, -"/assessment-preview".length);
-      const buildings = scenes.get(sceneId)?.buildings || [];
-      return { ok: true, json: async () => ({ status: "preview_only", scene_evidence: {
-        candidate_order: ["ambiguous_1", "local_contrast_1", "severe_group_1", "representative_severe"],
-        candidate_findings: {
-          ambiguous_1: { type: "AMBIGUOUS_CLASS_PAIR", reason: { rank: 1 }, building_ids: [buildings[0]?.id] },
-          local_contrast_1: { type: "LOCAL_LOW_DAMAGE_OUTLIER", reason: { neighbor_count: 5 }, building_ids: [buildings[0]?.id] },
-          severe_group_1: { type: "SEVERE_PROXIMITY_GROUP", building_ids: [buildings[2]?.id, buildings[3]?.id] },
-          representative_severe: { type: "REPRESENTATIVE_SEVERE", building_ids: [buildings[2]?.id] },
-        },
-      } }) };
-    }
     fetchCalls.push(url);
     if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: sceneSummaries }) };
     const sceneId = url.replace("/demo-scenes/", "");
@@ -249,7 +237,6 @@ async function main() {
   assert.equal(document.elements.get("#scene-reveal").hidden, false);
   assert.equal(document.elements.get("#scene-filters").hidden, true);
   assert.equal(document.querySelectorAll("[data-imagery-mode]")[2].disabled, true);
-  assert.equal(previewCalls.length, 0);
   await document.querySelectorAll("[data-imagery-mode]")[0].trigger("click");
   assert.equal(image.src, firstScene.image.pre_url);
   assert.equal(overlay.hidden, true);
@@ -374,11 +361,12 @@ async function main() {
 
   for (let index = 2; index < sceneSummaries.length; index += 1) {
     await document.elements.get("#scene-next").trigger("click");
-    if (index === 2) assert.equal(document.elements.get("#scene-event-context").hidden, true);
+    if (index === 2) assert.equal(document.elements.get("#scene-event-context").textContent, "POST Oct 2016");
     if (index === 3) {
-      assert.equal(document.elements.get("#scene-event-context").textContent, "Duplin County, North Carolina");
+      assert.equal(document.elements.get("#scene-event-context").textContent, "Duplin County, North Carolina · POST Sep 2018");
       assert.equal(document.elements.get("#scene-event-context").hidden, false);
     }
+    if (index === 4) assert.equal(document.elements.get("#scene-event-context").textContent, "Event region: Palu, Central Sulawesi · POST Oct 2018");
   }
   assert.equal(fetchCalls.length, sceneSummaries.length + 1);
   assert.equal(document.elements.get("#scene-current").textContent, "Socal Fire — Scene 663");
@@ -420,25 +408,8 @@ async function main() {
   assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-highlight")), false);
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(previewCalls.length, 4);
   assert.equal(document.elements.get("#scene-loading").hidden, true);
-  const highlightButtons = document.elements.get("#scene-highlights-list").children;
-  assert.equal(highlightButtons.length, 4);
-  assert.equal(highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").getAttribute("aria-label"), "Most ambiguous: #1 by top-two gap");
-  assert.equal(highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").children[1].textContent, "#1 by top-two gap");
-  highlightButtons.find((button) => button.dataset.candidateKey === "ambiguous_1").trigger("click");
-  assert.equal(selections.at(-1).id, scenes.get("santa-rosa-wildfire_00000014").buildings[0].id);
-  assert.equal(document.elements.get("#scene-canvas").scrollOptions.block, "nearest");
-  document.elements.get("#scene-canvas").scrollOptions = null;
-  highlightButtons.find((button) => button.dataset.candidateKey === "severe_group_1").trigger("click");
-  assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
-  assert.equal(document.elements.get("#scene-canvas").scrollOptions.block, "nearest");
-  assert.equal(overlay.children.filter((polygon) => polygon.classList.contains("group-highlight")).length, 2);
-  document.elements.get("#scene-group-next").trigger("click");
-  assert.match(document.elements.get("#scene-group-inspection-status").textContent, /building 2 of 2/);
-  document.elements.get("#scene-group-clear").trigger("click");
-  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("group-muted")), false);
-  assert.equal(overlay.children.some((polygon) => polygon.classList.contains("selected")), true);
+  assert.equal(fetchCalls.some((url) => url.endsWith("/assessment-preview")), false);
   await imageryButtons[3].trigger("click");
   assert.equal(document.elements.get(".scene-legend").hidden, true);
   assert.equal(document.elements.get("#scene-uncertainty-legend").hidden, false);

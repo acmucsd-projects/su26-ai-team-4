@@ -15,9 +15,6 @@
   const sceneTooltip = document.querySelector("#scene-tooltip");
   const sceneLegend = document.querySelector(".scene-legend");
   const uncertaintyLegend = document.querySelector("#scene-uncertainty-legend");
-  const highlights = document.querySelector("#scene-highlights");
-  const highlightsStatus = document.querySelector("#scene-highlights-status");
-  const highlightsList = document.querySelector("#scene-highlights-list");
   const scenePostImage = document.querySelector("#scene-post-image");
   const sceneOverlay = document.querySelector("#scene-overlay");
   const sceneSelector = document.querySelector("#scene-selector");
@@ -58,7 +55,6 @@
   let isRevealed = false;
   let isRevealing = false;
   let revealSequence = 0;
-  const highlightCache = new Map();
 
   function setSceneStatus(message = "", isError = false) {
     sceneStatusMessage.textContent = message;
@@ -92,7 +88,8 @@
       ? context.post_acquisition_date.match(/^(\d{4})-(\d{2})-\d{2}(?:T|$)/) : null;
     const month = dateMatch ? MONTH_LABELS[Number(dateMatch[2]) - 1] : null;
     const postDate = month ? "POST " + month + " " + dateMatch[1] : "";
-    const lines = [location, postDate].filter(Boolean);
+    const scopedLocation = location && context.location_scope === "event" ? "Event region: " + location : location;
+    const lines = [scopedLocation, postDate].filter(Boolean);
     sceneEventContext.textContent = lines.join(" · ");
     sceneEventContext.hidden = lines.length === 0;
   }
@@ -442,75 +439,6 @@
     });
   }
 
-  const HIGHLIGHT_TYPES = [
-    { types: ["AMBIGUOUS_CLASS_PAIR"], label: "Most ambiguous", category: "ambiguity" },
-    { types: ["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER"], label: "Local contrast", category: "spatial" },
-    { types: ["SEVERE_PROXIMITY_GROUP"], label: "Severe group", category: "severe" },
-    { types: ["MULTI_BUILDING_SITE"], label: "Reviewed site", category: "gis" },
-    { types: ["CONTEXT_RICH_SEVERE"], label: "GIS-rich", category: "gis" },
-    { types: ["REPRESENTATIVE_SEVERE"], label: "Representative severe", category: "severe" },
-    { types: ["REPRESENTATIVE_LOW_DAMAGE"], label: "Representative low", category: "spatial" },
-  ];
-
-  function highlightMetadata(candidate, ids) {
-    const reason = candidate.reason || {};
-    if (candidate.type === "AMBIGUOUS_CLASS_PAIR" && Number.isInteger(reason.rank)) return "#" + reason.rank + " by top-two gap";
-    if (["LOCAL_SEVERITY_OUTLIER", "LOCAL_LOW_DAMAGE_OUTLIER"].includes(candidate.type) && Number.isInteger(reason.neighbor_count)) return reason.neighbor_count + " nearest predictions";
-    if (candidate.type === "SEVERE_PROXIMITY_GROUP") return ids.length + " nearby severe predictions";
-    if (candidate.type === "MULTI_BUILDING_SITE") return ids.length + " analyzed site buildings";
-    if (candidate.type === "CONTEXT_RICH_SEVERE" && Number.isInteger(reason.reviewed_context_claim_count)) return reason.reviewed_context_claim_count + " reviewed GIS claims";
-    return ids.length > 1 ? ids.length + " buildings" : "Inspect building →";
-  }
-
-  function renderHighlights(sceneId, evidence) {
-    highlightsList.replaceChildren();
-    const ordered = Array.isArray(evidence?.candidate_order) ? evidence.candidate_order : [];
-    const candidates = evidence?.candidate_findings || {};
-    const currentIds = new Set(currentScene?.buildings?.map((building) => building.id) || []);
-    HIGHLIGHT_TYPES.forEach((spec) => {
-      const key = ordered.find((candidateKey) => spec.types.includes(candidates[candidateKey]?.type));
-      const candidate = candidates[key];
-      const ids = Array.isArray(candidate?.building_ids) ? [...new Set(candidate.building_ids)].filter((id) => currentIds.has(id)) : [];
-      if (!ids.length) return;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "highlight-button";
-      button.dataset.highlightCategory = spec.category;
-      button.dataset.candidateKey = key;
-      const title = document.createElement("span");
-      title.textContent = spec.label;
-      const count = document.createElement("small");
-      count.textContent = highlightMetadata(candidate, ids);
-      button.setAttribute("aria-label", spec.label + ": " + count.textContent);
-      button.append(title, count);
-      button.addEventListener("click", () => {
-        if (currentScene?.scene_id !== sceneId) return;
-        if (ids.length === 1) inspectRequestedBuilding({ scene_id: sceneId, building_id: ids[0] });
-        else inspectRequestedGroup({ scene_id: sceneId, building_ids: ids, group_id: key, group_label: spec.label });
-      });
-      highlightsList.append(button);
-    });
-    highlightsStatus.textContent = highlightsList.children.length ? "From deterministic scene evidence" : "No highlights available for this scene.";
-  }
-
-  async function loadHighlights(sceneId) {
-    highlights.hidden = false;
-    highlightsStatus.textContent = "Loading scene highlights…";
-    try {
-      let evidence = highlightCache.get(sceneId);
-      if (!evidence) {
-        const response = await fetch(DEMO_SCENES_URL + "/" + encodeURIComponent(sceneId) + "/assessment-preview");
-        const body = await response.json();
-        if (!response.ok || body?.status !== "preview_only" || !body.scene_evidence) throw new Error("No deterministic highlights available.");
-        evidence = body.scene_evidence;
-        highlightCache.set(sceneId, evidence);
-      }
-      if (currentScene?.scene_id === sceneId) renderHighlights(sceneId, evidence);
-    } catch (_error) {
-      if (currentScene?.scene_id === sceneId) highlightsStatus.textContent = "Scene highlights are unavailable.";
-    }
-  }
-
   function clearSceneForLoad() {
     revealSequence += 1;
     isRevealing = false;
@@ -533,8 +461,6 @@
     sceneAnalysisLocked.hidden = false;
     workspaceHint.textContent = "Reveal the assessment to inspect buildings";
     sceneLoading.hidden = false;
-    highlights.hidden = true;
-    highlightsList.replaceChildren();
     sceneEventContext.textContent = "";
     sceneEventContext.hidden = true;
     sceneDescription.textContent = "";
@@ -637,7 +563,6 @@
     updateImageryControls();
     updatePredictionFilterControls();
     setSceneStatus("Showing packaged model predictions. Select a footprint to inspect its result.");
-    loadHighlights(scene.scene_id);
   }
 
   async function loadSceneDashboard() {

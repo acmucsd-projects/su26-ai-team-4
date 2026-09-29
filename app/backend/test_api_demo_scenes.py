@@ -76,6 +76,7 @@ class DemoSceneApiTests(unittest.TestCase):
                 event_context = scene.json()["scene_evidence_context"]
                 self.assertEqual(event_context["event_name"], "hurricane-michael")
                 self.assertEqual(event_context["location"], "Bay County, Florida")
+                self.assertEqual(event_context["location_scope"], "scene")
                 self.assertNotIn("pre_acquisition_date", event_context)
                 self.assertEqual(event_context["post_acquisition_date"], "2018-10-13T16:48:15.000Z")
                 self.assertEqual(client.get(f"/demo-scenes/{SCENE_ID}/post.png").status_code, 200)
@@ -371,11 +372,11 @@ class AssessmentGenerationApiTests(unittest.TestCase):
             None,
         )
         expected_post_dates = (
-            None,
+            "2018-09-20T16:04:41.000Z",
             "2018-10-13T16:48:15.000Z",
             "2017-10-11T19:19:41.000Z",
-            None,
-            None,
+            "2016-10-09T15:32:03.000Z",
+            "2018-10-01T02:26:02.000Z",
         )
         for packet, (scene_id, _building_id, _has_context), hazard_type, location, post_date in zip(
             packets, cases, expected_hazards, expected_locations, expected_post_dates, strict=True

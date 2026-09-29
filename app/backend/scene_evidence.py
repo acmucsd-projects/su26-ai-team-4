@@ -43,14 +43,16 @@ class SceneEvidence(TypedDict):
     provenance: dict
 
 
-# These values are supported by the tracked, reviewed GIS audit notes and
-# overlays. Unknown location/date values intentionally remain null.
+# Locations come from reviewed GIS records; POST dates come from the matching
+# local xBD POST labels (metadata.capture_date). Raw labels are not versioned.
+# Unknown locations intentionally remain null.
 SCENE_METADATA_BY_ID = {
     "hurricane-harvey_00000177": {
         "event_name": "hurricane-harvey",
         "hazard_type": "hurricane",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": "Harris County, Texas",
+        "location_scope": "scene",
         "location_basis": "reviewed HCAD / City of Houston GIS coverage",
         "location_source": "app/backend/gis_context/HARVEY_FEASIBILITY.md",
         "pre_acquisition_date": None,
@@ -63,6 +65,7 @@ SCENE_METADATA_BY_ID = {
         "hazard_type": "hurricane",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": "Bay County, Florida",
+        "location_scope": "scene",
         "location_basis": "reviewed Bay County Property Appraiser overlay",
         "location_source": "app/demo_gis_context/hurricane-michael_00000247.json",
         "pre_acquisition_date": None,
@@ -75,42 +78,46 @@ SCENE_METADATA_BY_ID = {
         "hazard_type": "hurricane",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": None,
+        "location_scope": None,
         "location_basis": None,
         "location_source": None,
         "pre_acquisition_date": None,
-        "post_acquisition_date": None,
-        "acquisition_date_basis": None,
-        "acquisition_date_source": None,
+        "post_acquisition_date": "2016-10-09T15:32:03.000Z",
+        "acquisition_date_basis": "POST xBD metadata.capture_date",
+        "acquisition_date_source": "data/tier1/labels/hurricane-matthew_00000060_post_disaster.json",
     },
     "hurricane-florence_00000459": {
         "event_name": "hurricane-florence",
         "hazard_type": "hurricane",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": "Duplin County, North Carolina",
+        "location_scope": "scene",
         "location_basis": "reviewed audit of the Duplin County parcel source",
         "location_source": "app/backend/gis_context/README.md",
         "pre_acquisition_date": None,
-        "post_acquisition_date": None,
-        "acquisition_date_basis": None,
-        "acquisition_date_source": None,
+        "post_acquisition_date": "2018-09-20T16:04:41.000Z",
+        "acquisition_date_basis": "POST xBD metadata.capture_date",
+        "acquisition_date_source": "data/tier1/labels/hurricane-florence_00000459_post_disaster.json",
     },
     "palu-tsunami_00000065": {
         "event_name": "palu-tsunami",
         "hazard_type": "tsunami",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": None,
+        "location_scope": None,
         "location_basis": None,
         "location_source": None,
         "pre_acquisition_date": None,
-        "post_acquisition_date": None,
-        "acquisition_date_basis": None,
-        "acquisition_date_source": None,
+        "post_acquisition_date": "2018-10-01T02:26:02.000Z",
+        "acquisition_date_basis": "POST xBD metadata.capture_date",
+        "acquisition_date_source": "data/tier1/labels/palu-tsunami_00000065_post_disaster.json",
     },
     "santa-rosa-wildfire_00000014": {
         "event_name": "santa-rosa-wildfire",
         "hazard_type": "wildfire",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
         "location": "Sonoma County, California",
+        "location_scope": "scene",
         "location_basis": "reviewed Sonoma County GIS overlay and audit",
         "location_source": "app/backend/gis_context/MILESTONE_2_FEASIBILITY.md",
         "pre_acquisition_date": None,
@@ -122,13 +129,14 @@ SCENE_METADATA_BY_ID = {
         "event_name": "socal-fire",
         "hazard_type": "wildfire",
         "hazard_type_basis": "allowlisted mapping from packaged event_name",
-        "location": None,
-        "location_basis": None,
-        "location_source": None,
+        "location": "Los Angeles County, California",
+        "location_scope": "scene",
+        "location_basis": "reviewed SoCal jurisdiction and Los Angeles County GIS audit",
+        "location_source": "app/backend/README.md",
         "pre_acquisition_date": None,
-        "post_acquisition_date": None,
-        "acquisition_date_basis": None,
-        "acquisition_date_source": None,
+        "post_acquisition_date": "2018-11-14T18:42:58.000Z",
+        "acquisition_date_basis": "POST xBD metadata.capture_date",
+        "acquisition_date_source": "data/tier1/labels/socal-fire_00000663_post_disaster.json",
     },
 }
 
@@ -176,6 +184,7 @@ def build_scene_metadata(scene: dict) -> dict:
             "hazard_type": curated["hazard_type"],
             "hazard_type_basis": curated["hazard_type_basis"],
             "location": curated["location"],
+            "location_scope": curated["location_scope"],
             "location_basis": curated["location_basis"],
             "location_source": curated["location_source"],
             "pre_acquisition_date": curated["pre_acquisition_date"],
@@ -195,6 +204,10 @@ def build_scene_metadata(scene: dict) -> dict:
             if event_name in HAZARD_TYPE_BY_EVENT_NAME else None
         ),
         "location": _optional_text(scene.get("location")),
+        "location_scope": (
+            scene.get("location_scope") if scene.get("location_scope") in ("scene", "event")
+            else "scene"
+        ) if _optional_text(scene.get("location")) else None,
         "location_basis": "explicit scene manifest field" if _optional_text(scene.get("location")) else None,
         "location_source": "scene manifest" if _optional_text(scene.get("location")) else None,
         "pre_acquisition_date": _iso_date(scene.get("pre_acquisition_date")),

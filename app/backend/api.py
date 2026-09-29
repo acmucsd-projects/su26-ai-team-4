@@ -268,7 +268,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         event_context = build_scene_metadata(manifest)
         public_manifest["scene_evidence_context"] = {
             key: event_context[key]
-            for key in ("event_name", "location", "post_acquisition_date")
+            for key in ("event_name", "location", "location_scope", "post_acquisition_date")
         }
         return public_manifest
 

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore model-predicted building damage, reviewed GIS context, and evidence-grounded AI assessments across curated satellite scenes.">
   <title>Damage Atlas | Geospatial AI Workspace</title>
-  <link rel="stylesheet" href="styles.css?v=geo-workspace-3">
-  <script src="scene-dashboard.js?v=geo-workspace-3" defer></script>
-  <script src="app.js?v=geo-workspace-3" defer></script>
+  <link rel="stylesheet" href="styles.css?v=geo-workspace-4">
+  <script src="scene-dashboard.js?v=geo-workspace-4" defer></script>
+  <script src="app.js?v=geo-workspace-4" defer></script>
 </head>
 <body>
   <header class="app-chrome">
@@ -57,8 +57,8 @@
               </div>
               <p id="scene-assessment-status" class="scene-assessment-status" role="status"></p>
               <div id="scene-assessment-result" class="scene-assessment-result" hidden>
-                <p id="scene-assessment-overview-excerpt" class="scene-assessment-overview"></p>
-                <details id="scene-assessment-full" class="scene-assessment-full" hidden><summary>Read full analysis</summary><p id="scene-assessment-overview" class="scene-assessment-overview"></p><section id="scene-assessment-review-block" class="scene-assessment-section scene-assessment-review" hidden aria-labelledby="scene-assessment-review-title"><h4 id="scene-assessment-review-title">Recommended review</h4><p id="scene-assessment-review"></p></section></details>
+                <p id="scene-assessment-overview" class="scene-assessment-overview"></p>
+                <section id="scene-assessment-review-block" class="scene-assessment-section scene-assessment-review" hidden aria-labelledby="scene-assessment-review-title"><h4 id="scene-assessment-review-title">Recommended review</h4><p id="scene-assessment-review"></p></section>
                 <section id="scene-assessment-findings-block" class="scene-assessment-section scene-assessment-findings-block" hidden aria-labelledby="scene-assessment-findings-title">
                   <h4 id="scene-assessment-findings-title">Key findings</h4>
                   <ul id="scene-assessment-findings" class="scene-assessment-findings"></ul>
@@ -66,7 +66,6 @@
                 <details id="scene-assessment-details" class="scene-assessment-details" hidden><summary>Evidence &amp; limitations</summary><p id="scene-assessment-model" class="assessment-model" hidden></p><p id="scene-assessment-evidence-used" class="assessment-evidence-used" hidden></p><section id="scene-assessment-limitations-block" class="scene-assessment-section" hidden><h4>Limitations</h4><ul id="scene-assessment-limitations"></ul></section></details>
               </div>
             </section>
-            <section id="scene-highlights" class="scene-highlights" aria-labelledby="scene-highlights-title" hidden><div class="highlights-heading"><h4 id="scene-highlights-title">Quick Explore</h4><p id="scene-highlights-status" role="status"></p></div><div id="scene-highlights-list" class="scene-highlights-list"></div></section>
           </div>
         </aside>
         <section class="scene-workspace" aria-label="Interactive satellite scene">

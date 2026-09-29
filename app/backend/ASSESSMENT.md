@@ -98,14 +98,12 @@ clusters. All methods, coordinate spaces, and distance units travel with the
 evidence.
 
 The seven scene images are packaged 1024-by-1024 RGB PNGs and all 610 buildings
-have paired 224-by-224 PRE/POST crops. Their image metadata has no geotransform,
-sensor/catalog details, or registration/illumination quality data. Raw xBD is
-not in this checkout (`data/README.md` documents that it is not stored in the
-repository); the packaged `demo_metadata.ground_truth` class is the only
-reference label field found. No additional raw xBD environmental annotations,
-acquisition fields, or geographic extent can be audited locally. The curated
-registry therefore keeps unknown dates and locations null and does not infer
-scene centroids or geographic bounds from pixels.
+have paired 224-by-224 PRE/POST crops. Their packaged image metadata has no
+geotransform, sensor/catalog details, or registration/illumination quality data.
+Raw xBD is not versioned (`data/README.md`); this checkout does have local tier1
+POST labels with `metadata.capture_date`, which support the curated POST dates.
+The packaged `demo_metadata.ground_truth` class is the only versioned reference
+label field. The registry does not infer scene locations from pixels or event names.
 
 Named site groups require a reviewed displayable site-scope `school_site` or
 `site_use` claim with an explicit name and at least two analyzed buildings.
@@ -116,12 +114,14 @@ property, modeled-use, and area evidence keep their existing scopes and
 qualifications.
 
 Scene metadata comes from one curated registry. Event names are checked
-against each manifest. County-level locations are included only where tracked
-reviewed GIS audits/overlays identify the jurisdiction: Harris, Bay, Sonoma,
-and Duplin counties. POST xBD acquisition timestamps are included for Harvey,
-Michael, and Santa Rosa from their tracked audit records. PRE timestamps and
-remaining locations/dates stay null where repository evidence does not verify
-them. No values are guessed from event names, provider coverage, or the web.
+against each manifest. Reviewed GIS records support scene-level locations in
+Harris, Bay, Sonoma, Duplin, and Los Angeles counties. The local xBD POST labels
+already in the checkout provide `metadata.capture_date` for all seven demo
+scenes; those raw labels are not versioned, so their exact values and source
+paths are recorded in the registry. Matthew and Palu locations and all PRE
+timestamps remain null. A future event-level location must retain event scope
+and display as an event region rather than a precise scene location. No values
+are guessed from event names, provider coverage, or the web.
 The building packet also contains the selected damage prediction, confidence,
 all four probabilities, deterministic top-two classes/probabilities/gap, and
 only displayable normalized GIS claims with scope, source, temporal relation,

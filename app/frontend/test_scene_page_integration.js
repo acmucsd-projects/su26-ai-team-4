@@ -54,11 +54,11 @@ class FakeElement {
 function createDocument() {
   const ids = [
     "#scene-description", "#scene-dashboard-title", "#scene-event-context", "#scene-building-count", "#scene-status-message", "#scene-canvas", "#scene-post-image", "#scene-overlay",
-    "#scene-loading", "#scene-tooltip", ".scene-legend", "#scene-uncertainty-legend", "#scene-highlights", "#scene-highlights-status", "#scene-highlights-list",
+    "#scene-loading", "#scene-tooltip", ".scene-legend", "#scene-uncertainty-legend",
     "#scene-selector", "#scene-previous", "#scene-current", "#scene-next", "#scene-filters",
     "#scene-analysis-content", "#scene-analysis-locked", "#scene-reveal", "#scene-reveal-button", "#scene-reveal-status", ".workspace-hint",
     "#scene-assessment", "#scene-assessment-generate-button", "#scene-assessment-status", "#scene-assessment-result",
-    "#scene-assessment-model", "#scene-assessment-overview", "#scene-assessment-overview-excerpt", "#scene-assessment-full", "#scene-assessment-findings-block", "#scene-assessment-findings",
+    "#scene-assessment-model", "#scene-assessment-overview", "#scene-assessment-findings-block", "#scene-assessment-findings",
     "#scene-assessment-review-block", "#scene-assessment-review", "#scene-assessment-details", "#scene-assessment-evidence-used",
     "#scene-assessment-limitations-block", "#scene-assessment-limitations",
     "#scene-summary", "#scene-summary-total", "#scene-summary-no-damage", "#scene-summary-minor-damage", "#scene-summary-major-damage", "#scene-summary-destroyed", "#scene-summary-severe", "#scene-summary-severe-detail",
@@ -126,8 +126,8 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=geo-workspace-3"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-3"') < html.indexOf('src="app.js?v=geo-workspace-3"'));
+  assert.match(html, /href="styles\.css\?v=geo-workspace-4"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=geo-workspace-4"') < html.indexOf('src="app.js?v=geo-workspace-4"'));
   assert.match(styles, /button:focus-visible, input:focus-visible, summary:focus-visible/);
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 920px\)/);
@@ -154,9 +154,11 @@ async function main() {
   assert.match(styles, /contain: size; overflow-y: auto/);
   assert.match(styles, /align-items: stretch/);
   assert.match(html, /Assessment not revealed/);
-  assert.match(html, /Quick Explore/);
+  assert.doesNotMatch(html, /Quick Explore|Read full analysis|scene-assessment-overview-excerpt/);
   assert.match(html, /Test your own PRE \/ POST pair/);
-  assert.match(html, /id="scene-assessment-full"/);
+  assert.match(html, /id="scene-assessment-overview"/);
+  assert.ok(html.indexOf('id="scene-assessment-overview"') < html.indexOf('id="scene-assessment-review-block"'));
+  assert.ok(html.indexOf('id="scene-assessment-review-block"') < html.indexOf('id="scene-assessment-findings-block"'));
   assert.doesNotMatch(html, /Curated PRE and POST satellite imagery/);
   assert.doesNotMatch(html, /GPT-6 Sol/);
   assert.ok(html.indexOf('id="scene-analysis"') < html.indexOf('class="scene-workspace"'));
@@ -164,7 +166,7 @@ async function main() {
   assert.ok(html.indexOf('id="scene-assessment-details"') < html.indexOf('id="scene-assessment-model"'));
   assert.ok(html.indexOf('id="assessment-evidence-details"') < html.indexOf('id="assessment-model"'));
   assert.match(html, /id="comparison-range"/);
-  assert.match(html, /id="scene-highlights"/);
+  assert.doesNotMatch(html, /id="scene-highlights"/);
   assert.match(html, /data-imagery-mode="uncertainty"/);
   assert.match(html, /Key findings/);
   assert.match(html, /scene-assessment-details/);
@@ -208,25 +210,12 @@ async function main() {
   };
   const nextScene = { scene_id: "hurricane-harvey_00000177", event_name: "hurricane-harvey", scene_evidence_context: { event_name: "hurricane-harvey", location: "Harris County, Texas", post_acquisition_date: "2017-08-31T17:38:50.685Z" }, image: { width: 1024, height: 1024, pre_url: "/demo-scenes/hurricane-harvey_00000177/pre.png", post_url: "/demo-scenes/hurricane-harvey_00000177/post.png" }, buildings: [nextBuilding] };
   let predictRequests = 0;
-  let previewRequests = 0;
   const assessmentRequests = [];
   const assessmentResponses = [];
   const fetch = async (url, options = {}) => {
     if (url === "/demo-scenes") return { ok: true, json: async () => ({ scenes: [{ scene_id: scene.scene_id, event_name: scene.event_name }, { scene_id: nextScene.scene_id, event_name: nextScene.event_name }] }) };
     if (url === "/demo-scenes/hurricane-michael_00000247") return { ok: true, json: async () => scene };
     if (url === "/demo-scenes/hurricane-harvey_00000177") return { ok: true, json: async () => nextScene };
-    if (url.endsWith("/assessment-preview")) {
-      previewRequests += 1;
-      const michael = url.includes("hurricane-michael_00000247");
-      return { ok: true, json: async () => ({ status: "preview_only", scene_evidence: michael ? {
-        candidate_order: ["ambiguous_1", "severe_group_1", "context_rich_severe_1"],
-        candidate_findings: {
-          ambiguous_1: { type: "AMBIGUOUS_CLASS_PAIR", building_ids: [lowBuilding.id] },
-          severe_group_1: { type: "SEVERE_PROXIMITY_GROUP", building_ids: [building.id, groupBuilding.id] },
-          context_rich_severe_1: { type: "CONTEXT_RICH_SEVERE", building_ids: [building.id] },
-        },
-      } : { candidate_order: [], candidate_findings: {} } }) };
-    }
     if (options.method === "POST") {
       assessmentRequests.push({ url, options });
       const next = assessmentResponses.shift();
@@ -259,7 +248,6 @@ async function main() {
   assert.equal(document.elements.get("#inspector-content").hidden, true);
   assert.equal(document.elements.get("#scene-reveal").hidden, false);
   assert.equal(assessmentRequests.length, 0);
-  assert.equal(previewRequests, 0);
   await document.elements.get("#scene-reveal-button").trigger("click");
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(overlay.children[0].getAttribute("class"), "scene-building major-damage");
@@ -278,8 +266,6 @@ async function main() {
   assert.equal(sceneGenerate.textContent, "Generate analysis");
   assert.equal(document.elements.get("#scene-assessment-result").hidden, true);
   assert.equal(assessmentRequests.length, 0);
-  assert.equal(previewRequests, 1);
-  assert.equal(document.elements.get("#scene-highlights-list").children.length, 3);
 
   // The overview is explicit, deduplicated, grounded in returned candidate keys, and interactive.
   let resolveOverview;
@@ -320,6 +306,7 @@ async function main() {
   assert.equal(document.elements.get("#scene-assessment-findings").children[0].children.length, 4);
   assert.equal(document.elements.get("#scene-assessment-findings").children[1].children[3].textContent, "Inspect building →");
   assert.equal(document.elements.get("#scene-assessment-review").textContent, "Can the imagery distinguish the leading model classes?");
+  assert.equal(document.elements.get("#scene-assessment-review-block").hidden, false);
   assert.equal(document.elements.get("#scene-assessment-details").open, false);
   assert.deepEqual(document.elements.get("#scene-assessment-evidence-used").children.map((badge) => badge.textContent), ["MODEL", "SPATIAL", "EVENT", "GIS"]);
   const inspectButton = document.elements.get("#scene-assessment-findings").children[0].children[3];
@@ -428,9 +415,7 @@ async function main() {
   assert.equal(assessmentRequests.length, 3);
   assert.equal(assessmentRequests[2].url, "/demo-scenes/hurricane-harvey_00000177/assessment");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, longHarveyOverview);
-  assert.match(document.elements.get("#scene-assessment-overview-excerpt").textContent, /…$/);
-  assert.ok(document.elements.get("#scene-assessment-overview-excerpt").textContent.length < longHarveyOverview.length);
-  assert.equal(document.elements.get("#scene-assessment-full").hidden, false);
+  assert.equal((html.match(/id="scene-assessment-overview"/g) || []).length, 1);
   assert.equal(document.elements.get("#scene-assessment-model").textContent, "Generated by Alternate Model V2");
   assert.equal(document.elements.get("#scene-assessment-findings-block").hidden, true);
   assert.equal(document.elements.get("#scene-assessment-review-block").hidden, true);
@@ -440,18 +425,6 @@ async function main() {
   assert.equal(overlay.hidden, true);
   await document.elements.get("#scene-reveal-button").trigger("click");
   assert.equal(document.elements.get("#scene-assessment-overview").textContent, "The packaged scene predictions are mostly severe.");
-  assert.equal(document.elements.get("#scene-assessment-overview-excerpt").textContent, "The packaged scene predictions are mostly severe.");
-  assert.equal(document.elements.get("#scene-assessment-full").hidden, false);
-  assert.equal(previewRequests, 2);
-  const highlights = document.elements.get("#scene-highlights-list").children;
-  highlights.find((item) => item.dataset.candidateKey === "ambiguous_1").trigger("click");
-  assert.equal(document.elements.get("#selection-label").textContent, "Building b0002");
-  assert.equal(document.elements.get("#building-context").hidden, true);
-  highlights.find((item) => item.dataset.candidateKey === "severe_group_1").trigger("click");
-  assert.equal(document.elements.get("#scene-group-inspection").hidden, false);
-  assert.equal(document.elements.get("#scene-overlay").children.filter((item) => item.classList.contains("group-highlight")).length, 2);
-  document.elements.get("#scene-group-clear").trigger("click");
-  assert.equal(document.elements.get("#scene-group-inspection").hidden, true);
   assert.equal(assessmentRequests.length, 3);
   assert.equal(predictRequests, 0);
   console.log("scene_page_integration=passed");
