@@ -47,8 +47,10 @@ function createDocument() {
     "#selection-label", "#status-message", "#predict-button", "#result-card", "#result-class",
     "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
+    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result", "#assessment-text", "#assessment-limitations-block", "#assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
+  elements.get("#assessment-generate-button").textContent = "Generate assessment";
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
     const button = new FakeElement();
     button.dataset.example = name;

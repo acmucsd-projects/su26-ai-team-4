@@ -127,12 +127,14 @@ function createDocument() {
 async function main() {
   const document = createDocument();
   const selections = [];
+  const selectedSceneIds = [];
   let filteredOutSelections = 0;
   document.addEventListener("scene-building-selected", (event) => {
     event.detail.handled = true;
     if (event.detail.building) {
       const building = event.detail.building;
       selections.push(building);
+      selectedSceneIds.push(event.detail.scene_id);
     } else event.preventDefault();
   });
   document.addEventListener("scene-building-filtered-out", () => { filteredOutSelections += 1; });
@@ -284,6 +286,7 @@ async function main() {
   overlay.children[0].trigger("click");
   assert.equal(selections.length, 3);
   assert.equal(selections[2].id, secondScene.buildings[0].id);
+  assert.equal(selectedSceneIds[2], secondScene.scene_id);
   assert.equal(overlay.children[0].classList.contains("selected"), true);
 
   assert.deepEqual(fetchCalls, ["/demo-scenes", "/demo-scenes/hurricane-michael_00000247", "/demo-scenes/hurricane-harvey_00000177"]);

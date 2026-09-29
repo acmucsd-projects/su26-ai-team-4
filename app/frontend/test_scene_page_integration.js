@@ -59,8 +59,10 @@ function createDocument() {
     "#pre-image", "#post-image", "#pre-preview", "#post-preview", "#pre-placeholder", "#post-placeholder", "#selection-label",
     "#status-message", "#predict-button", "#result-card", "#result-class", "#result-confidence", "#result-badge", "#probability-bars", "#clear-selection",
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims", "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
+    "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result", "#assessment-text", "#assessment-limitations-block", "#assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
+  elements.get("#assessment-generate-button").textContent = "Generate assessment";
   const examples = ["no-damage", "minor-damage", "major-damage", "destroyed"].map((name) => {
     const button = new FakeElement();
     button.dataset.example = name;
@@ -111,8 +113,8 @@ class PageEvent {
 async function main() {
   const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
   const styles = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
-  assert.match(html, /href="styles\.css\?v=building-context-3"/);
-  assert.ok(html.indexOf('src="scene-dashboard.js?v=scene-filters-1"') < html.indexOf('src="app.js?v=building-context-3"'));
+  assert.match(html, /href="styles\.css\?v=ai-assessment-1"/);
+  assert.ok(html.indexOf('src="scene-dashboard.js?v=assessment-selection-1"') < html.indexOf('src="app.js?v=ai-assessment-1"'));
   assert.match(styles, /\.context-more summary:focus-visible\s*\{[^}]*outline: 2px solid var\(--blue\)/);
   assert.match(styles, /\.context-more summary:focus:not\(:focus-visible\)\s*\{\s*outline: none/);
   assert.match(html, /openstreetmap.org\/copyright/);
@@ -128,7 +130,8 @@ async function main() {
   assert.equal((html.match(/class="scene-summary-metric /g) || []).length, 4);
   assert.doesNotMatch(html, /scene-summary-metric severe/);
   assert.match(html, /Severe damage summary/);
-  assert.doesNotMatch(html, /priority|assessment|emergency|likely needs help/i);
+  assert.match(html, /AI-Assisted Assessment/);
+  assert.doesNotMatch(html, /priority|emergency|likely needs help/i);
 
   const document = createDocument();
   const building = {
