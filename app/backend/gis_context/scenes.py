@@ -6,6 +6,7 @@ SCENE_COUNTS = {
     "santa-rosa-wildfire_00000014": 49,
     "hurricane-florence_00000459": 56,
     "socal-fire_00000663": 48,
+    "palu-tsunami_00000065": 129,
 }
 SCENE_PROVIDERS = {
     "hurricane-harvey_00000177": ("hcad", "nsi", "osm_historical", "osm_current"),
@@ -13,6 +14,9 @@ SCENE_PROVIDERS = {
     "santa-rosa-wildfire_00000014": ("sonoma_parcels", "sonoma_schools", "nsi", "osm_historical", "osm_current"),
     "hurricane-florence_00000459": ("duplin_parcels", "nsi", "osm_historical", "osm_current"),
     "socal-fire_00000663": ("osm_historical", "osm_current", "nsi"),
+    # Indonesia: use only the existing global OSM sources; U.S.-specific NSI
+    # and assessor/parcel adapters do not apply.
+    "palu-tsunami_00000065": ("osm_historical", "osm_current"),
 }
 OPTIONAL_PROVIDERS = {"socal-fire_00000663": {"osm_historical"}}
 LOCAL_PARCELS = {"hcad", "bay_2017", "sonoma_parcels", "duplin_parcels"}

@@ -62,6 +62,7 @@ def empty_report(manifest: dict, reason: str) -> dict:
     providers = SCENE_PROVIDERS.get(scene_id, PROVIDERS)
     flags = [key for key in FLAGS
              if (not key.startswith("hcad_") or "hcad" in providers)
+             and (not key.startswith("nsi_") or "nsi" in providers)
              and (not key.startswith("local_") or any(p in LOCAL_PARCELS for p in providers))]
     for row in rows:
         row["flags"] = {key: None for key in flags}
@@ -95,16 +96,16 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     local_ready = statuses[local_provider]["status"] == "complete" if local_provider else False
     hcad_accepted = [c for c in matches.get("hcad", []) if c["accepted"]]
     hc = statuses.get("hcad", {}).get("status") == "complete"
-    ns = statuses["nsi"]["status"] == "complete"
+    ns = statuses.get("nsi", {}).get("status") == "complete"
     flags = {
         "hcad_parcel_match": flag(bool(hcad_accepted), hc),
         "hcad_useful_context": flag(any(c.category != "unknown" for c in by_provider.get("hcad", [])), hc),
         "hcad_single_structure": flag(any(c["evidence"].get("structure_association") == "single_structure_supported" for c in hcad_accepted), hc),
         "hcad_multi_structure": flag(any(c["evidence"].get("structure_association") == "multi_structure" for c in hcad_accepted), hc),
         "hcad_structure_count_unknown": flag(any(c["evidence"].get("structure_association") == "structure_count_unknown" for c in hcad_accepted), hc),
-        "nsi_candidate": flag(bool(matches["nsi"]), ns),
-        "nsi_accepted": flag(any(c["accepted"] for c in matches["nsi"]), ns),
-        "nsi_normalized_occupancy": flag(bool(by_provider["nsi"]), ns),
+        "nsi_candidate": flag(bool(matches.get("nsi", [])), ns),
+        "nsi_accepted": flag(any(c["accepted"] for c in matches.get("nsi", [])), ns),
+        "nsi_normalized_occupancy": flag(bool(by_provider.get("nsi", [])), ns),
         "historical_osm_useful_context": flag(bool(by_provider["osm_historical"]), statuses["osm_historical"]["status"] == "complete"),
         "current_osm_useful_context": flag(bool(by_provider["osm_current"]), statuses["osm_current"]["status"] == "complete"),
         "mapped_name_place": flag(any(c.mapped_name for c in useful), complete),
@@ -145,12 +146,14 @@ def build_row(building: dict, geometry: dict, claims, candidates: list[dict], st
     }
     if "hcad" not in providers:
         flags = {k: v for k, v in flags.items() if not k.startswith("hcad_")}
+    if "nsi" not in providers:
+        flags = {k: v for k, v in flags.items() if not k.startswith("nsi_")}
     if local_provider is None:
         flags = {k: v for k, v in flags.items() if not k.startswith("local_")}
     return {"building_id": building["id"], "uid": building["uid"], "geometry": geometry,
             "evaluation_status": "evaluated" if complete else "partially_evaluated",
             "claims": [c.to_dict() for c in claims], "candidates": candidates, "conflicts": conflicts,
-            "nsi_occupancies": sorted({c.raw_value["occtype"] for c in by_provider["nsi"]}),
+            "nsi_occupancies": sorted({c.raw_value["occtype"] for c in by_provider.get("nsi", [])}),
             "flags": flags, "displayable_context": [c.label for c in useful],
             "qa_reasons": [], "qa_status": "not_selected"}
 

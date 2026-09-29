@@ -450,6 +450,18 @@ class ReportingTests(unittest.TestCase):
         self.assertIsNone(row["flags"]["event_or_pre_event_context"])
         self.assertFalse(any(key.startswith("hcad_") for key in row["flags"]))
 
+    def test_palu_uses_only_global_osm_sources_without_nsi_metrics(self):
+        scene_id = "palu-tsunami_00000065"
+        self.assertEqual(SCENE_COUNTS[scene_id], 129)
+        providers = SCENE_PROVIDERS[scene_id]
+        self.assertEqual(providers, ("osm_historical", "osm_current"))
+        statuses = {p: {"status": "complete"} for p in providers}
+        row = build_row({"id": "a", "uid": "a"}, None, [], [], statuses)
+        self.assertTrue(row["flags"]["no_context"])
+        self.assertFalse(any(key.startswith("nsi_") for key in row["flags"]))
+        report = empty_report({"scene_id": scene_id, "buildings": [{"id": "a", "uid": "a"}]}, "fixture")
+        self.assertFalse(any(key.startswith("nsi_") for key in report["buildings"][0]["flags"]))
+
     def test_unavailable_optional_provider_does_not_block_completed_baseline_coverage(self):
         statuses = {"osm_historical": {"status": "unavailable", "optional": True},
                     "osm_current": {"status": "complete"}, "nsi": {"status": "complete"}}
