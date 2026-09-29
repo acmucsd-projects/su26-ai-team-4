@@ -46,14 +46,9 @@ function createDocument() {
     "#building-context", "#context-claims", "#context-more", "#context-more-label", "#context-secondary-claims",
     "#context-attribution", "#context-category", "#context-evidence", "#context-notes",
     "#building-assessment", "#assessment-generate-button", "#assessment-status", "#assessment-result",
-    "#assessment-model", "#assessment-evidence-used",
-    "#assessment-assessment-section", "#assessment-assessment-text",
-    "#assessment-stands-out-section", "#assessment-stands-out-text",
-    "#assessment-uncertainty-section", "#assessment-uncertainty-text",
-    "#assessment-context-section", "#assessment-context-text",
-    "#assessment-review-section", "#assessment-review-text",
-    "#assessment-gaps-section", "#assessment-gaps-text",
-    "#assessment-limitations-block", "#assessment-limitations",
+    "#assessment-model", "#assessment-text", "#assessment-review-block", "#assessment-review-text",
+    "#assessment-evidence-details", "#assessment-evidence-used", "#assessment-supporting-block",
+    "#assessment-supporting-details", "#assessment-limitations-block", "#assessment-limitations",
   ];
   const elements = new Map(ids.map((id) => [id, new FakeElement()]));
   elements.get("#assessment-generate-button").textContent = "Generate assessment";
@@ -152,26 +147,24 @@ async function main() {
   assert.equal(el("#assessment-generate-button").disabled, true);
   assert.equal(el("#assessment-status").textContent, "Generating assessment…");
   pending.resolve(response(200, {
-    assessment: "The model predicts major damage. The current modeled occupancy is not verified use.",
-    what_stands_out: "The model strongly favors major damage.",
-    uncertainty: "  ",
-    context_interpretation: "Current modeled residential occupancy is contextual evidence, not event-time verification.",
-    suggested_review: "Compare the PRE and POST crops manually.",
-    evidence_gaps: null,
+    assessment: "The classifier favors Major Damage, with Minor Damage as the next interpretation. Current modeled residential occupancy describes context but does not verify event-time building use.",
+    recommended_review: "Compare PRE/POST roof and structural changes to distinguish Major from Minor; the assessment model has not viewed the crops.",
+    supporting_details: ["The GIS occupancy value is modeled and current."],
     limitations: ["Prediction is not verified ground truth."],
     generated_by: "openai/gpt-6-luna",
     evidence_used: ["damage_prediction", "class_probabilities", "reviewed_context"],
   }));
   await firstClick;
   assert.equal(el("#assessment-result").hidden, false);
-  assert.match(el("#assessment-assessment-text").textContent, /model predicts major damage/);
-  assert.equal(el("#assessment-stands-out-section").hidden, false);
-  assert.equal(el("#assessment-uncertainty-section").hidden, true);
-  assert.equal(el("#assessment-context-section").hidden, false);
-  assert.equal(el("#assessment-review-section").hidden, false);
-  assert.equal(el("#assessment-gaps-section").hidden, true);
+  assert.match(el("#assessment-text").textContent, /classifier favors Major Damage/);
+  assert.equal(el("#assessment-review-block").hidden, false);
+  assert.match(el("#assessment-review-text").textContent, /distinguish Major from Minor/);
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
+  assert.equal(el("#assessment-evidence-details").hidden, false);
+  assert.equal(el("#assessment-evidence-details").open, false);
   assert.equal(el("#assessment-evidence-used").textContent, "Evidence used: Damage prediction · 4-class probabilities · Reviewed building context");
+  assert.equal(el("#assessment-supporting-block").hidden, false);
+  assert.equal(el("#assessment-supporting-details").children.length, 1);
   assert.equal(el("#assessment-limitations-block").hidden, false);
   assert.equal(el("#assessment-limitations").children.length, 1);
   assert.equal(el("#assessment-generate-button").hidden, true);
@@ -179,15 +172,17 @@ async function main() {
   // G: Switching buildings clears the visible previous answer; H: returning restores it from memory.
   select(buildingB, "hurricane-harvey_00000177");
   assert.equal(el("#assessment-result").hidden, true);
-  assert.equal(el("#assessment-assessment-text").textContent, "");
+  assert.equal(el("#assessment-text").textContent, "");
   assert.equal(el("#assessment-model").hidden, true);
-  assert.equal(el("#assessment-stands-out-section").hidden, true);
+  assert.equal(el("#assessment-review-block").hidden, true);
+  assert.equal(el("#assessment-evidence-details").hidden, true);
   assert.equal(el("#assessment-generate-button").hidden, false);
   // I: No-GIS buildings still have an enabled generation action.
   assert.equal(el("#building-context").hidden, true);
   assert.equal(el("#assessment-generate-button").disabled, false);
   select(buildingA, "hurricane-michael_00000247");
-  assert.equal(el("#assessment-assessment-text").textContent, "The model predicts major damage. The current modeled occupancy is not verified use.");
+  assert.equal(el("#assessment-text").textContent, "The classifier favors Major Damage, with Minor Damage as the next interpretation. Current modeled residential occupancy describes context but does not verify event-time building use.");
+  assert.match(el("#assessment-review-text").textContent, /distinguish Major from Minor/);
   assert.equal(el("#assessment-model").textContent, "GPT-6 Luna · Evidence-grounded assessment");
   assert.match(el("#assessment-evidence-used").textContent, /Reviewed building context/);
   assert.equal(requests.length, 1);
@@ -195,17 +190,19 @@ async function main() {
   // F: A successful empty limitations array omits that subsection.
   select(buildingB, "hurricane-harvey_00000177");
   queuedResponses.push(response(200, {
-    assessment: "The model predicts no damage.", limitations: [],
+    assessment: "The model predicts no damage.", recommended_review: null, supporting_details: [], limitations: [],
     generated_by: "openai/alternate-model-v2",
     evidence_used: ["damage_prediction", "class_probabilities"],
   }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 2);
-  assert.equal(el("#assessment-assessment-text").textContent, "The model predicts no damage.");
+  assert.equal(el("#assessment-text").textContent, "The model predicts no damage.");
+  assert.equal(el("#assessment-review-block").hidden, true);
   assert.equal(el("#assessment-model").textContent, "Alternate Model V2 · Evidence-grounded assessment");
   assert.equal(el("#assessment-evidence-used").textContent, "Evidence used: Damage prediction · 4-class probabilities");
   assert.equal(el("#assessment-limitations-block").hidden, true);
   assert.equal(el("#assessment-limitations").children.length, 0);
+  assert.equal(el("#assessment-evidence-details").open, false);
 
   // J: Unavailable responses are safely described, retryable, and not cached.
   const buildingC = { ...buildingB, id: "hurricane-harvey_00000177_b0003" };
@@ -218,7 +215,7 @@ async function main() {
   queuedResponses.push(response(200, { assessment: "A retry succeeded.", limitations: [], evidence_used: ["damage_prediction", "class_probabilities"] }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 4);
-  assert.equal(el("#assessment-assessment-text").textContent, "A retry succeeded.");
+  assert.equal(el("#assessment-text").textContent, "A retry succeeded.");
 
   const buildingD = { ...buildingB, id: "hurricane-harvey_00000177_b0004" };
   select(buildingD, "hurricane-harvey_00000177");
@@ -230,12 +227,12 @@ async function main() {
   queuedResponses.push(response(200, { assessment: "The retry worked after a temporary failure.", limitations: [], evidence_used: ["damage_prediction", "class_probabilities"] }));
   await el("#assessment-generate-button").trigger("click");
   assert.equal(requests.length, 6);
-  assert.equal(el("#assessment-assessment-text").textContent, "The retry worked after a temporary failure.");
+  assert.equal(el("#assessment-text").textContent, "The retry worked after a temporary failure.");
 
   // K: Existing filter-driven clearing also clears assessment UI.
   document.dispatchEvent(new PageEvent("scene-building-filtered-out"));
   assert.equal(el("#building-assessment").hidden, true);
-  assert.equal(el("#assessment-assessment-text").textContent, "");
+  assert.equal(el("#assessment-text").textContent, "");
   assert.equal(el("#assessment-evidence-used").hidden, true);
 
   // Switching scenes clears the inspector, while manual examples remain independent.

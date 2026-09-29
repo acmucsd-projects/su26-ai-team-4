@@ -157,13 +157,15 @@ button { cursor: pointer; }
 .assessment-status.error { color: #b02e3f; }
 .assessment-result { margin-top: 10px; }
 .assessment-model { margin: 0 0 6px; color: var(--muted); font-size: 0.7rem; font-weight: 700; }
-.assessment-evidence-used { margin: 0 0 12px; color: var(--muted); font-size: 0.72rem; line-height: 1.4; }
-.assessment-sections { display: grid; gap: 10px; }
-.assessment-section h4 { margin: 0 0 3px; color: #40516e; font-size: 0.74rem; font-weight: 800; }
 .assessment-text { margin: 0; color: var(--ink); font-size: 0.88rem; line-height: 1.55; }
 .assessment-section-text { margin: 0; color: var(--ink); font-size: 0.82rem; line-height: 1.5; }
-.assessment-limitations { margin-top: 10px; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
-.assessment-limitations h4 { margin: 0 0 4px; color: var(--muted); font-size: 0.74rem; font-weight: 800; }
-.assessment-limitations ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; }
+.assessment-review { margin-top: 13px; }
+.assessment-review h4, .assessment-evidence-section h4 { margin: 0 0 4px; color: #40516e; font-size: 0.75rem; font-weight: 800; }
+.assessment-evidence-details { margin-top: 12px; color: var(--muted); font-size: 0.74rem; line-height: 1.45; }
+.assessment-evidence-details summary { width: fit-content; cursor: pointer; font-weight: 700; text-underline-offset: 3px; }
+.assessment-evidence-details summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 3px; }
+.assessment-evidence-used { margin: 8px 0 0; color: var(--muted); }
+.assessment-evidence-section { margin-top: 10px; }
+.assessment-evidence-section ul { display: grid; gap: 3px; margin: 0; padding-left: 18px; }
 @media (max-width: 800px) { .page-shell { width: min(100% - 28px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } }
 @media (max-width: 440px) { .panel { padding: 21px; } .scene-heading { display: block; } #scene-building-count { display: inline-flex; margin-top: 12px; } .scene-selector { gap: 6px; padding: 6px; } .scene-nav-button { padding: 7px; font-size: 0.72rem; } .scene-current { font-size: 0.76rem; } .scene-summary-metrics { gap: 6px; } .scene-summary-metric { padding: 4px 6px; font-size: 0.69rem; } .scene-filters { gap: 6px; } .scene-filter-button { min-height: 28px; padding: 4px 7px; font-size: 0.69rem; } .scene-mode-button { padding: 6px 8px; font-size: 0.69rem; } .scene-legend { gap: 9px 12px; } .example-grid, .upload-grid { grid-template-columns: 1fr; } .probability-row { grid-template-columns: 77px 1fr 42px; gap: 8px; } }

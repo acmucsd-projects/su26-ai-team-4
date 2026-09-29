@@ -40,15 +40,13 @@ const assessmentGenerateButton = document.querySelector("#assessment-generate-bu
 const assessmentStatus = document.querySelector("#assessment-status");
 const assessmentResult = document.querySelector("#assessment-result");
 const assessmentModel = document.querySelector("#assessment-model");
+const assessmentText = document.querySelector("#assessment-text");
+const assessmentReviewBlock = document.querySelector("#assessment-review-block");
+const assessmentReviewText = document.querySelector("#assessment-review-text");
+const assessmentEvidenceDetails = document.querySelector("#assessment-evidence-details");
 const assessmentEvidenceUsed = document.querySelector("#assessment-evidence-used");
-const assessmentSections = {
-  assessment: { block: document.querySelector("#assessment-assessment-section"), content: document.querySelector("#assessment-assessment-text") },
-  what_stands_out: { block: document.querySelector("#assessment-stands-out-section"), content: document.querySelector("#assessment-stands-out-text") },
-  uncertainty: { block: document.querySelector("#assessment-uncertainty-section"), content: document.querySelector("#assessment-uncertainty-text") },
-  context_interpretation: { block: document.querySelector("#assessment-context-section"), content: document.querySelector("#assessment-context-text") },
-  suggested_review: { block: document.querySelector("#assessment-review-section"), content: document.querySelector("#assessment-review-text") },
-  evidence_gaps: { block: document.querySelector("#assessment-gaps-section"), content: document.querySelector("#assessment-gaps-text") },
-};
+const assessmentSupportingBlock = document.querySelector("#assessment-supporting-block");
+const assessmentSupportingDetails = document.querySelector("#assessment-supporting-details");
 const assessmentLimitationsBlock = document.querySelector("#assessment-limitations-block");
 const assessmentLimitations = document.querySelector("#assessment-limitations");
 const ASSESSMENT_EVIDENCE_LABELS = {
@@ -60,12 +58,15 @@ const ASSESSMENT_EVIDENCE_LABELS = {
 function clearAssessmentResult() {
   assessmentModel.textContent = "";
   assessmentModel.hidden = true;
+  assessmentText.textContent = "";
+  assessmentReviewText.textContent = "";
+  assessmentReviewBlock.hidden = true;
+  assessmentEvidenceDetails.open = false;
+  assessmentEvidenceDetails.hidden = true;
   assessmentEvidenceUsed.textContent = "";
   assessmentEvidenceUsed.hidden = true;
-  Object.values(assessmentSections).forEach(({ block, content }) => {
-    block.hidden = true;
-    content.textContent = "";
-  });
+  assessmentSupportingDetails.replaceChildren();
+  assessmentSupportingBlock.hidden = true;
   assessmentLimitations.replaceChildren();
   assessmentLimitationsBlock.hidden = true;
 }
@@ -83,12 +84,18 @@ function assessmentModelLabel(generatedBy) {
 
 function renderAssessmentResult(result) {
   clearAssessmentResult();
-  Object.entries(assessmentSections).forEach(([field, elements]) => {
-    const value = typeof result[field] === "string" ? result[field].trim() : "";
-    if (!value) return;
-    elements.content.textContent = value;
-    elements.block.hidden = false;
+  assessmentText.textContent = result.assessment;
+  const recommendedReview = typeof result.recommended_review === "string" ? result.recommended_review.trim() : "";
+  if (recommendedReview) {
+    assessmentReviewText.textContent = recommendedReview;
+    assessmentReviewBlock.hidden = false;
+  }
+  result.supporting_details.forEach((detail) => {
+    const item = document.createElement("li");
+    item.textContent = detail;
+    assessmentSupportingDetails.append(item);
   });
+  assessmentSupportingBlock.hidden = result.supporting_details.length === 0;
   result.limitations.forEach((limitation) => {
     const item = document.createElement("li");
     item.textContent = limitation;
@@ -107,16 +114,16 @@ function renderAssessmentResult(result) {
     assessmentEvidenceUsed.textContent = "Evidence used: " + evidenceLabels.join(" · ");
     assessmentEvidenceUsed.hidden = false;
   }
+  assessmentEvidenceDetails.hidden = !evidenceLabels.length && !result.supporting_details.length && !result.limitations.length;
 }
 
 function normalizedAssessmentResult(body) {
   return {
     assessment: typeof body.assessment === "string" ? body.assessment.trim() : "",
-    what_stands_out: body.what_stands_out,
-    uncertainty: body.uncertainty,
-    context_interpretation: body.context_interpretation,
-    suggested_review: body.suggested_review,
-    evidence_gaps: body.evidence_gaps,
+    recommended_review: body.recommended_review,
+    supporting_details: Array.isArray(body.supporting_details)
+      ? body.supporting_details.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+      : [],
     limitations: Array.isArray(body.limitations)
       ? body.limitations.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
       : [],
