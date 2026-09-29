@@ -14,8 +14,8 @@ assessment from that same packet. The v2 response requires `assessment` and may
 populate `recommended_review`, `supporting_details`, and `limitations`. Empty
 optional sections are returned as `null` or empty arrays. It also returns
 `prompt_version`, `generated_by`, and an application-generated `evidence_used`
-list. Prompt version is `building-assessment-v2.1`; its deterministic evidence
-packet uses schema version 3. If the provider is not configured, the endpoint
+list. Prompt version is `building-assessment-v2.2`; its deterministic evidence
+packet uses schema version 4. If the provider is not configured, the endpoint
 returns HTTP 503 with `assessment_provider_unavailable`; it never substitutes
 mock text.
 
@@ -26,7 +26,8 @@ overview using prompt version `scene-assessment-v1`. It returns `overview`, up
 to four `findings`, optional `recommended_review`, `limitations`,
 `prompt_version`, and `generated_by`. Findings refer only through
 application-selected `candidate_keys`. The API drops findings with unknown
-keys or building IDs in prose and supplies an application-generated
+keys or building IDs in finding prose, rejects scene-level prose containing
+building IDs, and supplies an application-generated
 `candidate_buildings` map for valid interactive references. Scene previews work
 without an API key or OpenAI SDK; generation returns the same safe unavailable
 response as the building endpoint.

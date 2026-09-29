@@ -14,6 +14,7 @@ from app.backend.assessment import (
     build_prompt,
 )
 from app.backend.scene_context import build_event_context, build_scene_context
+from app.backend.scene_evidence import building_scene_context, build_scene_evidence
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -189,7 +190,7 @@ class AssessmentEvidenceTests(unittest.TestCase):
         incomplete = build_evidence_packet({}, {"prediction": {"probabilities": {"no-damage": 0.5}}})
         self.assertIsNone(incomplete["damage_prediction"]["probability_ranking"])
         self.assertNotIn("scene_id", incomplete["scene_context"])
-        self.assertNotIn("top_two_probability_gap", incomplete["scene_context"]["selected_building"])
+        self.assertIsNone(incomplete["scene_context"]["uncertainty_summary"]["selected_building"]["uncertainty_rank"])
 
         non_finite_gap = build_scene_context({}, {}, {"top_two_gap": float("nan")})
         self.assertNotIn("top_two_probability_gap", non_finite_gap["selected_building"])
@@ -255,15 +256,39 @@ class AssessmentEvidenceTests(unittest.TestCase):
             if predicted_class in expected_counts:
                 expected_counts[predicted_class] += 1
 
-        self.assertEqual(scene_summary["building_count"], len(scene["buildings"]))
-        self.assertEqual(scene_summary["classified_building_count"], len(scene["buildings"]))
-        self.assertEqual(scene_summary["predicted_class_counts"], expected_counts)
-        self.assertEqual(scene_summary["severe_prediction_count"], expected_counts["major-damage"] + expected_counts["destroyed"])
-        selected = scene_summary["selected_building"]
-        self.assertEqual(selected["predicted_class"], "no-damage")
-        self.assertEqual(selected["same_class_building_count"], expected_counts["no-damage"])
-        self.assertEqual(selected["top_two_probability_gap"], evidence["damage_prediction"]["probability_ranking"]["top_two_gap"])
+        distribution = scene_summary["damage_distribution"]
+        self.assertEqual(distribution["total_buildings"], len(scene["buildings"]))
+        self.assertEqual(distribution["classified_buildings"], len(scene["buildings"]))
+        self.assertEqual(distribution["class_counts"], expected_counts)
+        self.assertEqual(distribution["severe_count"], expected_counts["major-damage"] + expected_counts["destroyed"])
+        selected = scene_summary["uncertainty_summary"]["selected_building"]
+        self.assertEqual(selected["uncertainty_rank"], next(
+            row["rank"] for row in build_scene_evidence(scene, contexts)["model_uncertainty"]["uncertainty_ranking"]
+            if row["building_id"] == building["id"]
+        ))
         self.assertEqual(evidence["event_context"]["hazard_type"], "hurricane")
+
+    def test_building_packet_uses_shared_scene_evidence_without_scene_llm_or_all_candidates(self):
+        scene, contexts = scene_and_context("santa-rosa-wildfire_00000014")
+        building = next(row for row in scene["buildings"] if row["id"].endswith("_b0006"))
+        shared_evidence = build_scene_evidence(scene, contexts)
+        packet = build_evidence_packet(
+            scene,
+            building,
+            contexts[building["uid"]],
+            scene_evidence=shared_evidence,
+        )
+
+        self.assertEqual(
+            packet["scene_context"],
+            building_scene_context(shared_evidence, building["id"]),
+        )
+        self.assertEqual(packet["scene_context"]["context_summary"]["buildings_with_reviewed_context"], 48)
+        self.assertNotIn("candidates", packet["scene_context"])
+        self.assertNotIn("candidate_order", packet["scene_context"])
+        self.assertNotIn("scene_overview", packet)
+        self.assertNotIn("findings", packet)
+        self.assertIn("wildfire", build_prompt(packet)["system"].lower())
 
     def test_packet_excludes_raw_provider_payload_and_prompt_is_deterministic(self):
         scene, contexts = scene_and_context("hurricane-florence_00000459")
@@ -310,8 +335,8 @@ class AssessmentEvidenceTests(unittest.TestCase):
             "do not provide chain-of-thought",
         ):
             self.assertIn(rule, instructions)
-        self.assertEqual(PROMPT_VERSION, "building-assessment-v2.1")
-        self.assertEqual(EVIDENCE_PACKET_SCHEMA_VERSION, 3)
+        self.assertEqual(PROMPT_VERSION, "building-assessment-v2.2")
+        self.assertEqual(EVIDENCE_PACKET_SCHEMA_VERSION, 4)
         self.assertEqual(set(OUTPUT_CONTRACT), {"assessment", "recommended_review", "supporting_details", "limitations"})
 
 

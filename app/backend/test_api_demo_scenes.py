@@ -178,7 +178,7 @@ class FakeAssessmentProvider:
             "recommended_review": "Verify the building against an event-time record if use matters.",
             "supporting_details": [],
             "limitations": [],
-            "prompt_version": "building-assessment-v2.1",
+            "prompt_version": "building-assessment-v2.2",
             "generated_by": "fake-provider-for-test",
         }
         self.error = error
@@ -375,14 +375,23 @@ class AssessmentGenerationApiTests(unittest.TestCase):
         for packet, (scene_id, _building_id, _has_context), hazard_type, location, post_date in zip(
             packets, cases, expected_hazards, expected_locations, expected_post_dates, strict=True
         ):
-            self.assertEqual(packet["schema_version"], 3)
+            self.assertEqual(packet["schema_version"], 4)
             self.assertEqual(packet["event_context"]["hazard_type"], hazard_type)
             self.assertEqual(packet["event_context"]["location"], location)
             self.assertEqual(packet["event_context"]["post_acquisition_date"], post_date)
             self.assertIsNone(packet["event_context"]["pre_acquisition_date"])
-            self.assertEqual(packet["scene_context"]["scene_id"], scene_id)
-            self.assertGreater(packet["scene_context"]["building_count"], 0)
-            self.assertEqual(packet["scene_context"]["classified_building_count"], packet["scene_context"]["building_count"])
+            self.assertEqual(packet["event_context"]["scene_id"], scene_id)
+            distribution = packet["scene_context"]["damage_distribution"]
+            self.assertGreater(distribution["total_buildings"], 0)
+            self.assertEqual(distribution["classified_buildings"], distribution["total_buildings"])
+            self.assertEqual(packet["scene_context"]["context_summary"]["buildings_with_reviewed_context"], {
+                "hurricane-florence_00000459": 40,
+                "hurricane-michael_00000247": 175,
+                "santa-rosa-wildfire_00000014": 48,
+                "hurricane-matthew_00000060": 0,
+                "palu-tsunami_00000065": 0,
+            }[scene_id])
+            self.assertNotIn("candidates", packet["scene_context"])
         self.assertEqual(florence["damage_prediction"]["probability_ranking"]["most_likely_class"], "major-damage")
         self.assertTrue(florence["context"]["claims"][0]["modeled"])
         self.assertEqual(florence["context"]["claims"][0]["temporal_relation"], "current_modeled_not_event_aligned")

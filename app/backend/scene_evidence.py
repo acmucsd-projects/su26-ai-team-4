@@ -538,7 +538,6 @@ def build_scene_evidence(scene: dict, contexts_by_uid: object = None) -> SceneEv
 def building_scene_context(scene_evidence: SceneEvidence, building_id: str | None) -> dict:
     """Return the shared scene facts most relevant to one building assessment."""
 
-    metadata = scene_evidence["scene_metadata"]
     distribution = scene_evidence["damage_distribution"]
     uncertainty = scene_evidence["model_uncertainty"]
     candidate_keys = [
@@ -554,7 +553,6 @@ def building_scene_context(scene_evidence: SceneEvidence, building_id: str | Non
         None,
     )
     return {
-        "scene_metadata": metadata,
         "damage_distribution": distribution,
         "uncertainty_summary": {
             "ranked_building_count": uncertainty["ranked_building_count"],

@@ -187,7 +187,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
         overlay = load_context_overlay(context_root, scene_id, manifest_path, manifest)
         uid = building.get("uid")
         context = overlay.get(uid) if isinstance(uid, str) else None
-        return manifest, building, context
+        return manifest, building, context, overlay
 
     def scene_assessment_target(scene_id: str):
         """Resolve one packaged manifest and its reviewed optional overlay."""
@@ -270,8 +270,9 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     async def preview_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
         """Preview the exact evidence packet and prompt; no LLM provider is called."""
 
-        manifest, building, context = assessment_target(scene_id, building_id)
-        return build_assessment_preview(manifest, building, context)
+        manifest, building, context, overlay = assessment_target(scene_id, building_id)
+        scene_evidence = build_scene_evidence(manifest, overlay)
+        return build_assessment_preview(manifest, building, context, scene_evidence=scene_evidence)
 
     @app.get("/demo-scenes/{scene_id}/assessment-preview")
     async def preview_scene_assessment(scene_id: str) -> dict[str, object]:
@@ -284,7 +285,7 @@ def create_app(model_path: Path | None = None) -> FastAPI:
     def generate_building_assessment(scene_id: str, building_id: str) -> dict[str, object]:
         """Generate one paid, structured assessment from the canonical evidence packet."""
 
-        manifest, building, context = assessment_target(scene_id, building_id)
+        manifest, building, context, overlay = assessment_target(scene_id, building_id)
         provider = getattr(app.state, "assessment_provider", None)
         if provider is None:
             provider = configured_assessment_provider()
@@ -299,7 +300,8 @@ def create_app(model_path: Path | None = None) -> FastAPI:
                 },
             )
 
-        packet = build_evidence_packet(manifest, building, context)
+        scene_evidence = build_scene_evidence(manifest, overlay)
+        packet = build_evidence_packet(manifest, building, context, scene_evidence=scene_evidence)
         prompt = build_prompt(packet)
         try:
             result = provider.generate(prompt)
